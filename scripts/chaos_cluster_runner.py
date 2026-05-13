@@ -28,7 +28,7 @@ def main():
 
     print("\n🔥 CHAOS TEST START\n")
 
-    for tick in range(50):
+    for tick in range(500):
 
         print(f"\n--- TICK {tick} ---")
 
