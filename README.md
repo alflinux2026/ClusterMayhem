@@ -1,16 +1,17 @@
 # mayhem-cluster
 
-Distributed LAN failover cluster core for FRV ecosystem.
+Distributed autonomous failover cluster for LAN services.
 
 ## Goals
 
+- autonomous election
 - watchdog
+- leases
+- replication
 - failover
-- active node election
-- dataset replication
-- split-brain prevention
-- autonomous LAN operation
+- dataset consistency
+- split-brain minimization
 
 ## Status
 
-Early architecture phase.
+Experimental.

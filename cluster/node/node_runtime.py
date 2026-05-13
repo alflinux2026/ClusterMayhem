@@ -1,0 +1,79 @@
+import time
+
+from cluster.runtime.state import NodeState
+from cluster.lease.lease_manager import LeaseManager
+from cluster.election.election_engine import ElectionEngine
+
+
+class NodeRuntime:
+
+    def __init__(self, node_id, priority, lease_manager: LeaseManager):
+
+        self.node_id = node_id
+        self.priority = priority
+
+        self.state = NodeState.BOOT
+
+        self.lease_manager = lease_manager
+        self.last_heartbeat = time.time()
+
+    # -----------------------------------------------------
+
+    def transition(self, new_state):
+
+        if self.state == new_state:
+            return
+
+        print(f"[{self.node_id}] {self.state} -> {new_state}")
+        self.state = new_state
+
+    # -----------------------------------------------------
+
+    def is_lease_valid(self):
+
+        return self.lease_manager.is_valid(self.node_id)
+
+    # -----------------------------------------------------
+
+    def tick(self):
+
+        """
+        Called by heartbeat loop
+        """
+
+        lease_valid = self.is_lease_valid()
+
+        # ACTIVE sin lease = degradación inmediata
+        if self.state == NodeState.ACTIVE and not lease_valid:
+
+            self.transition(NodeState.DEGRADED)
+
+        # STANDBY sin líder → posible election trigger
+        if self.state == NodeState.STANDBY:
+
+            active_nodes = self.lease_manager.get_active_nodes()
+
+            if not active_nodes:
+
+                self.try_become_leader()
+
+    # -----------------------------------------------------
+
+    def try_become_leader(self):
+
+        print(f"{self.node_id} evaluating leadership...")
+
+        can_lead = ElectionEngine.can_become_leader(
+            node_id=self.node_id,
+            priority=self.priority,
+            lease_manager=self.lease_manager
+        )
+
+        if can_lead:
+
+            self.transition(NodeState.ACTIVE)
+
+            self.lease_manager.grant(
+                self.node_id,
+                ttl=2.5
+            )

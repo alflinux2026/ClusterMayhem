@@ -1,0 +1,7 @@
+{
+  "cluster": "mayhem-cluster",
+  "version": "0.1.0",
+  "active_node": null,
+  "lease_owner": null,
+  "updated_at": null
+}

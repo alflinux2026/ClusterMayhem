@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: mayhem-cluster
+Version: 0.1.0
+Summary: Distributed autonomous failover cluster
+Requires-Python: >=3.11
+Requires-Dist: flask
+Requires-Dist: requests
