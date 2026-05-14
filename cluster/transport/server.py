@@ -30,6 +30,11 @@ def get_cluster():
 
     return cluster_state
 
+@app.get("/leader")
+def leader():
+
+    return {"leader": get_leader(cluster_state)}
+
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
@@ -55,6 +60,20 @@ def start_server(host="0.0.0.0", port=7000):
         host=host,
         port=port,
     )
+
+def get_leader(cluster_state):
+
+    leaders = {}
+
+    for node_id, data in cluster_state.items():
+
+        if data["state"] == "ACTIVE":
+            leaders[node_id] = data["priority"]
+
+    if not leaders:
+        return None
+
+    return min(leaders, key=leaders.get)
 
 
 if __name__ == "__main__":
