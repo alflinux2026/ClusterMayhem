@@ -35,6 +35,8 @@ class ClusterWorker:
 
     def tick(self):
 
+        print(f"[{self.node.node_id}] REGISTERING SELF")
+
         # 👇 registrar self localmente
         register_local_node(
             node_id=self.node.node_id,

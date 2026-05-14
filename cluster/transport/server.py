@@ -10,6 +10,8 @@ from cluster.runtime.cluster_store import cluster_state
 app = FastAPI()
 
 
+print("SERVER PROCESS STARTED")
+
 print("SERVER cluster_state id", id(cluster_state))
 
 class Heartbeat(BaseModel):
