@@ -4,11 +4,13 @@ import uvicorn
 import time
 
 
+from cluster.runtime.cluster_store import cluster_state
+
+
 app = FastAPI()
 
 
-cluster_state = {}  # 👈 memoria local del nodo
-
+print("SERVER cluster_state id", id(cluster_state))
 
 class Heartbeat(BaseModel):
     node_id: str
@@ -81,12 +83,16 @@ def register_local_node(
     priority,
     ):
 
+    print("REGISTER cluster_state id", id(cluster_state))
+
     cluster_state[node_id] = {
         "state": state,
         "leader": None,
         "priority": priority,
         "last_seen": time.time(),
     }
+
+
 
 
 if __name__ == "__main__":
