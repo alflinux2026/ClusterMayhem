@@ -3,13 +3,25 @@ from pydantic import BaseModel
 import uvicorn
 import time
 
-NODE_TIMEOUT = 3.0  # segundos
 
 from cluster.runtime.cluster_store import cluster_state
+from cluster.runtime.cluster_store import NODE_TTL
 
+from cluster.runtime.cluster_store import get_active_cluster
 
 app = FastAPI()
 
+def compute_leader():
+    active = {
+        n: data["priority"]
+        for n, data in get_active_cluster().items()
+        if data["state"] in ("BOOT", "ACTIVE")
+    }
+
+    if not active:
+        return None
+
+    return min(active, key=active.get)
 
 print("SERVER PROCESS STARTED")
 
@@ -41,34 +53,20 @@ def get_active_cluster():
         if is_alive(data)
     }
 
+from cluster.runtime.cluster_store import get_active_cluster
+
 @app.get("/cluster")
 def get_cluster():
-    now = time.time()
+    return get_active_cluster()
 
-    return {
-        node_id: data
-        for node_id, data in cluster_state.items()
-        if (now - data["last_seen"]) < NODE_TIMEOUT
-    }
 
-import time
 
 
 def is_alive(data):
     return (time.time() - data["last_seen"]) < NODE_TIMEOUT
 
 
-def compute_leader():
-    active = {
-        n: data["priority"]
-        for n, data in cluster_state.items()
-        if is_alive(data) and data["state"] in ("BOOT", "ACTIVE")
-    }
 
-    if not active:
-        return None
-
-    return min(active, key=active.get)
 
 
 @app.get("/leader")
@@ -80,12 +78,12 @@ def heartbeat(hb: Heartbeat):
 
     cluster_state[hb.node_id] = {
         "state": hb.state,
-        "leader": hb.leader,
+
         "priority": hb.priority,
         "last_seen": time.time(),
     }
 
-    cleanup_cluster()   # 👈 AQUÍ
+
 
     return {"ok": True}
 
@@ -128,18 +126,7 @@ def register_local_node(
         "last_seen": time.time(),
     }
 
-def cleanup_cluster():
-    now = time.time()
 
-    to_delete = [
-        node_id
-        for node_id, data in cluster_state.items()
-        if now - data["last_seen"] > NODE_TIMEOUT
-    ]
-
-    for node_id in to_delete:
-        print(f"[GC] removing {node_id}")
-        del cluster_state[node_id]
 
 
 if __name__ == "__main__":
