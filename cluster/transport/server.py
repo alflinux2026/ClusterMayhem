@@ -42,31 +42,11 @@ async def health():
         "status": "ok"
     }
 
-def is_alive(data):
-    return (time.time() - data["last_seen"]) < NODE_TIMEOUT
-
-
-def get_active_cluster():
-    return {
-        node_id: data
-        for node_id, data in cluster_state.items()
-        if is_alive(data)
-    }
-
-from cluster.runtime.cluster_store import get_active_cluster
 
 @app.get("/cluster")
 def get_cluster():
-    return get_active_cluster()
-
-
-
-
-def is_alive(data):
-    return (time.time() - data["last_seen"]) < NODE_TIMEOUT
-
-
-
+    cleanup_cluster()   # 👈 SIEMPRE LIMPIA ANTES DE LEER
+    return cluster_state
 
 
 @app.get("/leader")
