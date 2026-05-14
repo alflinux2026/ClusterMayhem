@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import uvicorn
 import time
 
+NODE_TIMEOUT = 3.0  # segundos
 
 from cluster.runtime.cluster_store import cluster_state
 
@@ -29,15 +30,52 @@ async def health():
         "status": "ok"
     }
 
+def is_alive(data):
+    return (time.time() - data["last_seen"]) < NODE_TIMEOUT
+
+
+def get_active_cluster():
+    return {
+        node_id: data
+        for node_id, data in cluster_state.items()
+        if is_alive(data)
+    }
+
 @app.get("/cluster")
 def get_cluster():
+    now = time.time()
 
-    return cluster_state
+    return {
+        node_id: data
+        for node_id, data in cluster_state.items()
+        if (now - data["last_seen"]) < NODE_TIMEOUT
+    }
+
+import time
+
+NODE_TIMEOUT = 3.0
+
+
+def is_alive(data):
+    return (time.time() - data["last_seen"]) < NODE_TIMEOUT
+
+
+def compute_leader():
+    active = {
+        n: data["priority"]
+        for n, data in cluster_state.items()
+        if is_alive(data) and data["state"] in ("BOOT", "ACTIVE")
+    }
+
+    if not active:
+        return None
+
+    return min(active, key=active.get)
+
 
 @app.get("/leader")
 def leader():
-
-    return {"leader": get_leader(cluster_state)}
+    return {"leader": compute_leader()}
 
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
@@ -93,7 +131,6 @@ def register_local_node(
         "priority": priority,
         "last_seen": time.time(),
     }
-
 
 
 
