@@ -84,7 +84,9 @@ class NodeRuntime:
         payload = {
             "node_id": self.node_id,
             "state": self.state.value,
-            "leader": self.node_id if self.state == NodeState.ACTIVE else None,
+            "leader": self.lease_manager.active_leader(),
+            "priority": self.priority,
+            "timestamp": time.time(),
         }
 
         broadcast_heartbeat(peers, payload)

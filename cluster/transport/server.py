@@ -1,16 +1,21 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
+import time
 
 
 app = FastAPI()
 
 
-class HeartbeatMessage(BaseModel):
+cluster_state = {}  # 👈 memoria local del nodo
 
+
+class Heartbeat(BaseModel):
     node_id: str
     state: str
     leader: str | None = None
+    priority: int | None = None
+    timestamp: float | None = None
 
 
 @app.get("/health")
@@ -20,19 +25,27 @@ async def health():
         "status": "ok"
     }
 
+@app.get("/cluster")
+def get_cluster():
+
+    return cluster_state
 
 @app.post("/heartbeat")
-async def heartbeat(msg: HeartbeatMessage):
+def heartbeat(hb: Heartbeat):
+
+    cluster_state[hb.node_id] = {
+        "state": hb.state,
+        "leader": hb.leader,
+        "priority": hb.priority,
+        "last_seen": time.time(),
+    }
 
     print(
-        f"HEARTBEAT from={msg.node_id} "
-        f"state={msg.state} "
-        f"leader={msg.leader}"
+        f"HB RECEIVED: {hb.node_id} state={hb.state} leader={hb.leader}"
     )
 
-    return {
-        "received": True
-    }
+    return {"ok": True}
+
 
 
 def start_server(host="0.0.0.0", port=7000):
