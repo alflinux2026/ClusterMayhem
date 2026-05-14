@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from cluster.runtime.cluster_store import cluster_state
 from cluster.node.node_runtime import NodeRuntime
 from cluster.workers.cluster_worker import ClusterWorker
+from cluster.lease.lease_manager import LeaseManager
 
 
 # -----------------------------
@@ -62,10 +63,12 @@ def compute_leader():
 # -----------------------------
 def run_node(node_id: str, priority: int, peers: list[str]):
 
+    lease_manager = LeaseManager()
+
     node = NodeRuntime(
         node_id=node_id,
         priority=priority,
-        lease_manager=None  # si aún no lo usas en red
+        lease_manager=lease_manager
     )
 
     worker = ClusterWorker(node=node, peers=peers, interval=1.0)
@@ -100,9 +103,9 @@ if __name__ == "__main__":
     priority = int(sys.argv[2])
 
     peers = [
-        "100.100.1.200",
-        "100.100.1.202",
-        "100.100.1.203",
+        {"host": "100.100.1.200", "port": 7000},
+        {"host": "100.100.1.202", "port": 7000},
+        {"host": "100.100.1.203", "port": 7000},
     ]
 
     run_node(node_id, priority, peers)
