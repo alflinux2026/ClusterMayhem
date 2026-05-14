@@ -12,10 +12,13 @@ from cluster.runtime.cluster_store import get_active_cluster
 app = FastAPI()
 
 def compute_leader():
+    now = time.time()
+
     active = {
         n: data["priority"]
-        for n, data in get_active_cluster().items()
-        if data["state"] in ("BOOT", "ACTIVE")
+        for n, data in cluster_state.items()
+        if (now - data["last_seen"]) < NODE_TTL
+        and data["state"] in ("BOOT", "ACTIVE")
     }
 
     if not active:
@@ -45,8 +48,7 @@ async def health():
 
 @app.get("/cluster")
 def get_cluster():
-    cleanup_cluster()   # 👈 SIEMPRE LIMPIA ANTES DE LEER
-    return cluster_state
+    return get_active_cluster()
 
 
 @app.get("/leader")
@@ -62,7 +64,7 @@ def heartbeat(hb: Heartbeat):
         "priority": hb.priority,
         "last_seen": time.time(),
     }
-
+    cleanup_cluster()   # OK mantenerlo aquí
 
 
     return {"ok": True}
