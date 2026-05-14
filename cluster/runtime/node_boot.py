@@ -49,7 +49,12 @@ def compute_leader():
     active = {
         n: data["priority"]
         for n, data in cluster_state.items()
-        if data["state"] == "ACTIVE"
+
+        # if data["state"] in ("ACTIVE", "BOOT"):
+
+        if node.seen_self_and_peers
+
+
     }
 
     if not active:
