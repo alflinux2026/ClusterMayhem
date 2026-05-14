@@ -4,7 +4,14 @@ from cluster.node.node_runtime import NodeRuntime
 from cluster.lease.lease_manager import LeaseManager
 from cluster.runtime.state import NodeState
 from cluster.workers.cluster_worker import ClusterWorker
+from cluster.transport.server import register_local_node
 
+
+register_local_node(
+    node_id=node.node_id,
+    state=node.state.value,
+    priority=node.priority,
+)
 
 def load_config():
 

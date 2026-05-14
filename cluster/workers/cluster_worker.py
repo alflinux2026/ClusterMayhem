@@ -1,5 +1,6 @@
 import time
 
+from cluster.transport.server import register_local_node
 
 class ClusterWorker:
 
@@ -34,4 +35,12 @@ class ClusterWorker:
 
     def tick(self):
 
+        # 👇 registrar self localmente
+        register_local_node(
+            node_id=self.node.node_id,
+            state=self.node.state.value,
+            priority=self.node.priority,
+        )
+
+        # 👇 enviar a peers
         self.node.emit_heartbeat(self.peers)

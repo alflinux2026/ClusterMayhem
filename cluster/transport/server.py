@@ -75,6 +75,19 @@ def get_leader(cluster_state):
 
     return min(leaders, key=leaders.get)
 
+def register_local_node(
+    node_id,
+    state,
+    priority,
+    ):
+
+    cluster_state[node_id] = {
+        "state": state,
+        "leader": None,
+        "priority": priority,
+        "last_seen": time.time(),
+    }
+
 
 if __name__ == "__main__":
 
