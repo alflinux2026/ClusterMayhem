@@ -4,6 +4,7 @@ from cluster.runtime.state import NodeState
 from cluster.lease.lease_manager import LeaseManager
 from cluster.election.election_engine import ElectionEngine
 
+from cluster.transport.client import broadcast_heartbeat
 
 class NodeRuntime:
 
@@ -77,3 +78,15 @@ class NodeRuntime:
                 self.node_id,
                 ttl=2.5
             )
+
+    def emit_heartbeat(self, peers):
+
+    payload = {
+        "node_id": self.node_id,
+        "state": self.state.value,
+        "leader": self.node_id if self.state == NodeState.ACTIVE else None,
+    }
+
+    broadcast_heartbeat(peers, payload)
+
+
