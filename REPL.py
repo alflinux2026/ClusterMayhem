@@ -1,3 +1,5 @@
+import time
+
 from cluster.node.node_runtime import NodeRuntime
 from cluster.lease.lease_manager import LeaseManager
 from cluster.config.loader import load_peers
@@ -13,4 +15,7 @@ node = NodeRuntime(
 
 node.state = NodeState.ACTIVE
 
-node.emit_heartbeat(peers)
+while True:
+    node.emit_heartbeat(peers)
+    print(f"HEARTBEAT from {node.node_id}")
+    time.sleep(5)
