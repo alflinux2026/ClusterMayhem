@@ -53,8 +53,6 @@ def get_cluster():
 
 import time
 
-NODE_TIMEOUT = 3.0
-
 
 def is_alive(data):
     return (time.time() - data["last_seen"]) < NODE_TIMEOUT
@@ -87,9 +85,7 @@ def heartbeat(hb: Heartbeat):
         "last_seen": time.time(),
     }
 
-    print(
-        f"HB RECEIVED: {hb.node_id} state={hb.state} leader={hb.leader}"
-    )
+    cleanup_cluster()   # 👈 AQUÍ
 
     return {"ok": True}
 
@@ -132,6 +128,18 @@ def register_local_node(
         "last_seen": time.time(),
     }
 
+def cleanup_cluster():
+    now = time.time()
+
+    to_delete = [
+        node_id
+        for node_id, data in cluster_state.items()
+        if now - data["last_seen"] > NODE_TIMEOUT
+    ]
+
+    for node_id in to_delete:
+        print(f"[GC] removing {node_id}")
+        del cluster_state[node_id]
 
 
 if __name__ == "__main__":
