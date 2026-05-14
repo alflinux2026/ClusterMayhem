@@ -43,6 +43,8 @@ def heartbeat(hb: Heartbeat):
 
     return {"ok": True}
 
+def is_alive(data, timeout=3.0):
+    return (time.time() - data["last_seen"]) < timeout
 
 def compute_leader():
 
@@ -50,7 +52,7 @@ def compute_leader():
         n: data["priority"]
         for n, data in cluster_state.items()
 
-        if data["state"] in ("ACTIVE", "BOOT") # SOLO PARA PRUEBAS!!!
+        if is_alive(data) and data["state"] in ("BOOT", "ACTIVE") # SOLO PARA PRUEBAS!!!
 
         # if node.seen_self_and_peers
 
