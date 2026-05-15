@@ -10,15 +10,8 @@ from cluster.runtime.cluster_store import cluster_state
 from cluster.node.node_runtime import NodeRuntime
 from cluster.runtime.node_worker import NodeWorker
 from cluster.runtime.leader import compute_leader
+from cluster.runtime.bootstrap import load_or_bootstrap_config
 
-
-# -----------------------------
-# CONFIG LOAD
-# -----------------------------
-
-def load_config(path="config/node.local.json"):
-    with open(path, "r") as f:
-        return json.load(f)
 
 
 # -----------------------------
@@ -92,6 +85,6 @@ def run_node(config):
 # -----------------------------
 if __name__ == "__main__":
 
-    config = load_config()
+    config = load_or_bootstrap_config()
 
     run_node(config)
