@@ -9,8 +9,8 @@ def forward_to_leader(event):
     if not leader:
         return {"error": "no leader"}
 
-node = CLUSTER_REGISTRY[leader]
-url = f"http://{node['host']}:{node['port']}/route"
+    node = CLUSTER_REGISTRY[leader]
+    url = f"http://{node['host']}:{node['port']}/route"
 
     requests.post(url, json=event.dict(), timeout=2)
 
