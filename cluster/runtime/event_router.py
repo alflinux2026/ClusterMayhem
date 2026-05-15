@@ -1,6 +1,7 @@
 import requests
 from cluster.runtime.leader import compute_leader
 from cluster.runtime.cluster_store import cluster_state
+from cluster.runtime.registry import CLUSTER_REGISTRY
 
 def forward_to_leader(event):
 
@@ -8,8 +9,8 @@ def forward_to_leader(event):
     if not leader:
         return {"error": "no leader"}
 
-    node = cluster_state[leader]
-    url = f"http://{node['host']}:{node['port']}/route"
+node = CLUSTER_REGISTRY[leader]
+url = f"http://{node['host']}:{node['port']}/route"
 
     requests.post(url, json=event.dict(), timeout=2)
 
