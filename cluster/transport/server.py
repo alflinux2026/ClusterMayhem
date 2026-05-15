@@ -6,22 +6,10 @@ import time
 
 from cluster.runtime.cluster_store import get_active_cluster, cleanup_cluster
 
+from cluster.runtime.leader import compute_leader
+
+
 app = FastAPI()
-
-
-def compute_leader():
-    now = time.time()
-
-    active = {
-        n: data["priority"]
-        for n, data in get_active_cluster().items()
-        if data["state"] in ("BOOT", "ACTIVE")
-    }
-
-    if not active:
-        return None
-
-    return min(active, key=active.get)
 
 
 print("SERVER PROCESS STARTED")

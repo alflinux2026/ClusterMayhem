@@ -9,6 +9,8 @@ from cluster.node.node_runtime import NodeRuntime
 from cluster.workers.cluster_worker import ClusterWorker
 from cluster.lease.lease_manager import LeaseManager
 
+from cluster.runtime.leader import compute_leader
+
 
 # -----------------------------
 # API
@@ -45,24 +47,6 @@ def heartbeat(hb: Heartbeat):
 
 def is_alive(data, timeout=3.0):
     return (time.time() - data["last_seen"]) < timeout
-
-def compute_leader():
-
-    active = {
-        n: data["priority"]
-        for n, data in cluster_state.items()
-
-        if is_alive(data) and data["state"] in ("BOOT", "ACTIVE") # SOLO PARA PRUEBAS!!!
-
-        # if node.seen_self_and_peers
-
-
-    }
-
-    if not active:
-        return None
-
-    return min(active, key=active.get)
 
 
 # -----------------------------

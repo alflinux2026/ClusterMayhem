@@ -1,134 +1,595 @@
-# CLUSTER PROJECT — STATUS ACTUAL
+# MAYHEM CLUSTER — SESSION PLAN (NEXT DAY)
 
-## 1. Estado general
-- Cluster distribuido funcional con 3 nodos.
-- Comunicación por HTTP (FastAPI + requests).
-- Heartbeats operativos.
-- Vista de cluster sincronizada entre nodos.
-- Elección de líder funcionando por prioridad (menor gana).
-- TTL básico para expiración de nodos.
+# EOD STATUS — BASELINE
 
-## 2. Arquitectura actual
+## Estado conseguido hoy
 
-### Componentes activos
-- `NodeRuntime` → estado del nodo + lógica de transición
-- `ClusterWorker` → loop de heartbeat + registro local
-- `transport/server.py` → API HTTP central del nodo
-- `transport/client.py` → envío de heartbeats
-- `cluster_store` → estado compartido en memoria
-- `LeaseManager` → control de “líder activo”
-- `ElectionEngine` → gating simple de elección
+El cluster ya funciona como sistema distribuido básico operativo.
 
-## 3. Flujo actual
+Actualmente:
 
-1. Nodo arranca (`run_node`)
-2. Se registra en `cluster_state`
-3. Worker entra en loop:
-   - registra self
-   - envía heartbeat a peers
-4. Servidores reciben heartbeat → actualizan `cluster_state`
-5. `/cluster` devuelve vista filtrada por TTL
-6. `/leader` calcula líder global
+* 3 nodos activos
+* propagación HTTP funcional
+* detección de caída funcional
+* elección automática de líder funcional
+* failover funcional
+* convergencia de cluster funcional
 
-## 4. Estado real del sistema
-
-### Funciona
-- Propagación de estado entre nodos
-- Consenso básico de líder
-- Expiración de nodos caídos (TTL)
-- Failover cuando un nodo desaparece
-
-### Ya corregido
-- Eliminación de acceso directo inconsistente a `cluster_state` en lectura
-- Uso de `get_active_cluster()` como fuente única
-- Limpieza centralizada (`cleanup_cluster`)
-
-## 5. Problemas actuales (no resueltos)
-
-- LeaseManager es redundante con cluster_state (doble fuente de verdad)
-- No hay anti-split-brain real (solo TTL + priority)
-- ElectionEngine demasiado trivial
-- No hay quorum
-- Heartbeat no valida consistencia de líder
-- Estado BOOT se usa como ACTIVE en leader calc (temporal hack)
-
-## 6. Riesgos actuales
-
-- Split-brain si TTL se desincroniza
-- Líder puede “resucitar” sin consenso real
-- Race conditions en cluster_state (memoria compartida sin locks)
-- Dependencia fuerte de timing (sleep-based system)
-
-## 7. Estado del objetivo
-
-✔ Cluster básico funcional  
-❌ Sistema distribuido robusto (aún no)  
-⚠️ Requiere capa de consenso real (Raft-lite o mejora de lease)
+El sistema YA se comporta como un cluster real simplificado.
 
 ---
 
-# SESSION BOOT — MAÑANA
+# ESTADO ACTUAL DEL CLUSTER
 
-## Objetivo de la sesión
-Convertir el cluster actual en un sistema coherente de **liderazgo estable sin inconsistencias temporales**.
+## Arquitectura activa
 
----
+### Networking
 
-## 1. Fix prioritario (OBLIGATORIO)
-
-Eliminar doble sistema:
-- ❌ LeaseManager como fuente de verdad
-- ❌ cluster_state + lease duplicados
-
-👉 Unificar en:
-- `cluster_state` + TTL + heartbeat
+* FastAPI
+* requests HTTP
+* heartbeat broadcast
+* endpoints `/cluster`
+* endpoint `/leader`
 
 ---
 
-## 2. Mejoras de consistencia
+## Componentes principales
 
-- Introducir lock o estructura thread-safe en cluster_state
-- Asegurar orden único de escritura:
-  - solo `/heartbeat` escribe estado
-  - workers NO deben mutar cluster_state directamente
+### `NodeRuntime`
 
----
+Responsable de:
 
-## 3. Elección de líder (upgrade mínimo)
-
-Sustituir lógica actual por:
-
-- Filtrar nodos activos (TTL)
-- Elegir menor priority
-- Validar estabilidad (2–3 ciclos consecutivos)
+* estado local
+* transitions
+* heartbeat payload
+* lógica de liderazgo
 
 ---
 
-## 4. Eliminación de hacks actuales
+### `ClusterWorker`
 
-- BOOT != ACTIVE en leader logic
-- logs de debugging globales
-- duplicación de compute_leader (server vs node_boot)
+Loop principal:
 
----
-
-## 5. Refactor mínimo recomendado
-
-- 1 sola función `compute_leader()` global
-- 1 solo módulo de estado (cluster_store)
-- 1 flujo de escritura (heartbeat)
+```text
+register_local_node()
+emit_heartbeat()
+sleep()
+```
 
 ---
 
-## 6. Meta de la sesión
+### `cluster_store`
 
-Al final del día:
+Fuente de verdad compartida:
 
-✔ 1 líder estable  
-✔ sin oscilación entre nodos  
-✔ sin inconsistencias entre endpoints  
-✔ cluster determinista bajo fallo de nodos  
+```python
+cluster_state = {}
+```
+
+Con:
+
+* TTL cleanup
+* vista activa
+* convergencia
 
 ---
 
-FIN DEL DOCUMENTO
+### `transport/server.py`
+
+Responsable de:
+
+* recibir heartbeats
+* exponer cluster state
+* calcular líder
+
+---
+
+# VALIDACIONES CONSEGUIDAS
+
+## TEST 1 — cluster convergence
+
+Todos los nodos convergen a misma vista.
+
+✔ OK
+
+---
+
+## TEST 2 — node expiration
+
+Nodo muerto desaparece por TTL.
+
+✔ OK
+
+---
+
+## TEST 3 — leader failover
+
+Caída del líder:
+
+```text
+lnx200nas OFF
+```
+
+Nuevo líder:
+
+```text
+lnx202pc
+```
+
+✔ OK
+
+---
+
+## TEST 4 — leader recovery
+
+Recuperación del nodo prioritario:
+
+```text
+lnx200nas ONLINE
+```
+
+Reasignación automática:
+
+```text
+leader -> lnx200nas
+```
+
+✔ OK
+
+---
+
+# PROBLEMAS ACTUALES
+
+# 1. DOBLE FUENTE DE VERDAD
+
+Actualmente existen:
+
+```text
+LeaseManager
+cluster_state
+```
+
+Esto es incorrecto.
+
+Puede generar:
+
+* inconsistencias
+* estados divergentes
+* split-brain parcial
+
+---
+
+# DECISIÓN
+
+Eliminar:
+
+```text
+LeaseManager
+```
+
+y usar únicamente:
+
+```text
+cluster_state + TTL
+```
+
+como fuente de verdad.
+
+---
+
+# 2. MUTACIONES DISTRIBUIDAS
+
+Actualmente:
+
+* workers escriben
+* endpoints escriben
+* varios puntos modifican estado
+
+Riesgo:
+
+```text
+race conditions
+```
+
+---
+
+# DECISIÓN
+
+Centralizar escritura.
+
+Único punto válido:
+
+```text
+POST /heartbeat
+```
+
+---
+
+# 3. HACK TEMPORAL
+
+Actualmente:
+
+```python
+BOOT == ACTIVE
+```
+
+en leader election.
+
+Esto es incorrecto.
+
+---
+
+# DECISIÓN
+
+Estados reales:
+
+```text
+BOOT
+DISCOVERING
+STANDBY
+ACTIVE
+DEGRADED
+ISOLATED
+OFFLINE
+```
+
+y sólo:
+
+```text
+ACTIVE
+```
+
+puede liderar.
+
+---
+
+# 4. LEADER ELECTION DEMASIADO SIMPLE
+
+Actualmente:
+
+```text
+min(priority)
+```
+
+sin estabilidad temporal.
+
+Puede oscilar.
+
+---
+
+# DECISIÓN
+
+Introducir:
+
+```text
+leader stability window
+```
+
+Ejemplo:
+
+```text
+3 ciclos consecutivos
+```
+
+antes de confirmar cambio.
+
+---
+
+# 5. NO HAY THREAD SAFETY
+
+`cluster_state` es memoria compartida sin locks.
+
+Problema potencial:
+
+* corrupción
+* writes simultáneos
+* lecturas inconsistentes
+
+---
+
+# DECISIÓN
+
+Añadir:
+
+```python
+threading.Lock()
+```
+
+o estructura thread-safe.
+
+---
+
+# OBJETIVO PRINCIPAL DE MAÑANA
+
+Convertir el cluster actual en:
+
+```text
+cluster determinista y estable
+```
+
+sin inconsistencias temporales.
+
+---
+
+# ROADMAP DE MAÑANA
+
+# FASE 1 — CONSOLIDACIÓN DEL CLUSTER
+
+## Objetivo
+
+Eliminar incoherencias internas.
+
+---
+
+## Tareas
+
+### 1. eliminar LeaseManager
+
+Eliminar:
+
+```text
+lease/
+lease_manager.py
+```
+
+Eliminar dependencias:
+
+* NodeRuntime
+* ElectionEngine
+* HeartbeatWorker
+
+---
+
+### 2. cluster_state como única verdad
+
+TODO el cluster depende exclusivamente de:
+
+```python
+get_active_cluster()
+```
+
+---
+
+### 3. centralizar escrituras
+
+Único punto de mutación:
+
+```python
+POST /heartbeat
+```
+
+Workers NO deben mutar directamente.
+
+---
+
+### 4. compute_leader único
+
+Actualmente duplicado.
+
+Unificar en:
+
+```text
+cluster/runtime/leader.py
+```
+
+---
+
+### 5. limpiar estados
+
+Eliminar:
+
+```text
+BOOT == ACTIVE
+```
+
+Definir flujo real:
+
+```text
+BOOT
+ -> DISCOVERING
+ -> STANDBY
+ -> ACTIVE
+```
+
+---
+
+# FASE 2 — ESTABILIDAD
+
+## Objetivo
+
+Evitar oscilaciones.
+
+---
+
+## Tareas
+
+### stability window
+
+Ejemplo:
+
+```text
+candidate must survive 3 cycles
+```
+
+antes de convertirse en líder.
+
+---
+
+### cooldown opcional
+
+Evitar:
+
+```text
+leader bouncing
+```
+
+---
+
+# FASE 3 — DATA PLANE INICIAL
+
+## Objetivo
+
+Primer sistema distribuido de datos real.
+
+---
+
+# PRUEBA "DATATEST"
+
+## Idea
+
+Sólo el líder puede generar datos válidos.
+
+Cada X segundos:
+
+```json
+{
+  "timestamp": "...",
+  "leader": "lnx200nas",
+  "counter": 1822
+}
+```
+
+---
+
+# Objetivos de validación
+
+## Validar:
+
+* continuidad de secuencia
+* pérdida de datos
+* failover limpio
+* recuperación de líder
+* ordering global
+* convergencia
+
+---
+
+# FORMATO PROPUESTO
+
+## JSONL append-only
+
+```text
+cluster_data/
+  wal/
+    2026-05-15/
+      wal-000001.log
+```
+
+Eventos:
+
+```json
+{"seq":1,"leader":"lnx200nas"}
+{"seq":2,"leader":"lnx200nas"}
+```
+
+---
+
+# REPLICACIÓN (FASE FUTURA)
+
+## Modelo previsto
+
+```text
+leader
+   |
+   +--> append local WAL
+   +--> replicate followers
+   +--> quorum ACK
+   +--> COMMIT
+```
+
+---
+
+# CONCEPTO CLAVE
+
+El cluster ya tiene:
+
+```text
+CONTROL PLANE
+```
+
+Ahora empieza:
+
+```text
+DATA PLANE
+```
+
+es decir:
+
+* persistencia real
+* WAL
+* replicación
+* ordering
+* commit
+* recovery
+
+---
+
+# OBJETIVO FINAL DEL DÍA
+
+Al terminar mañana:
+
+✔ cluster consistente
+✔ 1 líder estable
+✔ failover limpio
+✔ convergencia determinista
+✔ sin doble fuente de verdad
+✔ base lista para WAL distribuido
+✔ primer test de datos reales operativo
+
+---
+
+# PRIORIDAD REAL
+
+## IMPORTANTE
+
+NO intentar mañana:
+
+* Raft completo
+* quorum complejo
+* sharding
+* consensus avanzado
+
+---
+
+# PRIORIDAD CORRECTA
+
+Primero:
+
+```text
+cluster simple
+estable
+determinista
+predecible
+```
+
+Después:
+
+```text
+data replication
+WAL
+consensus
+```
+
+---
+
+# ESTADO DEL PROYECTO
+
+Actualmente el proyecto ya pasó de:
+
+```text
+toy heartbeat demo
+```
+
+a:
+
+```text
+cluster distribuido funcional básico
+```
+
+El siguiente salto es:
+
+```text
+distributed replicated data system
+```
+
+que ya es arquitectura distribuida real.
