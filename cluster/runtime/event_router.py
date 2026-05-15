@@ -38,7 +38,8 @@ def route_event(event):
     if not alive:
         return {"error": "no alive nodes"}
 
-    target = min(
+#    target = min(
+    target = max(
         alive.items(),
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
