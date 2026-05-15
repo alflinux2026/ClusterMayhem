@@ -1,8 +1,9 @@
 import time
 import requests
-from cluster.runtime.leader import compute_leader
 from cluster.runtime.cluster_store import cluster_state
 from cluster.runtime.registry import CLUSTER_REGISTRY
+from cluster.runtime.leader import compute_leader
+
 
 def forward_to_leader(event):
 
@@ -17,12 +18,14 @@ def forward_to_leader(event):
 
     return {"forwarded_to": leader}
 
+
 def forward_event(node_id, event):
 
-    node = cluster_state[node_id]
+    node = CLUSTER_REGISTRY[node_id]
     url = f"http://{node['host']}:{node['port']}/execute"
 
     requests.post(url, json=event.dict(), timeout=2)
+
 
 def route_event(event):
 
@@ -32,6 +35,9 @@ def route_event(event):
         if (time.time() - data["last_seen"]) < 3.0
     }
 
+    if not alive:
+        return {"error": "no alive nodes"}
+
     target = min(
         alive.items(),
         key=lambda x: (x[1]["priority"], x[0])
@@ -40,5 +46,3 @@ def route_event(event):
     forward_event(target, event)
 
     return {"routed_to": target, "event_id": event.event_id}
-
-
