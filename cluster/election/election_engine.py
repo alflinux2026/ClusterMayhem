@@ -1,13 +1,14 @@
+from cluster.runtime.cluster_store import get_active_cluster
+
 class ElectionEngine:
 
     @staticmethod
-    def can_become_leader(node_id, priority, lease_manager):
+    def can_become_leader(node_id, priority):
 
-        active = lease_manager.active_leader()
+        active_nodes = get_active_cluster()
 
-        # si ya hay líder válido → no competir
-        if active:
+        # si hay líder activo estable, no competir
+        if any(n["state"] == "ACTIVE" for n in active_nodes.values()):
             return False
 
-        # no hay líder → cualquier nodo sano puede intentar
         return True

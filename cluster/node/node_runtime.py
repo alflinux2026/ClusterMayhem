@@ -1,7 +1,6 @@
 import time
 
 from cluster.runtime.state import NodeState
-from cluster.lease.lease_manager import LeaseManager
 from cluster.election.election_engine import ElectionEngine
 
 from cluster.transport.client import broadcast_heartbeat
@@ -15,7 +14,6 @@ class NodeRuntime:
 
         self.state = NodeState.BOOT
 
-        self.lease_manager = lease_manager
         self.last_heartbeat = time.time()
 
     # -----------------------------------------------------
@@ -30,24 +28,11 @@ class NodeRuntime:
 
     # -----------------------------------------------------
 
-    def is_lease_valid(self):
-
-        return self.lease_manager.is_valid(self.node_id)
-
-    # -----------------------------------------------------
-
     def tick(self):
 
         """
         Called by heartbeat loop
         """
-
-        lease_valid = self.is_lease_valid()
-
-        # ACTIVE sin lease = degradación inmediata
-        if self.state == NodeState.ACTIVE and not lease_valid:
-
-            self.transition(NodeState.DEGRADED)
 
         # STANDBY sin líder → posible election trigger
         if self.state == NodeState.STANDBY:
@@ -66,8 +51,7 @@ class NodeRuntime:
 
         can_lead = ElectionEngine.can_become_leader(
             node_id=self.node_id,
-            priority=self.priority,
-            lease_manager=self.lease_manager
+            priority=self.priority
         )
 
         if can_lead:

@@ -1,7 +1,7 @@
 import json
 
 from cluster.node.node_runtime import NodeRuntime
-from cluster.lease.lease_manager import LeaseManager
+
 from cluster.runtime.state import NodeState
 from cluster.workers.cluster_worker import ClusterWorker
 from cluster.transport.server import register_local_node
@@ -31,7 +31,6 @@ def main(node_id, priority):
     node = NodeRuntime(
         node_id=node_id,
         priority=priority,
-        lease_manager=LeaseManager(),
     )
 
     node.state = NodeState.ACTIVE
