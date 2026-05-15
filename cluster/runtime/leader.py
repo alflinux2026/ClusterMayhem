@@ -1,23 +1,23 @@
-
-from cluster.runtime.cluster_store import get_active_cluster
+from cluster.runtime.cluster_store import cluster_state
+import time
 
 
 def is_alive(data, timeout=3.0):
-
-    import time
-
     return (time.time() - data["last_seen"]) < timeout
 
 
 def compute_leader():
 
-    active = {
-        node_id: data["priority"]
-        for node_id, data in get_active_cluster().items()
+    active_nodes = {
+        node_id: data
+        for node_id, data in cluster_state.items()
         if is_alive(data)
     }
 
-    if not active:
+    if not active_nodes:
         return None
 
-    return min(active, key=active.get)
+    return min(
+        active_nodes.items(),
+        key=lambda x: (x[1]["priority"], x[0])
+    )[0]

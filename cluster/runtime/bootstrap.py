@@ -63,14 +63,6 @@ def discover_seed(peers):
 def generate_local_config(peers):
     hostname = get_hostname()
 
-    cluster = discover_seed(peers)
-
-    used_priorities = {
-        node.get("priority")
-        for node in cluster.values()
-        if node.get("priority") is not None
-    }
-
     priority = deterministic_priority(hostname)
 
     # resolve collisions deterministically (NO LOOP DRIFT)
