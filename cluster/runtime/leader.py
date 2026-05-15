@@ -21,3 +21,4 @@ def compute_leader():
         active_nodes.items(),
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
+
