@@ -32,17 +32,46 @@ class NodeRuntime:
 
         print(f"[TICK] {self.node_id} state={self.state.value}")
 
+        # -------------------------------------------------
+        # BOOT -> STANDBY
+        # -------------------------------------------------
+
         if self.state == NodeState.BOOT:
+
             self.transition(NodeState.STANDBY)
             return
 
-        if self.state == NodeState.STANDBY:
+        # -------------------------------------------------
+        # GLOBAL LEADER COMPUTATION
+        # -------------------------------------------------
 
-            self.try_become_leader()
+        leader = compute_leader()
+
+        print(f"[LEADER] computed leader = {leader}")
+
+        # -------------------------------------------------
+        # I AM LEADER
+        # -------------------------------------------------
+
+        if leader == self.node_id:
+
+            if self.state != NodeState.ACTIVE:
+
+                print(f"[{self.node_id}] becoming ACTIVE")
+
+                self.transition(NodeState.ACTIVE)
+
             return
 
-        if self.state == NodeState.ACTIVE:
-            print(f"[ACTIVE] {self.node_id} acting as leader")
+        # -------------------------------------------------
+        # I AM NOT LEADER
+        # -------------------------------------------------
+
+        if self.state != NodeState.STANDBY:
+
+            print(f"[{self.node_id}] stepping down to STANDBY")
+
+            self.transition(NodeState.STANDBY)
 
     # -----------------------------------------------------
 
@@ -57,7 +86,7 @@ class NodeRuntime:
 
         if can_lead:
 
-            self.transition(NodeState.ACTIVE)
+            self.election_result = can_become_leader
 
 
 
