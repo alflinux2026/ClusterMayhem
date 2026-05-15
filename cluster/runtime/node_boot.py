@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from cluster.runtime.cluster_store import cluster_state
 from cluster.node.node_runtime import NodeRuntime
 from cluster.workers.cluster_worker import ClusterWorker
-
+from cluster.runtime.node_worker import NodeWorker
 
 from cluster.runtime.leader import compute_leader
 
@@ -62,7 +62,8 @@ def run_node(node_id: str, priority: int, peers: list[str]):
 
     )
 
-    worker = ClusterWorker(node=node, peers=peers, interval=1.0)
+    worker = NodeWorker(node=node, peers=peers, interval=1.0)
+    worker.start()
 
 
     # -------------------------
