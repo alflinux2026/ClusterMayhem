@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from cluster.runtime.cluster_store import cluster_state
 from cluster.node.node_runtime import NodeRuntime
 from cluster.workers.cluster_worker import ClusterWorker
-from cluster.lease.lease_manager import LeaseManager
+
 
 from cluster.runtime.leader import compute_leader
 
@@ -54,22 +54,16 @@ def is_alive(data, timeout=3.0):
 # -----------------------------
 def run_node(node_id: str, priority: int, peers: list[str]):
 
-    lease_manager = LeaseManager()
+
 
     node = NodeRuntime(
         node_id=node_id,
         priority=priority,
-        lease_manager=lease_manager
+
     )
 
     worker = ClusterWorker(node=node, peers=peers, interval=1.0)
 
-    # registrar self inicial
-    cluster_state[node_id] = {
-        "state": node.state.value,
-        "priority": priority,
-        "last_seen": time.time(),
-    }
 
     # -------------------------
     # worker thread
