@@ -29,12 +29,13 @@ class NodeRuntime:
     # -----------------------------------------------------
 
     def tick(self):
-        """
-        Runtime tick (minimal version)
-        """
 
         if self.state == NodeState.BOOT:
             self.transition(NodeState.STANDBY)
+            return
+
+        if self.state == NodeState.STANDBY:
+            self.try_become_leader()
 
     # -----------------------------------------------------
 
