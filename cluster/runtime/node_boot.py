@@ -1,15 +1,24 @@
+
 import threading
 import time
+import json
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 from cluster.runtime.cluster_store import cluster_state
 from cluster.node.node_runtime import NodeRuntime
-from cluster.workers.cluster_worker import ClusterWorker
 from cluster.runtime.node_worker import NodeWorker
-
 from cluster.runtime.leader import compute_leader
+
+
+# -----------------------------
+# CONFIG LOAD
+# -----------------------------
+
+def load_config(path="config/node.local.json"):
+    with open(path, "r") as f:
+        return json.load(f)
 
 
 # -----------------------------
@@ -45,6 +54,7 @@ def heartbeat(hb: Heartbeat):
 
     return {"ok": True}
 
+
 def is_alive(data, timeout=3.0):
     return (time.time() - data["last_seen"]) < timeout
 
@@ -52,30 +62,29 @@ def is_alive(data, timeout=3.0):
 # -----------------------------
 # BOOTSTRAP NODE
 # -----------------------------
-def run_node(node_id: str, priority: int, peers: list[str]):
-
-
+def run_node(config):
 
     node = NodeRuntime(
-        node_id=node_id,
-        priority=priority,
-
+        node_id=config["node_id"],
+        priority=config["priority"],
     )
 
-    worker = NodeWorker(node=node, peers=peers, interval=1.0)
-    worker.start()
+    worker = NodeWorker(
+        node=node,
+        peers=config["peers"],
+        interval=1.0
+    )
 
-
-    # -------------------------
-    # worker thread
-    # -------------------------
+    # start worker thread
     t = threading.Thread(target=worker.start, daemon=True)
     t.start()
 
-    # -------------------------
-    # API thread
-    # -------------------------
-    uvicorn.run(app, host="0.0.0.0", port=7000)
+    # start API
+    uvicorn.run(
+        app,
+        host=config.get("bind_host", "0.0.0.0"),
+        port=config.get("bind_port", 7000)
+    )
 
 
 # -----------------------------
@@ -83,15 +92,6 @@ def run_node(node_id: str, priority: int, peers: list[str]):
 # -----------------------------
 if __name__ == "__main__":
 
-    import sys
+    config = load_config()
 
-    node_id = sys.argv[1]
-    priority = int(sys.argv[2])
-
-    peers = [
-        {"host": "100.100.1.200", "port": 7000},
-        {"host": "100.100.1.202", "port": 7000},
-        {"host": "100.100.1.203", "port": 7000},
-    ]
-
-    run_node(node_id, priority, peers)
+    run_node(config)
