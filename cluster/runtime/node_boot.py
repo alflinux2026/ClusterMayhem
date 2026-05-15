@@ -12,12 +12,58 @@ from cluster.runtime.node_worker import NodeWorker
 from cluster.runtime.leader import compute_leader
 from cluster.runtime.bootstrap import load_or_bootstrap_config
 
+import requests
 
+
+from cluster.runtime.event import ClusterEvent, normalize_event
+from cluster.runtime.event_router import (
+    forward_to_leader,
+    route_event
+)
+
+node_id = None
 
 # -----------------------------
 # API
 # -----------------------------
 app = FastAPI()
+
+
+@app.post("/event")
+def handle_event(event: ClusterEvent):
+
+    event = normalize_event(event)
+
+    leader = compute_leader()
+
+    # soy leader → proceso directo
+    if leader == node_id:
+        return route_event(event)
+
+    # no soy leader → forward
+    return forward_to_leader(event)
+
+
+@app.post("/route")
+def route(event: ClusterEvent):
+
+    event = normalize_event(event)
+
+    return route_event(event)
+
+
+@app.post("/execute")
+def execute(event: ClusterEvent):
+
+    print(f"[EXEC] {event.event_id} {event.type} @ {node_id}")
+
+    return {
+        "ok": True,
+        "node": node_id,
+        "event_id": event.event_id
+    }
+
+
 
 
 class Heartbeat(BaseModel):
@@ -56,6 +102,11 @@ def is_alive(data, timeout=3.0):
 # BOOTSTRAP NODE
 # -----------------------------
 def run_node(config):
+
+
+    global node_id
+    node_id = config["node_id"]
+
 
     node = NodeRuntime(
         node_id=config["node_id"],
