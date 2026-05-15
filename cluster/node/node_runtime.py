@@ -49,29 +49,25 @@ class NodeRuntime:
 
         print(f"[LEADER] computed leader = {leader}")
 
+        if leader == self.node_id:
+
         # -------------------------------------------------
         # I AM LEADER
         # -------------------------------------------------
 
-        if leader == self.node_id:
+            print(f"[{self.node_id}] stepping up to ACTIVE")
 
-            if self.state != NodeState.ACTIVE:
-
-                print(f"[{self.node_id}] becoming ACTIVE")
-
-                self.transition(NodeState.ACTIVE)
-
-            return
+            self.transition(NodeState.ACTIVE)
+        else:
 
         # -------------------------------------------------
         # I AM NOT LEADER
         # -------------------------------------------------
 
-        if self.state != NodeState.STANDBY:
-
             print(f"[{self.node_id}] stepping down to STANDBY")
 
             self.transition(NodeState.STANDBY)
+
 
     # -----------------------------------------------------
 
