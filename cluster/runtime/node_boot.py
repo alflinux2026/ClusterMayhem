@@ -21,6 +21,14 @@ from cluster.runtime.event_router import (
     route_event
 )
 
+
+import logging
+
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("requests").setLevel(logging.ERROR)
+
+
+
 node_id = None
 
 # -----------------------------
