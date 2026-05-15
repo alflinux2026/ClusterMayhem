@@ -29,6 +29,7 @@ class NodeRuntime:
     # -----------------------------------------------------
 
     def tick(self):
+
         print(f"[TICK] {self.node_id} state={self.state.value}")
 
         if self.state == NodeState.BOOT:
@@ -36,7 +37,12 @@ class NodeRuntime:
             return
 
         if self.state == NodeState.STANDBY:
+
+            self.try_become_leader()
             return
+
+        if self.state == NodeState.ACTIVE:
+            print(f"[ACTIVE] {self.node_id} acting as leader")
 
     # -----------------------------------------------------
 
