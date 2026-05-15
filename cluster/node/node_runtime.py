@@ -5,6 +5,7 @@ from cluster.election.election_engine import ElectionEngine
 from cluster.runtime.leader import compute_leader
 from cluster.transport.client import broadcast_heartbeat
 
+
 class NodeRuntime:
 
     def __init__(self, node_id, priority):
