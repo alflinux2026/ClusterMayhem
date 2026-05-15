@@ -23,19 +23,20 @@ class NodeRuntime:
         if self.state == new_state:
             return
 
-        print(f"[{self.node_id}] {self.state} -> {new_state}")
+        print(f"[STATE CHANGE] {self.node_id}: {self.state.value} → {new_state.value}")
         self.state = new_state
 
     # -----------------------------------------------------
 
     def tick(self):
+        print(f"[TICK] {self.node_id} state={self.state.value}")
 
         if self.state == NodeState.BOOT:
             self.transition(NodeState.STANDBY)
             return
 
         if self.state == NodeState.STANDBY:
-            self.try_become_leader()
+            return
 
     # -----------------------------------------------------
 
