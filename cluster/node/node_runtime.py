@@ -1,22 +1,21 @@
 import time
 
 from cluster.runtime.state import NodeState
-from cluster.election.election_engine import ElectionEngine
 from cluster.runtime.leader import compute_leader
-from cluster.transport.client import broadcast_heartbeat
+from cluster.runtime.cluster_store import cluster_state
 
 
 class NodeRuntime:
 
     def __init__(self, node_id, priority):
-
         self.node_id = node_id
         self.priority = priority
 
         self.state = NodeState.BOOT
-
         self.last_heartbeat = time.time()
 
+    # -----------------------------------------------------
+    # STATE TRANSITION
     # -----------------------------------------------------
 
     def transition(self, new_state):
@@ -24,68 +23,46 @@ class NodeRuntime:
         if self.state == new_state:
             return
 
-        print(f"[STATE CHANGE] {self.node_id}: {self.state.value} → {new_state.value}")
+        print(f"[{self.node_id}] {self.state} -> {new_state}")
         self.state = new_state
 
+    # -----------------------------------------------------
+    # MAIN TICK LOOP
     # -----------------------------------------------------
 
     def tick(self):
 
         print(f"[TICK] {self.node_id} state={self.state.value}")
 
-        # -------------------------------------------------
-        # BOOT -> STANDBY
-        # -------------------------------------------------
-
+        # BOOT -> STANDBY (una sola vez)
         if self.state == NodeState.BOOT:
-
             self.transition(NodeState.STANDBY)
             return
 
         # -------------------------------------------------
-        # GLOBAL LEADER COMPUTATION
+        # GLOBAL LEADER DECISION (external authority)
         # -------------------------------------------------
 
         leader = compute_leader()
 
         print(f"[LEADER] computed leader = {leader}")
 
+        # -------------------------------------------------
+        # APPLY RESULT (no decision, only reflection)
+        # -------------------------------------------------
+
         if leader == self.node_id:
-
-        # -------------------------------------------------
-        # I AM LEADER
-        # -------------------------------------------------
-
-            print(f"[{self.node_id}] stepping up to ACTIVE")
-
-            self.transition(NodeState.ACTIVE)
+            if self.state != NodeState.ACTIVE:
+                print(f"[{self.node_id}] becoming ACTIVE")
+                self.transition(NodeState.ACTIVE)
         else:
-
-        # -------------------------------------------------
-        # I AM NOT LEADER
-        # -------------------------------------------------
-
-            print(f"[{self.node_id}] stepping down to STANDBY")
-
-            self.transition(NodeState.STANDBY)
-
+            if self.state != NodeState.STANDBY:
+                print(f"[{self.node_id}] becoming STANDBY")
+                self.transition(NodeState.STANDBY)
 
     # -----------------------------------------------------
-
-    def try_become_leader(self):
-
-        print(f"{self.node_id} evaluating leadership...")
-
-        can_lead = ElectionEngine.can_become_leader(
-            node_id=self.node_id,
-            priority=self.priority
-        )
-
-        if can_lead:
-
-            self.election_result = can_become_leader
-
-
+    # HEARTBEAT (ONLY TELEMETRY)
+    # -----------------------------------------------------
 
     def emit_heartbeat(self, peers):
 
@@ -93,11 +70,11 @@ class NodeRuntime:
             "node_id": self.node_id,
             "state": self.state.value,
             "priority": self.priority,
-            "timestamp": time.time(),
+            "last_seen": time.time(),
         }
 
+        # update local view too (optional but useful if worker uses it)
+        cluster_state[self.node_id] = payload
+
+        from cluster.transport.client import broadcast_heartbeat
         broadcast_heartbeat(peers, payload)
-
-
-
-
