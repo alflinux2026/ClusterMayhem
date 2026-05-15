@@ -4,6 +4,8 @@ from cluster.runtime.state import NodeState
 from cluster.runtime.leader import compute_leader
 from cluster.runtime.cluster_store import cluster_state
 
+import requests
+
 
 class NodeRuntime:
 
@@ -64,17 +66,20 @@ class NodeRuntime:
     # HEARTBEAT (ONLY TELEMETRY)
     # -----------------------------------------------------
 
+
     def emit_heartbeat(self, peers):
 
-        payload = {
+        hb = {
             "node_id": self.node_id,
             "state": self.state.value,
             "priority": self.priority,
-            "last_seen": time.time(),
         }
 
-        # update local view too (optional but useful if worker uses it)
-        cluster_state[self.node_id] = payload
+        for peer in peers:
+            url = f"http://{peer['host']}:{peer['port']}/heartbeat"
 
-        from cluster.transport.client import broadcast_heartbeat
-        broadcast_heartbeat(peers, payload)
+            try:
+                requests.post(url, json=hb, timeout=2)
+
+            except requests.exceptions.RequestException:
+                pass  # nodo offline = estado normal del cluster
