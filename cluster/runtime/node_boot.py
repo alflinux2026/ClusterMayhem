@@ -32,6 +32,8 @@ app = FastAPI()
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
+    print(f"[EVENT IN] {event.event_id} type={event.type}")
+
     event = normalize_event(event)
 
     leader = compute_leader()
@@ -48,6 +50,8 @@ def handle_event(event: ClusterEvent):
 def route(event: ClusterEvent):
 
     event = normalize_event(event)
+
+    print(f"[ROUTE] {event.event_id} → processing")
 
     return route_event(event)
 
@@ -127,7 +131,9 @@ def run_node(config):
     uvicorn.run(
         app,
         host=config.get("bind_host", "0.0.0.0"),
-        port=config.get("bind_port", 7000)
+        port=config.get("bind_port", 7000),
+        log_level="warning",
+        access_log=False
     )
 
 
