@@ -66,7 +66,7 @@ def handle_event(event: ClusterEvent):
 
 
     leader = compute_leader()
-    log_state("cyan", "(LEADER)", f"computed={leader}", 3)
+    #log_state("cyan", "(LEADER)", f"computed={leader}", 3)
 
     if not leader:
         log_state("red", "(NO LEADER)", event.event_id, 3)
@@ -95,6 +95,8 @@ def handle_event(event: ClusterEvent):
     # -----------------------------------
     # LEADER → INGEST ONLY
     # -----------------------------------
+    log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
+
     return ingest_event(event, ctx.node_id)
 
 
