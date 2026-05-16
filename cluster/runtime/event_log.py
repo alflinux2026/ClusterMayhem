@@ -41,6 +41,12 @@ def append_event(event: ClusterEvent):
         "payload": event.payload,
     }
 
+    # 🚨 dedup guard
+    if event.status == "completed":
+        existing = load_events()
+        if any(e["event_id"] == event.event_id and e["status"] == "completed" for e in existing):
+            return
+
     with open(LOG_PATH, "a") as f:
         f.write(json.dumps(record) + "\n")
 
