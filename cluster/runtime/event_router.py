@@ -18,7 +18,7 @@ def forward_to_leader(event):
     node = CLUSTER_REGISTRY[leader]
     url = f"http://{node['host']}:{node['port']}/route"
 
-    log_state( "magenta", "FORWARD", f"{event.event_id} -> leader {leader}", decimals=3 )
+    log_state( "cyan", "FORWARD", f"{event.event_id} -> leader {leader}", decimals=3 )
 
     requests.post(url, json=event.dict(), timeout=2)
 

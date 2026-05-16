@@ -42,7 +42,7 @@ app = FastAPI()
 def handle_event(event: ClusterEvent):
 
     #print(f"[EVENT IN] {event.event_id} type={event.type}")
-    log_state("cyan", "[EVENT IN]", f" {event.event_id} type={event.type}", 3)
+    log_state("cyan", "EVENT IN", f" {event.event_id} type={event.type}", 3)
 
     event = normalize_event(event)
 
@@ -69,7 +69,7 @@ def route(event: ClusterEvent):
     event = normalize_event(event)
 
 #    print(f"[ROUTE] {event.event_id} → processing")
-    log_state("cyan", "[ROUTE]", f" {event.event_id} → processing", 3)
+    log_state("magenta", "ROUTE", f" {event.event_id} → processing", 3)
 
     return route_event(event)
 
@@ -78,7 +78,7 @@ def route(event: ClusterEvent):
 def execute(event: ClusterEvent):
 
 #    print(f"[EXEC] {event.event_id} {event.type} @ {node_id}")
-    log_state("green", "[EXEC]", f" {event.event_id} {event.type} @ {node_id}", 3)
+    log_state("green", "EXEC", f" {event.event_id} {event.type} @ {node_id}", 3)
 
     return {
         "ok": True,
