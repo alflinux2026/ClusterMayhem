@@ -1,4 +1,4 @@
-```python
+
 from datetime import datetime
 
 
@@ -50,5 +50,5 @@ def log_state(color, typ, msg, decimals=0):
     # -----------------------------------------
 
     print(f"[{ts}] {c}{tag}{reset} {msg}")
-```
+
 
