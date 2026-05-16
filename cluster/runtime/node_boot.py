@@ -48,17 +48,17 @@ def handle_event(event: ClusterEvent):
 
     leader = compute_leader()
 
-    log_state( "magenta", "LEADER", f"computed={leader}")
+    log_state( "cyan", "LEADER", f"computed={leader}")
 
     # soy leader → proceso directo
     if leader == node_id:
 
-        log_state( "magenta", "LOCAL ROUTE", f"{event.event_id}", 3 )
+        log_state( "cyan", "LOCAL ROUTE", f"{event.event_id}", 3 )
 
         return route_event(event)
 
     # no soy leader → forward
-    log_state( "magenta", "FORWARD", f"{event.event_id} -> {leader}", 3 )
+    log_state( "cyan", "FORWARD", f"{event.event_id} -> {leader}", 3 )
 
     return forward_to_leader(event)
 
@@ -69,7 +69,7 @@ def route(event: ClusterEvent):
     event = normalize_event(event)
 
 #    print(f"[ROUTE] {event.event_id} → processing")
-    log_state("magenta", "[ROUTE]", f" {event.event_id} → processing", 3)
+    log_state("cyan", "[ROUTE]", f" {event.event_id} → processing", 3)
 
     return route_event(event)
 

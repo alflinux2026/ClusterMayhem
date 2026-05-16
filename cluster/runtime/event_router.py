@@ -30,7 +30,7 @@ def forward_event(node_id, event):
     node = CLUSTER_REGISTRY[node_id]
     url = f"http://{node['host']}:{node['port']}/execute"
 
-    log_state( "blue", "WORKER SEND", f"{event.event_id} -> {node_id}", decimals=3 )
+    log_state( "magenta", "WORKER SEND", f"{event.event_id} -> {node_id}", decimals=3 )
 
     requests.post(url, json=event.dict(), timeout=2)
 
@@ -49,7 +49,7 @@ def route_event(event):
 
         return {"error": "no alive nodes"}
 
-    log_state( "white", "ALIVE", f"{list(alive.keys())}")
+    log_state( "magenta", "ALIVE", f"{list(alive.keys())}")
 
 #    target = min(
     target = max(
@@ -57,7 +57,7 @@ def route_event(event):
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
 
-    log_state( "green", "WORKER", f"selected={target}", decimals=3 )
+    log_state( "magenta", "WORKER", f"selected={target}", decimals=3 )
 
     forward_event(target, event)
 
