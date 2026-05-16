@@ -14,4 +14,8 @@ def log_state(color, typ, msg):
 
     c = colors.get(color.lower(), colors["white"])
     reset = colors["reset"]
-    print(f"[{datetime.now():%H:%M:%S}] {c}{typ}{reset} {msg}")
+
+    ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    print(f"[{ts}] {c}{typ}{reset} {msg}")
+
+    #print(f"[{datetime.now():%H:%M:%S.%f}] {c}{typ}{reset} {msg}")
