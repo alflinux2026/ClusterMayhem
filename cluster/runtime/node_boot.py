@@ -42,7 +42,7 @@ app = FastAPI()
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
-    log_state("cyan", "[EVENT IN]", f" {event.event_id} type={event.type}", 3)
+    log_state("cyan", "[EVENT IN]", f" {event.event_id} event_type={event.type}", 3)
 
     #event = normalize_event(event)
 

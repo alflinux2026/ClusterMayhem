@@ -26,13 +26,16 @@ def forward_to_leader(event: ClusterEvent):
     event.add_hop("forward_to_leader")
     event.mark_status("routed")
 
-    requests.post(
+    resp = requests.post(
         url,
         json=event.model_dump(),
         timeout=2
     )
 
-    return {"forwarded_to": leader}
+    try:
+        return resp.json()
+    except:
+        return {"status": "forwarded", "raw": resp.text}
 
 
 # =========================
