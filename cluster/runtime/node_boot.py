@@ -22,6 +22,8 @@ from cluster.runtime.event_router import (
     route_event
 )
 
+from cluster.runtime.registry import CLUSTER_REGISTRY
+
 from cluster.utils.log_print import log_state
 
 from cluster.runtime.event_log import append_event
