@@ -41,7 +41,22 @@ node_id = None
 # -----------------------------
 app = FastAPI()
 
+@app.post("/ack")
+def ack(event: ClusterEvent):
 
+    log_state(
+        "green",
+        "[ACK]",
+        f"{event.event_id} completed",
+        3
+    )
+
+    event.mark_status("completed")
+
+    from cluster.runtime.event_log import append_event
+    append_event(event)
+
+    return {"ok": True}
 
 @app.post("/replay")
 def replay():

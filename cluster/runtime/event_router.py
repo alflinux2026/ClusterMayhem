@@ -60,6 +60,28 @@ def forward_event(node_id: str, event: ClusterEvent):
         timeout=2
     )
 
+    # -------------------------
+    # ACK TO LEADER
+    # -------------------------
+
+    leader = compute_leader()
+
+    if leader:
+
+        leader_node = CLUSTER_REGISTRY[leader]
+
+        ack_url = (
+            f"http://{leader_node['host']}:"
+            f"{leader_node['port']}/ack"
+        )
+
+        event.mark_status("completed")
+
+        requests.post(
+            ack_url,
+            json=event.model_dump(),
+            timeout=2
+        )
 
 # =========================
 # ROUTE EVENT
