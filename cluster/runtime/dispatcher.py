@@ -71,7 +71,7 @@ def dispatch_created_event(event):
 
     event.mark_status("executing")
 
-    append_event(event)
+#    append_event(event)
 
     forward_event(target, event)
 
