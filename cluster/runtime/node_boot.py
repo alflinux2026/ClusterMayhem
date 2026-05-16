@@ -64,7 +64,6 @@ def replay():
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
-    log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
     leader = compute_leader()
     log_state("cyan", "(LEADER)", f"computed={leader}", 3)
@@ -77,6 +76,8 @@ def handle_event(event: ClusterEvent):
     # NOT LEADER → forward to leader
     # -----------------------------------
     if leader != ctx.node_id:
+
+        log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
         log_state("cyan", "[FORWARD]", f"{event.event_id} -> {leader}", 3)
 
