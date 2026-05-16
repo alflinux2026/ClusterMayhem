@@ -8,6 +8,8 @@ from cluster.utils.log_print import log_state
 
 from cluster.runtime.events.cluster_event import ClusterEvent
 
+from cluster.runtime.event_log import append_event
+
 
 # =========================
 # FORWARD TO LEADER
@@ -62,6 +64,11 @@ def forward_event(node_id: str, event: ClusterEvent):
 # ROUTE EVENT
 # =========================
 def route_event(event: ClusterEvent):
+
+
+    # 🔥 PERSISTENCIA REAL (SOLO LEADER WORKFLOW)
+    append_event(event)
+
 
     # -------------------------
     # FILTER ALIVE NODES
