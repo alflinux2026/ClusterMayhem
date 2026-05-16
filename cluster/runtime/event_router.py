@@ -49,7 +49,7 @@ def route_event(event):
 
         return {"error": "no alive nodes"}
 
-    log_state( "white", "ALIVE", f"{list(alive.keys())}"
+    log_state( "white", "ALIVE", f"{list(alive.keys())}")
 
 #    target = min(
     target = max(
