@@ -38,7 +38,7 @@ class NodeRuntime:
 
 #        print(f"[TICK] {self.node_id} state={self.state.value}")
 #        print(f"[STATE] {self.state.value}")
-        log_state("yellow", "[CLUSTER]", f"State: {self.state.value}")
+        log_state("yellow", "CLUSTER", f"State: {self.state.value}")
 
         # BOOT -> STANDBY (una sola vez)
         if self.state == NodeState.BOOT:
@@ -53,7 +53,7 @@ class NodeRuntime:
 
 #        print(f"[LEADER] computed leader = {leader}")
 #        print(f"[LEADER] {leader}")
-        log_state("yellow", "[CLUSTER]", f"Leader: {leader}")
+        log_state("yellow", "CLUSTER", f"Leader: {leader}")
 
         # -------------------------------------------------
         # APPLY RESULT (no decision, only reflection)
@@ -61,11 +61,13 @@ class NodeRuntime:
 
         if leader == self.node_id:
             if self.state != NodeState.ACTIVE:
-                print(f"[{self.node_id}] becoming ACTIVE")
+#                print(f"[{self.node_id}] becoming ACTIVE")
+                log_state("yellow", "CLUSTER", f"[{self.node_id}] becoming ACTIVE")
                 self.transition(NodeState.ACTIVE)
         else:
             if self.state != NodeState.STANDBY:
-                print(f"[{self.node_id}] becoming STANDBY")
+#                print(f"[{self.node_id}] becoming STANDBY")
+                log_state("yellow", "CLUSTER", f"[{self.node_id}] becoming STANDBY")
                 self.transition(NodeState.STANDBY)
 
     # -----------------------------------------------------
