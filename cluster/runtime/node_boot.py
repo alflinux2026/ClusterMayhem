@@ -68,7 +68,58 @@ def replay():
     return {"ok": True}
 
 
+
+
+
+
+
+
 @app.post("/event")
+def handle_event(event: ClusterEvent):
+
+    log_state(
+        "cyan",
+        "[EVENT IN]",
+        f"{event.event_id} event_type={event.event_type}",
+        3
+    )
+
+    leader = compute_leader()
+
+    log_state("cyan", "(LEADER)", f"computed={leader}", 3)
+
+    if not leader:
+        log_state("red", "(NO LEADER)", event.event_id, 3)
+        return {"error": "no leader"}
+
+    # -----------------------------------
+    # NOT leader → forward ONLY
+    # -----------------------------------
+    if leader != node_id:
+
+        log_state("cyan", "[FORWARD]", f"{event.event_id} -> {leader}", 3)
+
+        node = CLUSTER_REGISTRY[leader]
+        url = f"http://{node['host']}:{node['port']}/event"
+
+        resp = requests.post(
+            url,
+            json=event.model_dump(),
+            timeout=2
+        )
+
+        return resp.json()
+
+    # -----------------------------------
+    # leader → ingest
+    # -----------------------------------
+    return ingest_event(event, node_id)
+
+
+
+
+
+@app.post("/e_v_e_n_t")
 def handle_event(event: ClusterEvent):
 
     log_state(
