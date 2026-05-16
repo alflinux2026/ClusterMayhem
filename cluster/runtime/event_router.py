@@ -11,7 +11,7 @@ def forward_to_leader(event):
     leader = compute_leader()
     if not leader:
 
-        log_state( "red", "NO LEADER", f"{event.event_id}"
+        log_state( "red", "NO LEADER", f"{event.event_id}")
 
         return {"error": "no leader"}
 
