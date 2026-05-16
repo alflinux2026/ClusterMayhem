@@ -95,7 +95,7 @@ def handle_event(event: ClusterEvent):
     # -----------------------------------
     # LEADER → INGEST ONLY
     # -----------------------------------
-    log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
+    #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
     return ingest_event(event, ctx.node_id)
 
