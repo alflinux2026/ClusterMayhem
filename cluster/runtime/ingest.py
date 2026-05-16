@@ -1,6 +1,8 @@
 from cluster.runtime.event_log import append_event
 from cluster.runtime.leader import compute_leader
 from cluster.runtime.registry import CLUSTER_REGISTRY
+from cluster.utils.log_print import log_state
+
 import requests
 
 def ingest_event(event, node_id):
