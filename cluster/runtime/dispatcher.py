@@ -1,10 +1,29 @@
-from cluster.runtime.event_log import get_created_events
-from cluster.runtime.event_router import dispatch_created_event
+
+import time
+
+from cluster.runtime.event_log import (
+    get_created_events,
+    get_completed_event_ids,
+    append_event,
+)
+
+from cluster.runtime.cluster_store import cluster_state
+from cluster.runtime.transport import forward_event
 
 from cluster.utils.log_print import log_state
+from cluster.runtime.leader import compute_leader
+from cluster.runtime.node_boot import node_id
 
+
+# =========================
+# DISPATCH LOOP (LEADER ONLY)
+# =========================
 
 def dispatch_tick():
+
+    # ONLY LEADER EXECUTES DISPATCH
+    if compute_leader() != node_id:
+        return
 
     events = get_created_events()
 
@@ -22,6 +41,9 @@ def dispatch_tick():
         dispatch_created_event(event)
 
 
+# =========================
+# DISPATCH SINGLE EVENT
+# =========================
 
 def dispatch_created_event(event):
 
@@ -31,8 +53,8 @@ def dispatch_created_event(event):
         return
 
     alive = {
-        node_id: data
-        for node_id, data in cluster_state.items()
+        node_id_: data
+        for node_id_, data in cluster_state.items()
         if (time.time() - data["last_seen"]) < 3.0
     }
 
@@ -52,3 +74,4 @@ def dispatch_created_event(event):
     append_event(event)
 
     forward_event(target, event)
+
