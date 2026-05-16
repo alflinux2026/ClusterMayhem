@@ -12,8 +12,8 @@ from cluster.runtime.event_router import forward_event
 
 from cluster.utils.log_print import log_state
 from cluster.runtime.leader import compute_leader
-from cluster.runtime.node_boot import node_id
-
+#from cluster.runtime.node_boot import node_id
+from cluster.runtime import context as ctx
 
 # =========================
 # DISPATCH LOOP (LEADER ONLY)
@@ -22,7 +22,7 @@ from cluster.runtime.node_boot import node_id
 def dispatch_tick():
 
     # ONLY LEADER EXECUTES DISPATCH
-    if compute_leader() != node_id:
+    if compute_leader() != ctx.node_id:
         return
 
     events = get_created_events()
