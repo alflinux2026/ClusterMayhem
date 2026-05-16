@@ -77,9 +77,9 @@ def handle_event(event: ClusterEvent):
     # -----------------------------------
     if leader != ctx.node_id:
 
-        log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
+        #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
-        log_state("cyan", "[FORWARD]", f"{event.event_id} -> {leader}", 3)
+        log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
 
         node = CLUSTER_REGISTRY[leader]
         url = f"http://{node['host']}:{node['port']}/event"
@@ -95,7 +95,7 @@ def handle_event(event: ClusterEvent):
     # -----------------------------------
     # LEADER → INGEST ONLY
     # -----------------------------------
-#    log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
+    log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
     return ingest_event(event, ctx.node_id)
 
