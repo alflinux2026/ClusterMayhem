@@ -47,7 +47,7 @@ def handle_event(event: ClusterEvent):
 
     leader = compute_leader()
 
-    log_state( "cyan", "LEADER", f"computed={leader}")
+    log_state( "cyan", "LEADER", f"computed={leader}", 3)
 
     # soy leader → proceso directo
     if leader == node_id:
