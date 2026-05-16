@@ -94,7 +94,7 @@ def route(event: ClusterEvent):
 @app.post("/execute")
 def execute(event: ClusterEvent):
 
-    log_state("green", "[EXEC]", f" {event.event_id} {event.type} @ {node_id}", 3)
+    log_state("green", "[EXEC]", f" {event.event_id} {event.event_type} @ {node_id}", 3)
 
     return {
         "ok": True,
