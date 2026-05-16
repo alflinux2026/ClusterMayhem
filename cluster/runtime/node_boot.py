@@ -167,8 +167,31 @@ def handle_event(event: ClusterEvent):
         return {"error": str(e)}
 
 
-
 @app.post("/route")
+def route(event: ClusterEvent):
+
+    event.received_at = event.received_at or time.time()
+
+    event.mark_status("created")   # o "accepted"
+
+    append_event(event)
+
+    log_state(
+            "cyan",
+            "[EVENT REGISTERED]",
+            f"{event.event_id} event_type={event.event_type}",
+            3
+        )
+
+    return {
+        "event_id": event.event_id,
+        "status": "accepted",
+        "leader": node_id,
+        "trace_id": event.trace_id
+    }
+
+
+@app.post("/r_o_u_t_e")
 def route(event: ClusterEvent):
 
     #event = normalize_event(event)
