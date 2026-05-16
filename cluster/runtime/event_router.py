@@ -4,7 +4,7 @@ from cluster.runtime.cluster_store import cluster_state
 from cluster.runtime.registry import CLUSTER_REGISTRY
 from cluster.runtime.leader import compute_leader
 
-from cluster.runtime.logger import log_state
+from cluster.utils.log_print import log_state
 
 def forward_to_leader(event):
 
