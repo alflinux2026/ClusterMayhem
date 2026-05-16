@@ -15,7 +15,8 @@ from cluster.runtime.bootstrap import load_or_bootstrap_config
 import requests
 
 
-from cluster.runtime.event import ClusterEvent, normalize_event
+from cluster.runtime.events.cluster_event import ClusterEvent
+
 from cluster.runtime.event_router import (
     forward_to_leader,
     route_event
@@ -43,7 +44,10 @@ def handle_event(event: ClusterEvent):
 
     log_state("cyan", "[EVENT IN]", f" {event.event_id} type={event.type}", 3)
 
-    event = normalize_event(event)
+    #event = normalize_event(event)
+
+    # ensure timestamp if missing (FastAPI validation safe fallback)
+    event.received_at = event.received_at or time.time()
 
     leader = compute_leader()
 

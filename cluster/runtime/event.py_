@@ -1,0 +1,3 @@
+# DEPRECATED WRAPPER
+
+from runtime.events.cluster_event import ClusterEvent
