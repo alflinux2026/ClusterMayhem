@@ -24,6 +24,9 @@ from cluster.runtime.event_router import (
 
 from cluster.utils.log_print import log_state
 
+from cluster.runtime.event_log import append_event
+from cluster.runtime.event_log import replay_events
+
 import logging
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
@@ -39,6 +42,17 @@ node_id = None
 app = FastAPI()
 
 
+
+@app.post("/replay")
+def replay():
+    def handler(event):
+        return route_event(event)
+
+    replay_events(handler)
+
+    return {"ok": True}
+
+
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
@@ -50,6 +64,10 @@ def handle_event(event: ClusterEvent):
     )
 
     event.received_at = event.received_at or time.time()
+
+    print("[EVENT LOG] writing event", event.event_id)
+
+    append_event(event)
 
     leader = compute_leader()
 
@@ -85,6 +103,7 @@ def route(event: ClusterEvent):
     # ensure timestamp if missing (safe fallback)
     event.received_at = event.received_at or time.time()
 
+    append_event(event)
 
     log_state("magenta", "[ROUTE]", f" {event.event_id} → processing", 3)
 
@@ -95,6 +114,8 @@ def route(event: ClusterEvent):
 def execute(event: ClusterEvent):
 
     log_state("green", "[EXEC]", f" {event.event_id} {event.event_type} @ {node_id}", 3)
+
+    append_event(event)
 
     return {
         "ok": True,

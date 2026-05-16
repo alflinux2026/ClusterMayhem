@@ -5,7 +5,8 @@ from typing import List
 
 from cluster.runtime.events.cluster_event import ClusterEvent
 
-LOG_PATH = "data/event_log.jsonl"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+LOG_PATH = os.path.join(BASE_DIR, "cluster", "data", "event_log.jsonl")
 
 
 def ensure_dir():
