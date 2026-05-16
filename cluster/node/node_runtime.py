@@ -51,12 +51,8 @@ class NodeRuntime:
 
         leader = compute_leader()
 
-#        print(f"[LEADER] computed leader = {leader}")
-#        print(f"[LEADER] {leader}")
-#        log_state("yellow", "CLUSTER", f"Leader: {leader}")
 
-        log_state("yellow", "    (CLUSTER)", f"State: {self.state.value} - Leader: {leader}")
-#        log_state("yellow", "CLUSTER", f"Leader: {leader}")
+# oculto de momento        log_state("yellow", "    (CLUSTER)", f"State: {self.state.value} - Leader: {leader}")
 
         # -------------------------------------------------
         # APPLY RESULT (no decision, only reflection)
