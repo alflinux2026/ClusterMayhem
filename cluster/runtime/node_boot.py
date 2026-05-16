@@ -109,6 +109,13 @@ class Heartbeat(BaseModel):
     priority: int
 
 
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "node": "alive"
+    }
+
 @app.get("/cluster")
 def get_cluster():
     return cluster_state
