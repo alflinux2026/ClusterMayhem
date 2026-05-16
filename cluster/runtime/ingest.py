@@ -10,6 +10,13 @@ def ingest_event(event, node_id):
 
     append_event(event)
 
+    log_state(
+                "cyan",
+                "[EVENT REGISTERED]",
+                f"{event.event_id} event_type={event.event_type}",
+                3
+            )
+
     return {
         "event_id": event.event_id,
         "status": "accepted",
