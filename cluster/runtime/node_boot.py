@@ -65,9 +65,9 @@ def handle_event(event: ClusterEvent):
 
     event.received_at = event.received_at or time.time()
 
-    print("[EVENT LOG] writing event", event.event_id)
+    #print("[EVENT LOG] writing event", event.event_id)
 
-    append_event(event)
+    #append_event(event)
 
     leader = compute_leader()
 
@@ -81,6 +81,9 @@ def handle_event(event: ClusterEvent):
     if leader == node_id:
 
         log_state("cyan", "(LOCAL ROUTE)", f"{event.event_id}", 3)
+
+        # ✅ PERSISTENCIA SOLO EN EL LEADER
+        append_event(event)
 
         return route_event(event)
 
@@ -103,7 +106,7 @@ def route(event: ClusterEvent):
     # ensure timestamp if missing (safe fallback)
     event.received_at = event.received_at or time.time()
 
-    append_event(event)
+    #append_event(event)
 
     log_state("magenta", "[ROUTE]", f" {event.event_id} → processing", 3)
 
@@ -115,7 +118,7 @@ def execute(event: ClusterEvent):
 
     log_state("green", "[EXEC]", f" {event.event_id} {event.event_type} @ {node_id}", 3)
 
-    append_event(event)
+    #append_event(event)
 
     return {
         "ok": True,
