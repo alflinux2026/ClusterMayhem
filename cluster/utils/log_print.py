@@ -34,7 +34,7 @@ def log_state(color, typ, msg, decimals=0):
     # aligned tag
     # -----------------------------------------
 
-    tag = f"[{typ}]"
+    tag = f"{typ}"
     tag = f"{tag:>14}"
 
     # -----------------------------------------

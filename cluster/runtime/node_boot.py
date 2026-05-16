@@ -41,23 +41,23 @@ app = FastAPI()
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
-    log_state("cyan", "EVENT IN", f" {event.event_id} type={event.type}", 3)
+    log_state("cyan", "[EVENT IN]", f" {event.event_id} type={event.type}", 3)
 
     event = normalize_event(event)
 
     leader = compute_leader()
 
-    log_state( "cyan", "LEADER", f"computed={leader}", 3)
+    log_state( "cyan", "(LEADER)", f"computed={leader}", 3)
 
     # soy leader → proceso directo
     if leader == node_id:
 
-        log_state( "cyan", "LOCAL ROUTE", f"{event.event_id}", 3 )
+        log_state( "cyan", "(LOCAL ROUTE)", f"{event.event_id}", 3 )
 
         return route_event(event)
 
     # no soy leader → forward
-    log_state( "cyan", "FORWARD", f"{event.event_id} -> {leader}", 3 )
+    log_state( "cyan", "[FORWARD]", f"{event.event_id} -> {leader}", 3 )
 
     return forward_to_leader(event)
 
@@ -67,7 +67,7 @@ def route(event: ClusterEvent):
 
     event = normalize_event(event)
 
-    log_state("magenta", "ROUTE", f" {event.event_id} → processing", 3)
+    log_state("magenta", "[ROUTE]", f" {event.event_id} → processing", 3)
 
     return route_event(event)
 
@@ -75,7 +75,7 @@ def route(event: ClusterEvent):
 @app.post("/execute")
 def execute(event: ClusterEvent):
 
-    log_state("green", "EXEC", f" {event.event_id} {event.type} @ {node_id}", 3)
+    log_state("green", "[EXEC]", f" {event.event_id} {event.type} @ {node_id}", 3)
 
     return {
         "ok": True,
