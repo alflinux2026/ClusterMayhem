@@ -12,6 +12,7 @@ def ingest_event(event, node_id):
 
     append_event(event)
 
+
     log_state(
                 "cyan",
                 "[EVENT OK]",
