@@ -31,6 +31,8 @@ def send_event(node_url, event_type, payload):
 
     return r.status_code == 200
 
+def all_nodes_down(node_urls):
+    return all(not check_node_health(n) for n in node_urls)
 
 def check_node_health(node_url):
     try:
@@ -65,9 +67,11 @@ def send_to_cluster(node_urls, event_type, payload, max_cycles=None, debug_healt
     if debug_health:
         healthy, _ = print_cluster_health(node_urls)
 
-        # opcional: si quieres SOLO nodos vivos
-        if healthy:
-            node_urls = healthy
+    if not healthy:
+        print("[CLUSTER] no healthy nodes available → aborting")
+        return
+
+    node_urls = healthy
 
     backoff = 1
     max_backoff = 10
