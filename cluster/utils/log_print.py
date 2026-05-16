@@ -1,4 +1,6 @@
+```python
 from datetime import datetime
+
 
 def log_state(color, typ, msg, decimals=0):
 
@@ -19,26 +21,34 @@ def log_state(color, typ, msg, decimals=0):
     decimals = max(0, min(6, int(decimals)))
 
     # -----------------------------------------
-    # timestamp
+    # fixed-width timestamp
     # -----------------------------------------
 
     now = datetime.now()
 
     if decimals == 0:
-        ts = now.strftime("%H:%M:%S")
+
+        # reserva espacio para ".000"
+        ts = now.strftime("%H:%M:%S") + "    "
+
     else:
+
         micros = f"{now.microsecond:06d}"[:decimals]
         ts = f"{now.strftime('%H:%M:%S')}.{micros}"
+
+        # padding fijo hasta longitud 12
+        ts = f"{ts:<12}"
 
     # -----------------------------------------
     # aligned tag
     # -----------------------------------------
 
-    tag = f"{typ}"
-    tag = f"{tag:>14}"
+    tag = f"{typ:>14}"
 
     # -----------------------------------------
     # print
     # -----------------------------------------
 
     print(f"[{ts}] {c}{tag}{reset} {msg}")
+```
+
