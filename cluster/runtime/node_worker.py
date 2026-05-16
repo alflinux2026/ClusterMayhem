@@ -1,5 +1,8 @@
+
 import time
 import threading
+
+from cluster.runtime.dispatcher import dispatch_tick
 
 
 class NodeWorker:
@@ -19,8 +22,26 @@ class NodeWorker:
         self._running = False
 
     def _loop(self):
+
         while self._running:
+
+            # -------------------------
+            # CLUSTER STATE
+            # -------------------------
+
             self.node.tick()
+
             self.node.emit_heartbeat(self.peers)
+
+            # -------------------------
+            # DISPATCH LOOP
+            # -------------------------
+
+            dispatch_tick()
+
+            # -------------------------
+            # LOOP SLEEP
+            # -------------------------
+
             time.sleep(self.interval)
 
