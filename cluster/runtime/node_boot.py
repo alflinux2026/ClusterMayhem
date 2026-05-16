@@ -27,6 +27,8 @@ from cluster.utils.log_print import log_state
 from cluster.runtime.event_log import append_event
 from cluster.runtime.event_log import replay_events
 
+from cluster.runtime.ingest import ingest_event
+
 import logging
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
