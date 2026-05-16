@@ -111,8 +111,6 @@ def route_event(event: ClusterEvent):
             "event_id": event.event_id
         }
 
-    # 🔥 PERSISTENCIA REAL (SOLO LEADER WORKFLOW)
-    append_event(event)
 
     # -------------------------
     # FILTER ALIVE NODES
@@ -147,7 +145,7 @@ def route_event(event: ClusterEvent):
     # -------------------------
     # PERSIST LEADER DECISION
     # -------------------------
-    from cluster.runtime.event_log import append_event
+
     append_event(event)
 
     # -------------------------
