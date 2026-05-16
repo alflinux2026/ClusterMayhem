@@ -104,7 +104,7 @@ def handle_event(event: ClusterEvent):
         log_state("cyan", "[FORWARD]", f"{event.event_id} -> {leader}", 3)
 
         node = CLUSTER_REGISTRY[leader]
-        url = f"http://{node['host']}:{node['port']}/event"
+        url = f"http://{node['host']}:{node['port']}/route" # aqui
 
         resp = requests.post(
             url,
@@ -122,6 +122,49 @@ def handle_event(event: ClusterEvent):
 
 
 
+
+@app.post("/e_v_e_n_t")
+def handle_event(event: ClusterEvent):
+
+    log_state(
+        "cyan",
+        "[EVENT IN]",
+        f"{event.event_id} event_type={event.event_type}",
+        3
+    )
+
+    event.received_at = event.received_at or time.time()
+
+    #print("[EVENT LOG] writing event", event.event_id)
+
+    #append_event(event)
+
+    leader = compute_leader()
+
+    log_state("cyan", "(LEADER)", f"computed={leader}", 3)
+
+    if not leader:
+        log_state("red", "(NO LEADER)", event.event_id, 3)
+        return {"error": "no leader"}
+
+    # soy leader → proceso directo
+    if leader == node_id:
+
+        log_state("cyan", "(LOCAL ROUTE)", f"{event.event_id}", 3)
+
+        # ✅ PERSISTENCIA SOLO EN EL LEADER
+        #append_event(event)
+
+        return route_event(event)
+
+    # no soy leader → forward
+    log_state("cyan", "[FORWARD]", f"{event.event_id} -> {leader}", 3)
+
+    try:
+        return forward_to_leader(event)
+    except Exception as e:
+        log_state("red", "(FORWARD FAIL)", str(e), 3)
+        return {"error": str(e)}
 
 
 
