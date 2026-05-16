@@ -91,7 +91,7 @@ def route_event(event: ClusterEvent):
     # -------------------------
     # IDEMPOTENCY
     # -------------------------
-    from cluster.runtime.event_log import get_completed_event_ids
+#    from cluster.runtime.event_log import get_completed_event_ids
 
     completed = get_completed_event_ids()
 
