@@ -6,6 +6,8 @@ from cluster.runtime.cluster_store import cluster_state
 
 import requests
 
+from cluster.utils.log_print import log_state
+
 
 class NodeRuntime:
 
@@ -35,7 +37,8 @@ class NodeRuntime:
     def tick(self):
 
 #        print(f"[TICK] {self.node_id} state={self.state.value}")
-        print(f"[STATE] {self.state.value}")
+#        print(f"[STATE] {self.state.value}")
+        log_state("yellow", "[STATE]", self.state.value)
 
         # BOOT -> STANDBY (una sola vez)
         if self.state == NodeState.BOOT:
@@ -49,7 +52,8 @@ class NodeRuntime:
         leader = compute_leader()
 
 #        print(f"[LEADER] computed leader = {leader}")
-        print(f"[LEADER] {leader}")
+#        print(f"[LEADER] {leader}")
+        log_state("yellow", "[LEADER]", leader)
 
         # -------------------------------------------------
         # APPLY RESULT (no decision, only reflection)
