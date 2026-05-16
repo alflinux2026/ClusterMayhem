@@ -98,7 +98,7 @@ def handle_event(event: ClusterEvent):
         log_state("cyan", "(LOCAL ROUTE)", f"{event.event_id}", 3)
 
         # ✅ PERSISTENCIA SOLO EN EL LEADER
-        append_event(event)
+        #append_event(event)
 
         return route_event(event)
 

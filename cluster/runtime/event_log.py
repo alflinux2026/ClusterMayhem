@@ -9,6 +9,17 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 LOG_PATH = os.path.join(BASE_DIR, "cluster", "data", "event_log.jsonl")
 
 
+def get_completed_event_ids():
+
+    completed = set()
+
+    for raw in load_events():
+
+        if raw.get("status") == "completed":
+            completed.add(raw["event_id"])
+
+    return completed
+
 def ensure_dir():
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 

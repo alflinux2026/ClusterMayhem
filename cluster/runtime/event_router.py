@@ -83,15 +83,34 @@ def forward_event(node_id: str, event: ClusterEvent):
             timeout=2
         )
 
-# =========================
-# ROUTE EVENT
-# =========================
+
+
+
 def route_event(event: ClusterEvent):
 
+    # -------------------------
+    # IDEMPOTENCY
+    # -------------------------
+    from cluster.runtime.event_log import get_completed_event_ids
+
+    completed = get_completed_event_ids()
+
+    if event.event_id in completed:
+
+        log_state(
+            "yellow",
+            "(SKIP DUP)",
+            event.event_id,
+            3
+        )
+
+        return {
+            "skipped": True,
+            "event_id": event.event_id
+        }
 
     # 🔥 PERSISTENCIA REAL (SOLO LEADER WORKFLOW)
     append_event(event)
-
 
     # -------------------------
     # FILTER ALIVE NODES
@@ -122,6 +141,12 @@ def route_event(event: ClusterEvent):
     event.add_hop(f"router->worker:{target}")
     event.target_node = target
     event.mark_status("executing")
+
+    # -------------------------
+    # PERSIST LEADER DECISION
+    # -------------------------
+    from cluster.runtime.event_log import append_event
+    append_event(event)
 
     # -------------------------
     # EXECUTE
