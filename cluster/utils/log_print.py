@@ -1,6 +1,8 @@
 from datetime import datetime
 
-def log_state(color, typ, msg):
+from datetime import datetime
+
+def log_state(color, typ, msg, decimals=0):
     colors = {
         "red": "\033[91m",
         "green": "\033[92m",
@@ -15,7 +17,11 @@ def log_state(color, typ, msg):
     c = colors.get(color.lower(), colors["white"])
     reset = colors["reset"]
 
-    ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-    print(f"[{ts}] {c}{typ}{reset} {msg}")
+    decimals = max(0, min(6, int(decimals)))
 
-    #print(f"[{datetime.now():%H:%M:%S.%f}] {c}{typ}{reset} {msg}")
+    if decimals == 0:
+        ts = datetime.now().strftime("%H:%M:%S")
+    else:
+        ts = datetime.now().strftime("%H:%M:%S.%f")[:9 + decimals]
+
+    print(f"[{ts}] {c}{typ}{reset} {msg}")
