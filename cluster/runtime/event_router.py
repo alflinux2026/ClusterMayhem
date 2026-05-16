@@ -7,8 +7,10 @@ from cluster.runtime.leader import compute_leader
 from cluster.utils.log_print import log_state
 
 from cluster.runtime.events.cluster_event import ClusterEvent
-
-from cluster.runtime.event_log import append_event
+from cluster.runtime.event_log import (
+    append_event,
+    get_completed_event_ids,
+)
 
 
 
