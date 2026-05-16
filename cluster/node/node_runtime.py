@@ -34,8 +34,8 @@ class NodeRuntime:
 
     def tick(self):
 
-        print(f"[TICK] {self.node_id} state={self.state.value}")
-#        print(f"[STATE] {self.state.value}")
+#        print(f"[TICK] {self.node_id} state={self.state.value}")
+        print(f"[STATE] {self.state.value}")
 
         # BOOT -> STANDBY (una sola vez)
         if self.state == NodeState.BOOT:
@@ -48,8 +48,8 @@ class NodeRuntime:
 
         leader = compute_leader()
 
-        print(f"[LEADER] computed leader = {leader}")
-#        print(f"[LEADER] {leader}")
+#        print(f"[LEADER] computed leader = {leader}")
+        print(f"[LEADER] {leader}")
 
         # -------------------------------------------------
         # APPLY RESULT (no decision, only reflection)
