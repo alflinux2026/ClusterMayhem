@@ -1,3 +1,28 @@
+from cluster.runtime.event_log import get_created_events
+from cluster.runtime.event_router import dispatch_created_event
+
+from cluster.utils.log_print import log_state
+
+
+def dispatch_tick():
+
+    events = get_created_events()
+
+    if not events:
+        return
+
+    log_state(
+        "magenta",
+        "[DISPATCH]",
+        f"pending={len(events)}",
+        3
+    )
+
+    for event in events:
+        dispatch_created_event(event)
+
+
+
 def dispatch_created_event(event):
 
     completed = get_completed_event_ids()

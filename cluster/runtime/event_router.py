@@ -88,7 +88,8 @@ def forward_event(node_id: str, event: ClusterEvent):
 
 
 
-def route_event(event: ClusterEvent):
+#def route_event(event: ClusterEvent):
+def dispatch_created_event(event: ClusterEvent):
 
     # -------------------------
     # IDEMPOTENCY

@@ -9,6 +9,37 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 LOG_PATH = os.path.join(BASE_DIR, "cluster", "data", "event_log.jsonl")
 
 
+
+def get_created_events():
+
+    events = load_events()
+
+    # -------------------------
+    # LAST STATE BY EVENT
+    # -------------------------
+
+    latest = {}
+
+    for e in events:
+        latest[e["event_id"]] = e
+
+    # -------------------------
+    # FILTER CREATED
+    # -------------------------
+
+    created = []
+
+    for e in latest.values():
+
+        if e.get("status") == "created":
+
+            created.append(
+                ClusterEvent(**e)
+            )
+
+    return created
+
+
 def get_completed_event_ids():
 
     events = load_events()

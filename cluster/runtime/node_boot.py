@@ -17,10 +17,13 @@ import requests
 
 from cluster.runtime.events.cluster_event import ClusterEvent
 
+
 from cluster.runtime.event_router import (
     forward_to_leader,
-    route_event
+    dispatch_created_event
 )
+
+
 
 from cluster.runtime.registry import CLUSTER_REGISTRY
 
@@ -184,11 +187,10 @@ def route(event: ClusterEvent):
         )
 
     return {
-        "event_id": event.event_id,
-        "status": "accepted",
-        "leader": node_id,
-        "trace_id": event.trace_id
+        "accepted": True,
+        "event_id": event.event_id
     }
+
 
 
 @app.post("/r_o_u_t_e")
