@@ -1,98 +1,72 @@
-
 import threading
 import time
-import json
 import uvicorn
+import logging
+import requests
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 from cluster.runtime.cluster_store import cluster_state
-from cluster.node.node_runtime import NodeRuntime
 from cluster.runtime.node_worker import NodeWorker
+from cluster.runtime.node_runtime import NodeRuntime
 from cluster.runtime.leader import compute_leader
 from cluster.runtime.bootstrap import load_or_bootstrap_config
-
-import requests
-
-
-from cluster.runtime.events.cluster_event import ClusterEvent
-
-
-from cluster.runtime.event_router import (
-    forward_to_leader,
-    dispatch_created_event
-)
-
-
-
 from cluster.runtime.registry import CLUSTER_REGISTRY
 
-from cluster.utils.log_print import log_state
-
-from cluster.runtime.event_log import append_event
-from cluster.runtime.event_log import replay_events
-
+from cluster.runtime.event_log import append_event, replay_events
 from cluster.runtime.ingest import ingest_event
-
-import logging
+from cluster.runtime.events.cluster_event import ClusterEvent
+from cluster.runtime import context as ctx
+from cluster.utils.log_print import log_state
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
 
-
-node_id = None
-
-# -----------------------------
-# API
-# -----------------------------
+# =========================
+# FASTAPI
+# =========================
 app = FastAPI()
 
+
+# -------------------------
+# ACK (FINAL STATE ONLY)
+# -------------------------
 @app.post("/ack")
 def ack(event: ClusterEvent):
 
-    log_state(
-        "green",
-        "[ACK]",
-        f"{event.event_id} completed",
-        3
-    )
+    log_state("green", "[ACK]", f"{event.event_id} completed", 3)
 
     event.mark_status("completed")
-
-    from cluster.runtime.event_log import append_event
     append_event(event)
 
     return {"ok": True}
 
+
+# -------------------------
+# REPLAY
+# -------------------------
 @app.post("/replay")
 def replay():
+
     def handler(event):
-        return route_event(event)
+        return None
 
     replay_events(handler)
 
     return {"ok": True}
 
 
-
-
-
-
-
-
+# =========================
+# SINGLE ENTRYPOINT
+# =========================
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
-    log_state(
-        "cyan",
-        "[EVENT IN]",
-        f"{event.event_id} event_type={event.event_type}",
-        3
-    )
+    log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
     leader = compute_leader()
-
     log_state("cyan", "(LEADER)", f"computed={leader}", 3)
 
     if not leader:
@@ -100,14 +74,14 @@ def handle_event(event: ClusterEvent):
         return {"error": "no leader"}
 
     # -----------------------------------
-    # NOT leader → forward ONLY
+    # NOT LEADER → forward to leader
     # -----------------------------------
-    if leader != node_id:
+    if leader != ctx.node_id:
 
         log_state("cyan", "[FORWARD]", f"{event.event_id} -> {leader}", 3)
 
         node = CLUSTER_REGISTRY[leader]
-        url = f"http://{node['host']}:{node['port']}/route" # aqui
+        url = f"http://{node['host']}:{node['port']}/event"
 
         resp = requests.post(
             url,
@@ -118,113 +92,14 @@ def handle_event(event: ClusterEvent):
         return resp.json()
 
     # -----------------------------------
-    # leader → ingest
+    # LEADER → INGEST ONLY
     # -----------------------------------
-    return ingest_event(event, node_id)
+    return ingest_event(event, ctx.node_id)
 
 
-
-
-
-@app.post("/e_v_e_n_t")
-def handle_event(event: ClusterEvent):
-
-    log_state(
-        "cyan",
-        "[EVENT IN]",
-        f"{event.event_id} event_type={event.event_type}",
-        3
-    )
-
-    event.received_at = event.received_at or time.time()
-
-    #print("[EVENT LOG] writing event", event.event_id)
-
-    #append_event(event)
-
-    leader = compute_leader()
-
-    log_state("cyan", "(LEADER)", f"computed={leader}", 3)
-
-    if not leader:
-        log_state("red", "(NO LEADER)", event.event_id, 3)
-        return {"error": "no leader"}
-
-    # soy leader → proceso directo
-    if leader == node_id:
-
-        log_state("cyan", "(LOCAL ROUTE)", f"{event.event_id}", 3)
-
-        # ✅ PERSISTENCIA SOLO EN EL LEADER
-        #append_event(event)
-
-        return route_event(event)
-
-    # no soy leader → forward
-    log_state("cyan", "[FORWARD]", f"{event.event_id} -> {leader}", 3)
-
-    try:
-        return forward_to_leader(event)
-    except Exception as e:
-        log_state("red", "(FORWARD FAIL)", str(e), 3)
-        return {"error": str(e)}
-
-
-
-@app.post("/route")
-def route(event: ClusterEvent):
-
-    event.received_at = event.received_at or time.time()
-
-    event.mark_status("created")   # o "accepted"
-
-    append_event(event)
-
-    log_state(
-            "cyan",
-            "[EVENT REGISTERED]",
-            f"{event.event_id} event_type={event.event_type}",
-            3
-        )
-
-    return {
-        "accepted": True,
-        "event_id": event.event_id
-    }
-
-
-
-@app.post("/r_o_u_t_e")
-def route(event: ClusterEvent):
-
-    #event = normalize_event(event)
-
-    # ensure timestamp if missing (safe fallback)
-    event.received_at = event.received_at or time.time()
-
-    #append_event(event)
-
-    log_state("magenta", "[ROUTE]", f" {event.event_id} → processing", 3)
-
-    return route_event(event)
-
-
-@app.post("/execute")
-def execute(event: ClusterEvent):
-
-    log_state("green", "[EXEC]", f" {event.event_id} {event.event_type} @ {node_id}", 3)
-
-    #append_event(event)
-
-    return {
-        "ok": True,
-        "node": node_id,
-        "event_id": event.event_id
-    }
-
-
-
-
+# =========================
+# CLUSTER METADATA
+# =========================
 class Heartbeat(BaseModel):
     node_id: str
     state: str
@@ -257,15 +132,12 @@ def is_alive(data, timeout=3.0):
     return (time.time() - data["last_seen"]) < timeout
 
 
-# -----------------------------
-# BOOTSTRAP NODE
-# -----------------------------
+# =========================
+# BOOTSTRAP
+# =========================
 def run_node(config):
 
-
-    global node_id
-    node_id = config["node_id"]
-
+    ctx.node_id = config["node_id"]
 
     node = NodeRuntime(
         node_id=config["node_id"],
@@ -278,11 +150,8 @@ def run_node(config):
         interval=1.0
     )
 
-    # start worker thread
-    t = threading.Thread(target=worker.start, daemon=True)
-    t.start()
+    threading.Thread(target=worker.start, daemon=True).start()
 
-    # start API
     uvicorn.run(
         app,
         host=config.get("bind_host", "0.0.0.0"),
@@ -292,11 +161,10 @@ def run_node(config):
     )
 
 
-# -----------------------------
+# =========================
 # ENTRYPOINT
-# -----------------------------
+# =========================
 if __name__ == "__main__":
 
     config = load_or_bootstrap_config()
-
     run_node(config)

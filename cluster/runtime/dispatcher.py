@@ -8,7 +8,7 @@ from cluster.runtime.event_log import (
 )
 
 from cluster.runtime.cluster_store import cluster_state
-from cluster.runtime.transport import forward_event
+from cluster.runtime.event_router import forward_event
 
 from cluster.utils.log_print import log_state
 from cluster.runtime.leader import compute_leader
