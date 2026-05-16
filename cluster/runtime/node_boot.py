@@ -80,7 +80,11 @@ def handle_event(event: ClusterEvent):
 @app.post("/route")
 def route(event: ClusterEvent):
 
-    event = normalize_event(event)
+    #event = normalize_event(event)
+
+    # ensure timestamp if missing (safe fallback)
+    event.received_at = event.received_at or time.time()
+
 
     log_state("magenta", "[ROUTE]", f" {event.event_id} → processing", 3)
 
