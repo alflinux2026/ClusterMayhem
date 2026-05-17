@@ -73,8 +73,8 @@ def dispatch_created_event(event):
     # -------------------------
     # ROUTING METADATA
     # -------------------------
-    event["target_node"] = target
-    event.setdefault("route_hops", []).append(f"dispatcher->{target}")
+    event.target_node = target
+    event.route_hops.append(f"dispatcher->{target}")
 
     # -------------------------
     # STATE CHANGE (ONLY HERE)
