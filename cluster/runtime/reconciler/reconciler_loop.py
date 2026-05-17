@@ -1,7 +1,12 @@
 import time
 from collections import defaultdict
 
-from cluster.runtime.event_log import load_events
+from cluster.runtime.event_log import load_events, append_event
+from cluster.runtime.events.cluster_event import ClusterEvent
+from cluster.runtime.events.event_state import EventStatus
+
+
+EXECUTION_TIMEOUT = 10.0
 
 
 def reconcile_tick(node_runtime):
@@ -11,6 +16,7 @@ def reconcile_tick(node_runtime):
         return
 
     events = load_events()
+    now = time.time()
 
     # -----------------------------------------
     # 1. AGRUPAR POR EVENT_ID
@@ -18,12 +24,10 @@ def reconcile_tick(node_runtime):
     by_id = defaultdict(list)
 
     for e in events:
-        eid = e.get("event_id")   # ✔ FIX IMPORTANTE
+        eid = e.get("event_id")
         if not eid:
             continue
         by_id[eid].append(e)
-
-    now = time.time()
 
     print("\n\n================ RECONCILER DEBUG ================\n")
 
@@ -32,7 +36,6 @@ def reconcile_tick(node_runtime):
     # -----------------------------------------
     for eid, history in by_id.items():
 
-        # ordenar por tiempo real de evento
         history.sort(key=lambda x: (
             x.get("updated_at") or x.get("created_at") or 0
         ))
@@ -42,7 +45,7 @@ def reconcile_tick(node_runtime):
 
         for i, h in enumerate(history):
 
-            ts = h.get("updated_at") or h.get("created_at")
+            ts = h.get("updated_at") or h.get("created_at") or 0
             status = h.get("status")
             node = h.get("target_node")
             attempt = h.get("attempt")
@@ -56,9 +59,28 @@ def reconcile_tick(node_runtime):
             )
 
         latest = history[-1]
-        print("\n→ LATEST:", latest.get("status"))
+        latest_status = latest.get("status")
 
-        # separación visual
+        print("\n→ LATEST:", latest_status)
+
+        # -----------------------------------------
+        # 🔧 OPCIÓN 1: RECOVERY DE EXECUTING STUCK
+        # -----------------------------------------
+        if latest_status == EventStatus.EXECUTING.value:
+
+            last_update = latest.get("updated_at") or latest.get("created_at", 0)
+
+            if now - last_update > EXECUTION_TIMEOUT:
+
+                print(f"⚠️ RECOVERY: EXECUTING STUCK -> CREATED ({eid})")
+
+                recovered = dict(latest)
+                recovered["status"] = EventStatus.CREATED.value
+                recovered["updated_at"] = now
+                recovered.pop("owner", None)
+
+                append_event(ClusterEvent(**recovered))
+
         print("-" * 60)
 
     print("\n==================================================\n")
