@@ -15,6 +15,9 @@ from cluster.runtime.leader import compute_leader
 #from cluster.runtime.node_boot import node_id
 from cluster.runtime import context as ctx
 
+from cluster.runtime.events.event_state import EventStatus
+
+
 # =========================
 # DISPATCH LOOP (LEADER ONLY)
 # =========================
@@ -69,7 +72,8 @@ def dispatch_created_event(event):
     event.target_node = target
     event.add_hop(f"dispatcher->worker:{target}")
 
-    event.mark_status("executing")
+    event.mark_status(EventStatus.EXECUTING)
+
 
 #    append_event(event)
 

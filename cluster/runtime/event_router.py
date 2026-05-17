@@ -12,6 +12,8 @@ from cluster.runtime.event_log import (
     get_completed_event_ids,
 )
 
+from cluster.runtime.events.event_state import EventStatus
+
 
 
 # =========================
@@ -28,8 +30,7 @@ def forward_to_leader(event: ClusterEvent):
     node = CLUSTER_REGISTRY[leader]
     url = f"http://{node['host']}:{node['port']}/route"
 
-    event.add_hop("forward_to_leader")
-    event.mark_status("routed")
+    event.add_hop("leader_routed")
 
     resp = requests.post(
         url,
@@ -52,7 +53,7 @@ def forward_event(node_id: str, event: ClusterEvent):
     url = f"http://{node['host']}:{node['port']}/execute"
 
     event.add_hop(f"worker:{node_id}")
-    event.mark_status("executing")
+    event.mark_status(EventStatus.EXECUTING)
 
     log_state("magenta", "[WORKER SEND]", f"{event.event_id} -> {node_id}", 3)
 
@@ -77,7 +78,7 @@ def forward_event(node_id: str, event: ClusterEvent):
             f"{leader_node['port']}/ack"
         )
 
-        event.mark_status("completed")
+        event.mark_status(EventStatus.COMPLETED)
 
         requests.post(
             ack_url,
@@ -124,7 +125,7 @@ def dispatch_created_event(event: ClusterEvent):
 
     if not alive:
         log_state("red", "(NO WORKERS)", event.event_id, 3)
-        event.mark_status("failed")
+        event.mark_status(EventStatus.FAILED)
         return {"error": "no alive nodes"}
 
     log_state("magenta", "(ALIVE)", f"{list(alive.keys())}", 3)
@@ -141,7 +142,7 @@ def dispatch_created_event(event: ClusterEvent):
 
     event.add_hop(f"router->worker:{target}")
     event.target_node = target
-    event.mark_status("executing")
+    event.mark_status(EventStatus.EXECUTING)
 
     # -------------------------
     # PERSIST LEADER DECISION

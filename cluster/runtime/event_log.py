@@ -5,13 +5,12 @@ from typing import List
 
 from cluster.runtime.events.cluster_event import ClusterEvent
 
+from cluster.runtime.events.event_state import EventStatus
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 LOG_PATH = os.path.join(BASE_DIR, "cluster", "data", "event_log.local.jsonl")
 
-
-
 def get_created_events():
-
     events = load_events()
 
     # -------------------------
@@ -24,18 +23,22 @@ def get_created_events():
         latest[e["event_id"]] = e
 
     # -------------------------
+    # REBUILD DOMAIN MODEL FIRST
+    # -------------------------
+
+    events = [
+        ClusterEvent(**e)
+        for e in latest.values()
+    ]
+
+    # -------------------------
     # FILTER CREATED
     # -------------------------
 
-    created = []
-
-    for e in latest.values():
-
-        if e.get("status") == "created":
-
-            created.append(
-                ClusterEvent(**e)
-            )
+    created = [
+        e for e in events
+        if e.status == EventStatus.CREATED
+    ]
 
     return created
 
@@ -44,10 +47,20 @@ def get_completed_event_ids():
 
     events = load_events()
 
+    latest = {}
+
+    for e in events:
+        latest[e["event_id"]] = e
+
+    domain_events = [
+        ClusterEvent(**e)
+        for e in latest.values()
+    ]
+
     return {
-        e["event_id"]
-        for e in events
-        if e.get("status") == "completed"
+        e.event_id
+        for e in domain_events
+        if e.status == EventStatus.COMPLETED
     }
 
 def ensure_dir():

@@ -20,6 +20,8 @@ from cluster.runtime.events.cluster_event import ClusterEvent
 from cluster.runtime import context as ctx
 from cluster.utils.log_print import log_state
 
+from cluster.runtime.events.event_state import EventStatus
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
@@ -38,7 +40,7 @@ def ack(event: ClusterEvent):
 
     log_state("green", "[ACK]", f"{event.event_id} completed", 3)
 
-    event.mark_status("completed")
+    event.mark_status(EventStatus.COMPLETED)
     append_event(event)
 
     return {"ok": True}
