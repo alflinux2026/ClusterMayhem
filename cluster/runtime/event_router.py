@@ -73,11 +73,14 @@ def forward_event(node_id: str, event: ClusterEvent):
     # SEND TO WORKER
     # -------------------------
     try:
-        requests.post(
+        resp = requests.post(
             url,
             json=event.model_dump(),
             timeout=2
         )
+
+        worker_result = resp.json()
+
     except Exception as e:
         log_state(
             "red",
@@ -88,55 +91,24 @@ def forward_event(node_id: str, event: ClusterEvent):
         return {"error": "worker_send_failed"}
 
     # -------------------------
-    # ACK TO LEADER (AFTER WORKER SEND)
+    # LEADER DECIDES FINAL STATE (Opción B real)
     # -------------------------
-    leader = compute_leader()
+    if worker_result.get("status") == "completed":
 
-    if not leader:
-        return {"error": "no_leader"}
+        from cluster.runtime.state_machine import transition_event
+        from cluster.runtime.events.event_state import EventStatus
 
-    leader_node = CLUSTER_REGISTRY[leader]
-
-    ack_url = (
-        f"http://{leader_node['host']}:"
-        f"{leader_node['port']}/ack"
-    )
-
-    try:
-        resp = requests.post(
-            url,
-            json=event.model_dump(),
-            timeout=2
+        transition_event(
+            event.event_id,
+            EventStatus.COMPLETED
         )
 
-        result = resp.json()
-
-        # -------------------------
-        # LEADER DECIDES FINAL STATE
-        # -------------------------
-        if result.get("status") == "completed":
-            from cluster.runtime.state_machine import transition_event
-
-            transition_event(
-                event.event_id,
-                EventStatus.COMPLETED
-            )
-
-            log_state(
-                "yellow",
-                "[STATE]",
-                f"{event.event_id} -> EVENT COMPLETED",
-                3
-            )
-
-    except Exception as e:
         log_state(
-            "red",
-            "[ACK FAIL]",
-            f"{event.event_id} | {e}",
+            "yellow",
+            "[STATE]",
+            f"{event.event_id} -> EVENT COMPLETED",
             3
         )
-        return {"error": "ack_failed"}
 
     return {
         "status": "forwarded",
