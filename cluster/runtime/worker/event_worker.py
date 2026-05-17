@@ -28,6 +28,9 @@ def run_business_logic(payload: dict):
 # -------------------------
 def execute_event(event):
 
+    log_state("red", "[EXECUTE entry ...]", event.event_id, 3)
+
+
     # -------------------------
     # BUILD EXECUTION KEY
     # -------------------------
