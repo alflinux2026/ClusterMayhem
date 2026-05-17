@@ -19,24 +19,16 @@ def reconcile_tick():
 
     for e in events:
 
-        status = e["status"]
-
-        # -----------------------------------------
-        # ❌ NEVER TOUCH COMPLETED
-        # -----------------------------------------
-        if status == EventStatus.COMPLETED.value:
+        if e["status"] == EventStatus.COMPLETED.value:
             continue
 
-        # -----------------------------------------
-        # FAILED → no retry
-        # -----------------------------------------
-        if status == EventStatus.FAILED.value:
+        if e["status"] == EventStatus.FAILED.value:
             continue
 
-        # -----------------------------------------
+        # -------------------------
         # EXECUTING STUCK
-        # -----------------------------------------
-        if status == EventStatus.EXECUTING.value:
+        # -------------------------
+        if e["status"] == EventStatus.EXECUTING.value:
 
             last_update = e.get("updated_at") or e.get("created_at", now)
 
@@ -53,10 +45,10 @@ def reconcile_tick():
 
                 dispatch_created_event(ClusterEvent(**e))
 
-        # -----------------------------------------
+        # -------------------------
         # CREATED STUCK
-        # -----------------------------------------
-        elif status == EventStatus.CREATED.value:
+        # -------------------------
+        elif e["status"] == EventStatus.CREATED.value:
 
             created_at = e.get("created_at", now)
 
