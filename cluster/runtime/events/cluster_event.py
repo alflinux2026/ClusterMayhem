@@ -3,7 +3,12 @@ from typing import Dict, Any, List, Optional
 import time
 import uuid
 
+from cluster.runtime.events.event_state import EventStatus
 
+from cluster.runtime.events.event_state import (
+    EventStatus,
+    validate_transition,
+)
 
 class ClusterEvent(BaseModel):
     """
@@ -42,7 +47,10 @@ class ClusterEvent(BaseModel):
     # -------------------------
     # STATE
     # -------------------------
-    status: str = "created"
+
+
+    status: EventStatus = EventStatus.CREATED
+
     attempt: int = 0
 
     # -------------------------
@@ -56,7 +64,10 @@ class ClusterEvent(BaseModel):
     def mark_received(self):
         self.received_at = time.time()
 
-    def mark_status(self, status: str):
+
+
+    def mark_status(self, status: EventStatus):
+        validate_transition(self.status, status)
         self.status = status
 
     def add_hop(self, hop: str):
