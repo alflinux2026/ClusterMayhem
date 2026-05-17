@@ -3,7 +3,6 @@ import time
 from cluster.runtime.event_log import load_events
 from cluster.runtime.dispatcher import dispatch_created_event
 from cluster.runtime.events.event_state import EventStatus
-
 from cluster.runtime.events.cluster_event import ClusterEvent
 
 
@@ -29,7 +28,7 @@ def reconcile_tick():
             continue
 
         # -----------------------------------------
-        # FAILED → no retry (o policy futura)
+        # FAILED → no retry
         # -----------------------------------------
         if status == EventStatus.FAILED.value:
             continue
@@ -50,12 +49,9 @@ def reconcile_tick():
                     continue
 
                 e["attempt"] = attempt
-
-                # 🔥 rollback seguro
                 e["status"] = EventStatus.CREATED.value
 
                 dispatch_created_event(ClusterEvent(**e))
-
 
         # -----------------------------------------
         # CREATED STUCK
@@ -66,4 +62,4 @@ def reconcile_tick():
 
             if now - created_at > CREATED_TIMEOUT:
 
-                dispatch_created_event(e)
+                dispatch_created_event(ClusterEvent(**e))
