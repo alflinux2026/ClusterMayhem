@@ -93,7 +93,7 @@ def dispatch_created_event(event):
     event.target_node = target
     event.route_hops.append(f"dispatcher->{target}")
 
-    log_state("magenta", "[ROUTE]", f"{event.event_id} hop added", 3)
+    #log_state("magenta", "[ROUTE]", f"{event.event_id} hop added", 3)
 
     # -------------------------
     # STATE CHANGE

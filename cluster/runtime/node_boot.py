@@ -46,9 +46,9 @@ def execute_endpoint(event: ClusterEvent):
 @app.post("/ack")
 def ack(event: ClusterEvent):
 
-    log_state("green", "[ACK]", f"{event.event_id} completed", 3)
+    log_state("green", "[ACK]", f"{event.event_id} received", 3)
 
-    event.mark_status(EventStatus.COMPLETED)
+    # SOLO persistir ACK, NO cambiar estado del evento
     append_event(event)
 
     return {"ok": True}
@@ -107,7 +107,13 @@ def handle_event(event: ClusterEvent):
     # -----------------------------------
     #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
-    return ingest_event(event, ctx.node_id)
+    result = ingest_event(event, ctx.node_id)
+
+    return {
+        "status": "ok",
+        "event_id": event.event_id,
+        "result": result
+    }
 
 
 # =========================
