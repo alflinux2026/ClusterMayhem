@@ -44,7 +44,7 @@ class NodeWorker:
             # RECONCILE LOOP
             # -------------------------
 
-            reconcile_tick()
+            reconcile_tick(self.node_runtime)
 
             # -------------------------
             # LOOP SLEEP
