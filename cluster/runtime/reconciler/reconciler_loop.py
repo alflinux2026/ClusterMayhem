@@ -11,16 +11,12 @@ EXECUTION_TIMEOUT = 10.0
 
 def reconcile_tick(node_runtime):
 
-    # SOLO nodo activo
     if node_runtime.state != node_runtime.state.__class__.ACTIVE:
         return
 
     events = load_events()
     now = time.time()
 
-    # -----------------------------------------
-    # 1. AGRUPAR POR EVENT_ID
-    # -----------------------------------------
     by_id = defaultdict(list)
 
     for e in events:
@@ -29,16 +25,42 @@ def reconcile_tick(node_runtime):
             continue
         by_id[eid].append(e)
 
+    # -----------------------------------------
+    # SOLO DEBUG SI HAY INCOMPLETOS
+    # -----------------------------------------
+    incomplete = False
+
+    for history in by_id.values():
+        latest_status = history[-1].get("status")
+        if latest_status not in (
+            EventStatus.COMPLETED.value,
+            EventStatus.FAILED.value
+        ):
+            incomplete = True
+            break
+
+    if not incomplete:
+        return  # 🔥 SILENCIO TOTAL
+
     print("\n\n================ RECONCILER DEBUG ================\n")
 
-    # -----------------------------------------
-    # 2. PROCESAR CADA EVENTO
-    # -----------------------------------------
     for eid, history in by_id.items():
 
         history.sort(key=lambda x: (
             x.get("updated_at") or x.get("created_at") or 0
         ))
+
+        latest = history[-1]
+        latest_status = latest.get("status")
+
+        # -----------------------------------------
+        # FILTRO FINAL: SOLO INCOMPLETOS
+        # -----------------------------------------
+        if latest_status in (
+            EventStatus.COMPLETED.value,
+            EventStatus.FAILED.value
+        ):
+            continue
 
         print(f"\nEVENT_ID: {eid}")
         print("-" * 60)
@@ -58,13 +80,10 @@ def reconcile_tick(node_runtime):
                 f"attempt={attempt}"
             )
 
-        latest = history[-1]
-        latest_status = latest.get("status")
-
         print("\n→ LATEST:", latest_status)
 
         # -----------------------------------------
-        # 🔧 OPCIÓN 1: RECOVERY DE EXECUTING STUCK
+        # RECOVERY LOGIC
         # -----------------------------------------
         if latest_status == EventStatus.EXECUTING.value:
 
@@ -72,7 +91,7 @@ def reconcile_tick(node_runtime):
 
             if now - last_update > EXECUTION_TIMEOUT:
 
-                print(f"⚠️ RECOVERY: EXECUTING STUCK -> CREATED ({eid})")
+                print(f"⚠ RECOVERY: EXECUTING STUCK -> CREATED ({eid})")
 
                 recovered = dict(latest)
                 recovered["status"] = EventStatus.CREATED.value
