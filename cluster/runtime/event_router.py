@@ -74,13 +74,13 @@ def forward_event(node_id: str, event: ClusterEvent):
     # -------------------------
     try:
 
-        log_state("red", "[BEFORE POST]", url, 3)
+        #log_state("red", "[BEFORE POST]", url, 3)
         resp = requests.post(
             url,
             json=event.model_dump(),
             timeout=2
         )
-        log_state("red", "[AFTER POST]", str(resp.status_code), 3)
+        #log_state("red", "[AFTER POST]", str(resp.status_code), 3)
 
 
         worker_result = resp.json()

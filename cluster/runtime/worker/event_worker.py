@@ -28,7 +28,7 @@ def run_business_logic(payload: dict):
 # -------------------------
 def execute_event(event):
 
-    log_state("red", "[EXECUTE entry ...]", event.event_id, 3)
+    #log_state("red", "[EXECUTE entry ...]", event.event_id, 3)
 
 
     # -------------------------
@@ -36,8 +36,8 @@ def execute_event(event):
     # -------------------------
     event.execution_key = f"{event.event_id}:{event.attempt}"
 
-    log_state("red", "[EXECUTION KEY]", event.execution_key, 3)
-    log_state("red", "[EXECUTED KEYS SIZE]", str(len(executed_keys)), 3)
+    #log_state("red", "[EXECUTION KEY]", event.execution_key, 3)
+    #log_state("red", "[EXECUTED KEYS SIZE]", str(len(executed_keys)), 3)
 
     # -------------------------
     # IDEMPOTENCY CHECK NO FUNCIONA
