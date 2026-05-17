@@ -43,13 +43,14 @@ def execute_event(event):
     # IDEMPOTENCY CHECK NO FUNCIONA
     # -------------------------
 
-#    if event.execution_key in executed_keys:
-#        log_state("red", "[CACHE HIT]", event.execution_key, 3)
-#        return {
-#            "status": "cached",
-#            "event_id": event.event_id,
-#            "execution_key": event.execution_key
-#        }
+    if event.execution_key in executed_keys:
+        log_state("red", "[CACHE HIT]", event.execution_key, 3)
+        return {
+            "status": "completed",
+            "cached": True,
+            "event_id": event.event_id,
+            "execution_key": event.execution_key
+        }
 
     # -------------------------
     # EXECUTE BUSINESS LOGIC
