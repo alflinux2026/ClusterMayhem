@@ -5,6 +5,7 @@
 import time
 from cluster.runtime.event_log import append_event
 from cluster.runtime.events.event_state import EventStatus
+from cluster.utils.log_print import log_state
 
 
 # -------------------------
@@ -51,6 +52,8 @@ def execute_event(event):
     # MARK EXECUTION AS DONE
     # -------------------------
     executed_keys.add(event.execution_key)
+
+    log_state("green", "[EXECUTE]", event.event_id, 3)
 
     event.mark_status(EventStatus.COMPLETED)
     append_event(event)
