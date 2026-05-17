@@ -133,7 +133,7 @@ def dispatch_created_event(event: ClusterEvent):
     # -------------------------
     # WORKER SELECTION
     # -------------------------
-    target = max(
+    target = min(
         alive.items(),
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
