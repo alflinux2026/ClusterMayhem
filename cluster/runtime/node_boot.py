@@ -48,6 +48,10 @@ def ack(event: ClusterEvent):
 
     log_state("green", "[ACK]", f"{event.event_id} received", 3)
 
+    event.mark_status(EventStatus.COMPLETED)
+
+    log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT COMPLETED", 3)
+
     # SOLO persistir ACK, NO cambiar estado del evento
     append_event(event)
 
