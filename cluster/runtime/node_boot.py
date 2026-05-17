@@ -39,6 +39,10 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 app = FastAPI()
 
 
+@app.get("/debug/log")
+def log_dump():
+    return FileResponse("cluster/data/event_log.local.jsonl")
+
 @app.post("/execute")
 def execute_endpoint(event: ClusterEvent):
 
