@@ -36,10 +36,14 @@ def execute_event(event):
     # -------------------------
     event.execution_key = f"{event.event_id}:{event.attempt}"
 
+    log_state("red", "[EXECUTION KEY]", event.execution_key, 3)
+    log_state("red", "[EXECUTED KEYS SIZE]", str(len(executed_keys)), 3)
+
     # -------------------------
     # IDEMPOTENCY CHECK
     # -------------------------
     if event.execution_key in executed_keys:
+        log_state("red", "[CACHE HIT]", event.execution_key, 3)
         return {
             "status": "cached",
             "event_id": event.event_id,

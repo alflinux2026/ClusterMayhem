@@ -98,6 +98,9 @@ def dispatch_created_event(event):
     # -------------------------
     # STATE CHANGE
     # -------------------------
+
+    event.attempt = (event.attempt or 0) + 1   # 👈 AQUI
+
     event.mark_status(EventStatus.EXECUTING)
 
     log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT EXECUTING", 3)
