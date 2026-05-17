@@ -4,6 +4,8 @@ from cluster.runtime.event_log import load_events
 from cluster.runtime.dispatcher import dispatch_created_event
 from cluster.runtime.events.event_state import EventStatus
 
+from cluster.runtime.events.cluster_event import ClusterEvent
+
 
 EXECUTION_TIMEOUT = 10.0
 CREATED_TIMEOUT = 20.0
@@ -52,7 +54,8 @@ def reconcile_tick():
                 # 🔥 rollback seguro
                 e["status"] = EventStatus.CREATED.value
 
-                dispatch_created_event(e)
+                dispatch_created_event(ClusterEvent(**e))
+
 
         # -----------------------------------------
         # CREATED STUCK
