@@ -24,6 +24,8 @@ from cluster.runtime.events.event_state import EventStatus
 
 from cluster.runtime.worker.event_worker import execute_event
 
+from cluster.runtime.event_log import get_latest_event
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
@@ -48,12 +50,24 @@ def ack(event: ClusterEvent):
 
     log_state("green", "[ACK]", f"{event.event_id} received", 3)
 
-    event.mark_status(EventStatus.COMPLETED)
+    # -------------------------
+    # IDEMPOTENCY CHECK
+    # -------------------------
+    latest = get_latest_event(event.event_id)
 
-    log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT COMPLETED", 3)
+    if latest and latest["status"] == EventStatus.COMPLETED.value:
+        return {
+            "ok": True,
+            "already_completed": True
+        }
 
-    # SOLO persistir ACK, NO cambiar estado del evento
-    append_event(event)
+    # -------------------------
+    # STATE MACHINE (leader-only)
+    # -------------------------
+    transition_event(
+        event.event_id,
+        EventStatus.COMPLETED
+    )
 
     return {"ok": True}
 

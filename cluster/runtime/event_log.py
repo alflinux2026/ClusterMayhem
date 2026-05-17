@@ -9,6 +9,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 LOG_PATH = os.path.join(BASE_DIR, "cluster", "data", "event_log.local.jsonl")
 
 
+def get_latest_event(event_id: str):
+    events = load_events()
+
+    for e in reversed(events):
+        if e["event_id"] == event_id:
+            return e
+
+    return None
+
 # =========================
 # LOAD EVENTS
 # =========================
