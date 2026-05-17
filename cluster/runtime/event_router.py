@@ -104,14 +104,23 @@ def forward_event(node_id: str, event: ClusterEvent):
 
     try:
         resp = requests.post(
-            ack_url,
+            url,
             json=event.model_dump(),
             timeout=2
         )
 
-        if resp.status_code == 200:
+        result = resp.json()
+
+        # -------------------------
+        # LEADER DECIDES FINAL STATE
+        # -------------------------
+        if result.get("status") == "completed":
             from cluster.runtime.state_machine import transition_event
-            transition_event(event.event_id, EventStatus.COMPLETED)
+
+            transition_event(
+                event.event_id,
+                EventStatus.COMPLETED
+            )
 
             log_state(
                 "yellow",

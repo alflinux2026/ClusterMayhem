@@ -59,7 +59,7 @@ def execute_event(event):
 
 #    log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT COMPLETED", 3)
 
-    append_event(event)
+#    append_event(event)
 
     # -------------------------
     # RETURN RESULT
