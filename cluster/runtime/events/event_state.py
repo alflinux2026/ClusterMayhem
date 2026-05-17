@@ -26,6 +26,10 @@ VALID_TRANSITIONS = {
 
 
 def validate_transition(old_status, new_status):
+
+    if old_status == new_status:
+        return  # IDEMPOTENTE NO-OP
+
     allowed = VALID_TRANSITIONS.get(old_status, [])
 
     if new_status not in allowed:
