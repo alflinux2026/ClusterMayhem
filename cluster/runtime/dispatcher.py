@@ -65,7 +65,7 @@ def dispatch_created_event(event):
     if not alive:
         return
 
-    target = max(
+    target = min(
         alive.items(),
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
