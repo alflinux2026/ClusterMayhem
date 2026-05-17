@@ -79,7 +79,7 @@ def dispatch_created_event(event):
     # -------------------------
     # STATE CHANGE (ONLY HERE)
     # -------------------------
-    event.status = EventStatus.EXECUTING
+    event.mark_status(EventStatus.EXECUTING)
 
     # -------------------------
     # PERSIST BEFORE SEND (CRITICAL)

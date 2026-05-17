@@ -10,7 +10,7 @@ import requests
 def ingest_event(event, node_id):
 
     # SOLO el leader ejecuta esto
-    event.status = EventStatus.CREATED
+    event.mark_status(EventStatus.CREATED)
 
     append_event(event)
 
