@@ -4,6 +4,7 @@ import uvicorn
 import logging
 import requests
 
+from fastapi.responses import FileResponse
 from fastapi import FastAPI
 from pydantic import BaseModel
 
