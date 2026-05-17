@@ -1,48 +1,73 @@
 import json
-import time
 import os
 from typing import List
 
 from cluster.runtime.events.cluster_event import ClusterEvent
-
 from cluster.runtime.events.event_state import EventStatus
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 LOG_PATH = os.path.join(BASE_DIR, "cluster", "data", "event_log.local.jsonl")
 
+
+# =========================
+# LOAD EVENTS
+# =========================
+def load_events() -> List[dict]:
+    if not os.path.exists(LOG_PATH):
+        return []
+
+    with open(LOG_PATH, "r") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
+# =========================
+# ENSURE DIR
+# =========================
+def ensure_dir():
+    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+
+
+# =========================
+# NORMALIZE RAW EVENT
+# =========================
+def _normalize_event(e: dict) -> dict:
+    e["schema_version"] = str(e.get("schema_version", "0.1"))
+    e.setdefault("received_at", None)
+    e.setdefault("attempt", 0)
+    e.setdefault("route_hops", [])
+    return e
+
+
+# =========================
+# GET CREATED EVENTS
+# =========================
 def get_created_events():
     events = load_events()
-
-    # -------------------------
-    # LAST STATE BY EVENT
-    # -------------------------
 
     latest = {}
 
     for e in events:
+        e["schema_version"] = str(e.get("schema_version", "0.1"))
+        e.setdefault("received_at", None)
+        e.setdefault("attempt", 0)
+        e.setdefault("route_hops", [])
+        e.setdefault("execution_key", None)
         latest[e["event_id"]] = e
-
-    # -------------------------
-    # REBUILD DOMAIN MODEL FIRST
-    # -------------------------
 
     events = [
         ClusterEvent(**e)
         for e in latest.values()
     ]
 
-    # -------------------------
-    # FILTER CREATED
-    # -------------------------
-
-    created = [
+    return [
         e for e in events
         if e.status == EventStatus.CREATED
     ]
 
-    return created
 
-
+# =========================
+# GET COMPLETED IDS
+# =========================
 def get_completed_event_ids():
 
     events = load_events()
@@ -53,7 +78,7 @@ def get_completed_event_ids():
         latest[e["event_id"]] = e
 
     domain_events = [
-        ClusterEvent(**e)
+        ClusterEvent(**_normalize_event(e))
         for e in latest.values()
     ]
 
@@ -63,21 +88,20 @@ def get_completed_event_ids():
         if e.status == EventStatus.COMPLETED
     }
 
-def ensure_dir():
-    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
-
+# =========================
+# APPEND EVENT
+# =========================
 def append_event(event: ClusterEvent):
     ensure_dir()
 
     record = {
         "event_id": event.event_id,
         "event_type": event.event_type,
-        "schema_version": event.schema_version,
+        "schema_version": str(event.schema_version),
         "created_at": event.created_at,
-        "received_at": event.received_at,
+        "received_at": getattr(event, "received_at", None),
         "trace_id": event.trace_id,
-        "source_node": event.source_node,
         "target_node": event.target_node,
         "route_hops": event.route_hops,
         "status": event.status,
@@ -85,24 +109,23 @@ def append_event(event: ClusterEvent):
         "payload": event.payload,
     }
 
-    # 🚨 dedup guard
+    # dedup guard
     if event.status == EventStatus.COMPLETED:
         existing = load_events()
-        if any(e["event_id"] == event.event_id and e["status"] == EventStatus.COMPLETED.value for e in existing):
+        if any(
+            e["event_id"] == event.event_id and
+            e["status"] == EventStatus.COMPLETED.value
+            for e in existing
+        ):
             return
 
     with open(LOG_PATH, "a") as f:
         f.write(json.dumps(record) + "\n")
 
 
-def load_events() -> List[dict]:
-    if not os.path.exists(LOG_PATH):
-        return []
-
-    with open(LOG_PATH, "r") as f:
-        return [json.loads(line) for line in f if line.strip()]
-
-
+# =========================
+# REPLAY
+# =========================
 def replay_events(handler):
     """
     Re-ejecuta eventos contra un handler(event)
@@ -110,5 +133,5 @@ def replay_events(handler):
     events = load_events()
 
     for raw in events:
-        event = ClusterEvent(**raw)
+        event = ClusterEvent(**_normalize_event(raw))
         handler(event)

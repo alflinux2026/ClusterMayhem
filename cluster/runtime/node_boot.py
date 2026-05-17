@@ -22,6 +22,8 @@ from cluster.utils.log_print import log_state
 
 from cluster.runtime.events.event_state import EventStatus
 
+from cluster.runtime.worker.event_worker import execute_event
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
@@ -30,6 +32,12 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 # FASTAPI
 # =========================
 app = FastAPI()
+
+
+@app.post("/execute")
+def execute_endpoint(event: ClusterEvent):
+
+    return execute_event(event)
 
 
 # -------------------------

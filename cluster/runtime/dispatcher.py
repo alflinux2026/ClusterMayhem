@@ -50,7 +50,7 @@ def dispatch_tick():
 
 def dispatch_created_event(event):
 
-    log_state("yellow", "[DISPATCH]", f"event={event.event_id} start", 3)
+#    log_state("yellow", "[DISPATCH]", f"event={event.event_id} start", 3)
 
     # -------------------------
     # avoid duplicate completion
@@ -69,23 +69,23 @@ def dispatch_created_event(event):
         if (time.time() - data["last_seen"]) < 3.0
     }
 
-    log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
+ #   log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
 
     if not alive:
         log_state("red", "[NO ALIVE NODES]", event.event_id, 3)
         return
 
-    log_state("yellow", "[DISPATCH]", f"event={event.event_id}", 3)
-    log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
+  #  log_state("yellow", "[DISPATCH]", f"event={event.event_id}", 3)
+  #  log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
 
     target = max(
         alive.items(),
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
 
-    log_state("magenta", "[WORKER SELECTED]", target, 3)
+   # log_state("magenta", "[WORKER SELECTED]", target, 3)
 
-    log_state("magenta", "[WORKER SELECTED]", f"{event.event_id} -> {target}", 3)
+   # log_state("magenta", "[WORKER SELECTED]", f"{event.event_id} -> {target}", 3)
 
     # -------------------------
     # ROUTING METADATA
@@ -93,27 +93,27 @@ def dispatch_created_event(event):
     event.target_node = target
     event.route_hops.append(f"dispatcher->{target}")
 
-    log_state("blue", "[ROUTE]", f"{event.event_id} hop added", 3)
+    log_state("magenta", "[ROUTE]", f"{event.event_id} hop added", 3)
 
     # -------------------------
     # STATE CHANGE
     # -------------------------
     event.mark_status(EventStatus.EXECUTING)
 
-    log_state("yellow", "[STATE]", f"{event.event_id} -> EXECUTING", 3)
+    log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT EXECUTING", 3)
 
     # -------------------------
     # PERSIST
     # -------------------------
     append_event(event)
 
-    log_state("green", "[PERSIST]", event.event_id, 3)
+    #log_state("green", "[PERSIST]", event.event_id, 3)
 
-    log_state("red", "[DISPATCH SEND]", f"{event.event_id} -> {target}", 3)
+#    log_state("magenta", "[DISPATCH SEND]", f"{event.event_id} -> {target}", 3)
 
     # -------------------------
     # SEND
     # -------------------------
-    log_state("red", "[SEND]", f"{event.event_id} -> {target}", 3)
+#    log_state("magenta", "[SEND]", f"{event.event_id} -> {target}", 3)
 
     forward_event(target, event)

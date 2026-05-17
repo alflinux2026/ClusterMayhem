@@ -56,6 +56,9 @@ def execute_event(event):
     log_state("green", "[EXECUTE]", event.event_id, 3)
 
     event.mark_status(EventStatus.COMPLETED)
+
+    log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT COMPLETED", 3)
+
     append_event(event)
 
     # -------------------------

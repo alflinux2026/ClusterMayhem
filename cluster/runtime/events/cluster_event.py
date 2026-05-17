@@ -1,72 +1,47 @@
 from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
+from typing import Optional
+from uuid import uuid4
 import time
-import uuid
 
 from cluster.runtime.events.event_state import EventStatus
 
-from cluster.runtime.events.event_state import (
-    EventStatus,
-    validate_transition,
-)
 
 class ClusterEvent(BaseModel):
-    """
-    Canonical event model for Mayhem Cluster
-    Immutable core + append-only metadata
-    """
 
-    # -------------------------
-    # IDENTITY
-    # -------------------------
-    event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    event_id: str = Field(default_factory=lambda: str(uuid4()))
+    trace_id: str = Field(default_factory=lambda: str(uuid4()))
+
+    schema_version: str = "0.1"   # 👈 FIJO: string ONLY
+
     event_type: str
 
-    schema_version: int = Field(default=1)
-
-    # -------------------------
-    # TIMING
-    # -------------------------
-    created_at: float = Field(default_factory=time.time)
-    received_at: Optional[float] = None
-
-    # -------------------------
-    # TRACE
-    # -------------------------
-    trace_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    parent_event_id: Optional[str] = None
-
-    source_node: Optional[str] = None
-
-    # -------------------------
-    # ROUTING
-    # -------------------------
-    target_node: Optional[str] = None
-    route_hops: List[str] = Field(default_factory=list)
-
-    # -------------------------
-    # STATE
-    # -------------------------
-
+    payload: dict = {}
 
     status: EventStatus = EventStatus.CREATED
 
+    route_hops: list[str] = []
+
+    target_node: Optional[str] = None
+    source_node: Optional[str] = None   # 👈 LO USA event_log
+
+    created_at: float = 0.0
+    updated_at: float = 0.0
+
+    received_at: Optional[float] = None  # 👈 LO USA event_log
+
     attempt: int = 0
 
-    # -------------------------
-    # PAYLOAD
-    # -------------------------
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    execution_key: Optional[str] = None  # 👈 LO USA worker
 
     # -------------------------
     # HELPERS
     # -------------------------
-    def mark_received(self):
-        self.received_at = time.time()
-
-    def mark_status(self, status: EventStatus):
-        validate_transition(self.status, status)
-        self.status = status
 
     def add_hop(self, hop: str):
         self.route_hops.append(hop)
+
+    def mark_status(self, status: EventStatus):
+        self.status = status
+
+    def mark_received(self):
+        self.received_at = time.time()
