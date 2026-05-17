@@ -22,33 +22,18 @@ class NodeWorker:
     def stop(self):
         self._running = False
 
-    def _loop(self):
+# cluster/runtime/node_worker.py
 
-        while self._running:
+def _loop(self):
 
-            # -------------------------
-            # CLUSTER STATE
-            # -------------------------
+    while self._running:
 
-            self.node.tick()
+        self.node.tick()
+        self.node.emit_heartbeat(self.peers)
 
-            self.node.emit_heartbeat(self.peers)
+        dispatch_tick()
 
-            # -------------------------
-            # DISPATCH LOOP
-            # -------------------------
+        # FIX: usar self.node
+        reconcile_tick(self.node)
 
-            dispatch_tick()
-
-            # -------------------------
-            # RECONCILE LOOP
-            # -------------------------
-
-            reconcile_tick(self.node_runtime)
-
-            # -------------------------
-            # LOOP SLEEP
-            # -------------------------
-
-            time.sleep(self.interval)
-
+        time.sleep(self.interval)
