@@ -53,26 +53,10 @@ def ack(event: ClusterEvent):
 
     log_state("green", "[ACK]", f"{event.event_id} received", 3)
 
-    # -------------------------
-    # IDEMPOTENCY CHECK
-    # -------------------------
-    latest = get_latest_event(event.event_id)
-
-    if latest and latest["status"] == EventStatus.COMPLETED.value:
-        return {
-            "ok": True,
-            "already_completed": True
-        }
-
-    # -------------------------
-    # STATE MACHINE (leader-only)
-    # -------------------------
-    transition_event(
-        event.event_id,
-        EventStatus.COMPLETED
-    )
-
-    return {"ok": True}
+    return {
+        "ok": True,
+        "event_id": event.event_id
+    }
 
 
 # -------------------------
