@@ -55,6 +55,8 @@ def dispatch_created_event(event):
     if event.event_id in completed:
         return
 
+
+
     # select target
     alive = {
         node_id_: data
