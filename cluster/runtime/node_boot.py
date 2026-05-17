@@ -26,6 +26,9 @@ from cluster.runtime.worker.event_worker import execute_event
 
 from cluster.runtime.event_log import get_latest_event
 
+from cluster.runtime.state_machine import transition_event
+
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
