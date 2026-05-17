@@ -15,20 +15,24 @@ from cluster.runtime.leader import compute_leader
 from cluster.runtime.bootstrap import load_or_bootstrap_config
 from cluster.runtime.registry import CLUSTER_REGISTRY
 
-from cluster.runtime.event_log import replay_events
+from cluster.runtime.event_log import append_event, replay_events
 from cluster.runtime.ingest import ingest_event
 from cluster.runtime.events.cluster_event import ClusterEvent
 from cluster.runtime import context as ctx
 from cluster.utils.log_print import log_state
+
+from cluster.runtime.events.event_state import EventStatus
+
 from cluster.runtime.worker.event_worker import execute_event
+
+from cluster.runtime.event_log import get_latest_event
+
+from cluster.runtime.state_machine import transition_event
+
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
-# =========================
-# CHAOS FLAG
-# =========================
-BOOT = False
 
 # =========================
 # FASTAPI
@@ -36,35 +40,28 @@ BOOT = False
 app = FastAPI()
 
 
-# -------------------------
-# DEBUG LOG
-# -------------------------
 @app.get("/debug/log")
 def log_dump():
     return FileResponse("cluster/data/event_log.local.jsonl")
 
-
-# -------------------------
-# EXECUTE DIRECT
-# -------------------------
 @app.post("/execute")
 def execute_endpoint(event: ClusterEvent):
-    if BOOT:
-        return {"error": "booting"}, 503
 
     return execute_event(event)
 
 
 # -------------------------
-# ACK
+# ACK (FINAL STATE ONLY)
 # -------------------------
 @app.post("/ack")
 def ack(event: ClusterEvent):
-    if BOOT:
-        return {"error": "booting"}, 503
 
-    log_state("green", "[ACK]", f"{event.event_id}", 3)
-    return {"ok": True, "event_id": event.event_id}
+    log_state("green", "[ACK]", f"{event.event_id} received", 3)
+
+    return {
+        "ok": True,
+        "event_id": event.event_id
+    }
 
 
 # -------------------------
@@ -72,45 +69,35 @@ def ack(event: ClusterEvent):
 # -------------------------
 @app.post("/replay")
 def replay():
-    if BOOT:
-        return {"error": "booting"}, 503
 
     def handler(event):
         return None
 
     replay_events(handler)
+
     return {"ok": True}
 
 
 # =========================
-# MAIN EVENT ENTRYPOINT
+# SINGLE ENTRYPOINT
 # =========================
 @app.post("/event")
-def event(event: ClusterEvent):
-    if BOOT:
-        return {"error": "booting"}, 503
-
-    return handle_event(event)
-
-
 def handle_event(event: ClusterEvent):
 
-    if BOOT:
-        return {"error": "booting"}, 503
 
     leader = compute_leader()
+    #log_state("cyan", "(LEADER)", f"computed={leader}", 3)
 
     if not leader:
         log_state("red", "(NO LEADER)", event.event_id, 3)
         return {"error": "no leader"}
 
     # -----------------------------------
-    # NOT LEADER → forward
+    # NOT LEADER → forward to leader
     # -----------------------------------
     if leader != ctx.node_id:
 
-        if BOOT:
-            return {"error": "booting"}, 503
+        #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
         log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
 
@@ -126,8 +113,10 @@ def handle_event(event: ClusterEvent):
         return resp.json()
 
     # -----------------------------------
-    # LEADER → INGEST
+    # LEADER → INGEST ONLY
     # -----------------------------------
+    #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
+
     result = ingest_event(event, ctx.node_id)
 
     return {
@@ -148,11 +137,10 @@ class Heartbeat(BaseModel):
 
 @app.get("/health")
 def health():
-    if BOOT:
-        return {"status": "booting"}, 503
-
-    return {"status": "ok", "node": "alive"}
-
+    return {
+        "status": "ok",
+        "node": "alive"
+    }
 
 @app.get("/cluster")
 def get_cluster():
@@ -167,9 +155,6 @@ def get_leader():
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
-    if BOOT:
-        return {"error": "booting"}, 503
-
     cluster_state[hb.node_id] = {
         "state": hb.state,
         "priority": hb.priority,
@@ -177,6 +162,10 @@ def heartbeat(hb: Heartbeat):
     }
 
     return {"ok": True}
+
+
+def is_alive(data, timeout=3.0):
+    return (time.time() - data["last_seen"]) < timeout
 
 
 # =========================
