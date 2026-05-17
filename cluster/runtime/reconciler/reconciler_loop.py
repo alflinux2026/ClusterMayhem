@@ -96,6 +96,12 @@ def reconcile_tick(node_runtime):
                 recovered = dict(latest)
                 recovered["status"] = EventStatus.CREATED.value
                 recovered["updated_at"] = now
+
+                recovered["target_node"] = None
+                recovered["execution_key"] = None
+                recovered["attempt"] = 0
+                recovered["route_hops"] = []
+
                 recovered.pop("owner", None)
 
                 append_event(ClusterEvent(**recovered))
