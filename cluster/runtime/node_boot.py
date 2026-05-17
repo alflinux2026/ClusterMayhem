@@ -25,15 +25,48 @@ from cluster.runtime.worker.event_worker import execute_event
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
+
 # =========================
-# CHAOS FLAG
+# BOOT CONTROL (CRITICAL FIX)
 # =========================
-BOOT = False
+BOOT_UNTIL = 0
+BOOT_LOCK = threading.Lock()
+
+
+def is_booting():
+    return time.time() < BOOT_UNTIL
+
+
+def set_boot(seconds: float):
+    global BOOT_UNTIL
+    with BOOT_LOCK:
+        BOOT_UNTIL = time.time() + seconds
+
 
 # =========================
 # FASTAPI
 # =========================
 app = FastAPI()
+
+
+# -------------------------
+# CHAOS CONTROL API
+# -------------------------
+@app.post("/boot")
+def boot_control(payload: dict):
+    """
+    payload:
+      {
+        "seconds": 2.5
+      }
+    """
+    seconds = float(payload.get("seconds", 1.0))
+    set_boot(seconds)
+
+    return {
+        "ok": True,
+        "boot_until": BOOT_UNTIL
+    }
 
 
 # -------------------------
@@ -45,11 +78,11 @@ def log_dump():
 
 
 # -------------------------
-# EXECUTE DIRECT
+# EXECUTE
 # -------------------------
 @app.post("/execute")
 def execute_endpoint(event: ClusterEvent):
-    if BOOT:
+    if is_booting():
         return {"error": "booting"}, 503
 
     return execute_event(event)
@@ -60,7 +93,7 @@ def execute_endpoint(event: ClusterEvent):
 # -------------------------
 @app.post("/ack")
 def ack(event: ClusterEvent):
-    if BOOT:
+    if is_booting():
         return {"error": "booting"}, 503
 
     log_state("green", "[ACK]", f"{event.event_id}", 3)
@@ -72,7 +105,7 @@ def ack(event: ClusterEvent):
 # -------------------------
 @app.post("/replay")
 def replay():
-    if BOOT:
+    if is_booting():
         return {"error": "booting"}, 503
 
     def handler(event):
@@ -83,11 +116,11 @@ def replay():
 
 
 # =========================
-# MAIN EVENT ENTRYPOINT
+# EVENT ENTRYPOINT
 # =========================
 @app.post("/event")
 def event(event: ClusterEvent):
-    if BOOT:
+    if is_booting():
         return {"error": "booting"}, 503
 
     return handle_event(event)
@@ -95,7 +128,7 @@ def event(event: ClusterEvent):
 
 def handle_event(event: ClusterEvent):
 
-    if BOOT:
+    if is_booting():
         return {"error": "booting"}, 503
 
     leader = compute_leader()
@@ -104,12 +137,10 @@ def handle_event(event: ClusterEvent):
         log_state("red", "(NO LEADER)", event.event_id, 3)
         return {"error": "no leader"}
 
-    # -----------------------------------
     # NOT LEADER → forward
-    # -----------------------------------
     if leader != ctx.node_id:
 
-        if BOOT:
+        if is_booting():
             return {"error": "booting"}, 503
 
         log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
@@ -117,17 +148,17 @@ def handle_event(event: ClusterEvent):
         node = CLUSTER_REGISTRY[leader]
         url = f"http://{node['host']}:{node['port']}/event"
 
-        resp = requests.post(
-            url,
-            json=event.model_dump(),
-            timeout=2
-        )
+        try:
+            resp = requests.post(
+                url,
+                json=event.model_dump(),
+                timeout=2
+            )
+            return resp.json()
+        except Exception as e:
+            return {"error": str(e)}
 
-        return resp.json()
-
-    # -----------------------------------
     # LEADER → INGEST
-    # -----------------------------------
     result = ingest_event(event, ctx.node_id)
 
     return {
@@ -138,7 +169,7 @@ def handle_event(event: ClusterEvent):
 
 
 # =========================
-# CLUSTER METADATA
+# HEARTBEAT
 # =========================
 class Heartbeat(BaseModel):
     node_id: str
@@ -146,9 +177,27 @@ class Heartbeat(BaseModel):
     priority: int
 
 
+@app.post("/heartbeat")
+def heartbeat(hb: Heartbeat):
+
+    if is_booting():
+        return {"error": "booting"}, 503
+
+    cluster_state[hb.node_id] = {
+        "state": hb.state,
+        "priority": hb.priority,
+        "last_seen": time.time(),
+    }
+
+    return {"ok": True}
+
+
+# =========================
+# HEALTH
+# =========================
 @app.get("/health")
 def health():
-    if BOOT:
+    if is_booting():
         return {"status": "booting"}, 503
 
     return {"status": "ok", "node": "alive"}
@@ -162,21 +211,6 @@ def get_cluster():
 @app.get("/leader")
 def get_leader():
     return {"leader": compute_leader()}
-
-
-@app.post("/heartbeat")
-def heartbeat(hb: Heartbeat):
-
-    if BOOT:
-        return {"error": "booting"}, 503
-
-    cluster_state[hb.node_id] = {
-        "state": hb.state,
-        "priority": hb.priority,
-        "last_seen": time.time(),
-    }
-
-    return {"ok": True}
 
 
 # =========================
