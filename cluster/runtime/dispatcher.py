@@ -50,11 +50,12 @@ def dispatch_tick():
 
 def dispatch_created_event(event):
 
+    # avoid duplicate completion
     completed = get_completed_event_ids()
-
     if event.event_id in completed:
         return
 
+    # select target
     alive = {
         node_id_: data
         for node_id_, data in cluster_state.items()
@@ -69,13 +70,23 @@ def dispatch_created_event(event):
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
 
-    event.target_node = target
-    event.add_hop(f"dispatcher->worker:{target}")
+    # -------------------------
+    # ROUTING METADATA
+    # -------------------------
+    event["target_node"] = target
+    event.setdefault("route_hops", []).append(f"dispatcher->{target}")
 
-    event.mark_status(EventStatus.EXECUTING)
+    # -------------------------
+    # STATE CHANGE (ONLY HERE)
+    # -------------------------
+    event["status"] = EventStatus.EXECUTING.value
 
+    # -------------------------
+    # PERSIST BEFORE SEND (CRITICAL)
+    # -------------------------
+    append_event(event)
 
-#    append_event(event)
-
+    # -------------------------
+    # SEND TO WORKER
+    # -------------------------
     forward_event(target, event)
-

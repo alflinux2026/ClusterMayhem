@@ -64,8 +64,6 @@ class ClusterEvent(BaseModel):
     def mark_received(self):
         self.received_at = time.time()
 
-
-
     def mark_status(self, status: EventStatus):
         validate_transition(self.status, status)
         self.status = status
