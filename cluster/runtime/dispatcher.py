@@ -75,15 +75,15 @@ def dispatch_created_event(event):
         log_state("red", "[NO ALIVE NODES]", event.event_id, 3)
         return
 
-log_state("yellow", "[DISPATCH]", f"event={event.event_id}", 3)
-log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
+    log_state("yellow", "[DISPATCH]", f"event={event.event_id}", 3)
+    log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
 
     target = max(
         alive.items(),
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
 
-log_state("magenta", "[WORKER SELECTED]", target, 3)
+    log_state("magenta", "[WORKER SELECTED]", target, 3)
 
     log_state("magenta", "[WORKER SELECTED]", f"{event.event_id} -> {target}", 3)
 
@@ -109,7 +109,7 @@ log_state("magenta", "[WORKER SELECTED]", target, 3)
 
     log_state("green", "[PERSIST]", event.event_id, 3)
 
-log_state("red", "[DISPATCH SEND]", f"{event.event_id} -> {target}", 3)
+    log_state("red", "[DISPATCH SEND]", f"{event.event_id} -> {target}", 3)
 
     # -------------------------
     # SEND
