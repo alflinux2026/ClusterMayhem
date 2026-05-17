@@ -3,24 +3,28 @@
 from cluster.runtime.events.event_state import EventStatus, validate_transition
 from cluster.runtime.event_log import load_events, append_event
 
+from cluster.runtime.events.cluster_event import ClusterEvent
 
-def transition_event(event_id: str, new_status: EventStatus):
+def transition_event(event_id: str, new_status):
 
     events = load_events()
 
-    latest = None
+    latest_raw = None
+
     for e in reversed(events):
         if e["event_id"] == event_id:
-            latest = e
+            latest_raw = e
             break
 
-    if not latest:
+    if not latest_raw:
         return
 
-    old_status = latest["status"]
+    latest = ClusterEvent(**latest_raw)  # 🔥 NORMALIZACIÓN AQUÍ
 
-    validate_transition(EventStatus(old_status), new_status)
+    old_status = latest.status
 
-    latest["status"] = new_status
+    validate_transition(old_status, new_status)
 
-    append_event(latest)
+    latest.status = new_status
+
+    append_event(latest)  # ✔ ahora sí correcto
