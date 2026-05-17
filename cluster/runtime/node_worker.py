@@ -4,6 +4,7 @@ import threading
 
 from cluster.runtime.dispatcher import dispatch_tick
 
+from cluster.runtime.reconciler.reconciler_loop import reconcile_tick
 
 class NodeWorker:
 

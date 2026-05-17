@@ -28,7 +28,6 @@ from cluster.runtime.event_log import get_latest_event
 
 from cluster.runtime.state_machine import transition_event
 
-from cluster.runtime.reconciler.reconciler_loop import reconcile_tick
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
