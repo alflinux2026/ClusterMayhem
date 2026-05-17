@@ -1,56 +1,41 @@
-# cluster/runtime/reconciler/reconciler_loop.py
-
 import time
 
 from cluster.runtime.events.event_state import EventStatus
 from cluster.runtime.events.cluster_event import ClusterEvent
 from cluster.runtime.dispatcher import dispatch_created_event
-from cluster.runtime.event_log import load_events
-from cluster.runtime.leader import compute_leader
+from cluster.runtime.event_log import load_events, append_event
 
 
 EXECUTION_TIMEOUT = 10.0
 CREATED_TIMEOUT = 20.0
 MAX_RETRIES = 3
+REQUEUE_COOLDOWN = 5.0
 
 
 def reconcile_tick(node_runtime):
 
+    # 🔒 ONLY ACTIVE NODE
+    if node_runtime.state != node_runtime.state.__class__.ACTIVE:
+        return
+
     now = time.time()
 
-    # -----------------------------------------
-    # 🔒 GATE 1: solo ACTIVE nodes
-    # -----------------------------------------
-    if node_runtime.state.value != "ACTIVE":
-        return
-
-    # -----------------------------------------
-    # 🔒 GATE 2: solo líder real
-    # -----------------------------------------
-    if compute_leader() != node_runtime.node_id:
-        return
-
-    # -----------------------------------------
-    # LOAD EVENTS
-    # -----------------------------------------
     events = load_events()
 
     for e in events:
 
         status = e.get("status")
 
-        # -------------------------
-        # TERMINAL STATES
-        # -------------------------
+        # skip terminal states
         if status in (
             EventStatus.COMPLETED.value,
             EventStatus.FAILED.value
         ):
             continue
 
-        # -------------------------
+        # -------------------------------------------------
         # EXECUTING STUCK
-        # -------------------------
+        # -------------------------------------------------
         if status == EventStatus.EXECUTING.value:
 
             last_update = e.get("updated_at") or e.get("created_at", now)
@@ -61,22 +46,33 @@ def reconcile_tick(node_runtime):
 
                 if attempt > MAX_RETRIES:
                     e["status"] = EventStatus.FAILED.value
+                    e["updated_at"] = now
+                    append_event(ClusterEvent(**e))
                     continue
 
                 e["attempt"] = attempt
                 e["status"] = EventStatus.CREATED.value
                 e["updated_at"] = now
 
+                append_event(ClusterEvent(**e))
+
                 dispatch_created_event(ClusterEvent(**e))
 
-        # -------------------------
+        # -------------------------------------------------
         # CREATED STUCK
-        # -------------------------
+        # -------------------------------------------------
         elif status == EventStatus.CREATED.value:
 
-            created_at = e.get("created_at")
+            created_at = e.get("created_at", 0)
+            last_update = e.get("updated_at", 0)
 
-            if created_at and (now - created_at > CREATED_TIMEOUT):
+            # 🧠 cooldown anti-loop
+            if now - last_update < REQUEUE_COOLDOWN:
+                continue
+
+            if now - created_at > CREATED_TIMEOUT:
 
                 e["updated_at"] = now
+
+                append_event(ClusterEvent(**e))
                 dispatch_created_event(ClusterEvent(**e))
