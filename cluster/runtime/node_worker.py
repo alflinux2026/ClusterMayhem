@@ -1,10 +1,9 @@
-
 import time
 import threading
 
 from cluster.runtime.dispatcher import dispatch_tick
-
 from cluster.runtime.reconciler.reconciler_loop import reconcile_tick
+
 
 class NodeWorker:
 
@@ -14,26 +13,35 @@ class NodeWorker:
         self.interval = interval
         self._running = False
 
+    # -------------------------
+    # START
+    # -------------------------
     def start(self):
         self._running = True
         t = threading.Thread(target=self._loop, daemon=True)
         t.start()
 
+    # -------------------------
+    # STOP
+    # -------------------------
     def stop(self):
         self._running = False
 
-# cluster/runtime/node_worker.py
+    # -------------------------
+    # MAIN LOOP
+    # -------------------------
+    def _loop(self):
 
-def _loop(self):
+        while self._running:
 
-    while self._running:
+            # cluster tick
+            self.node.tick()
+            self.node.emit_heartbeat(self.peers)
 
-        self.node.tick()
-        self.node.emit_heartbeat(self.peers)
+            # dispatch (leader only)
+            dispatch_tick()
 
-        dispatch_tick()
+            # reconcile (leader only inside)
+            reconcile_tick(self.node)
 
-        # FIX: usar self.node
-        reconcile_tick(self.node)
-
-        time.sleep(self.interval)
+            time.sleep(self.interval)
