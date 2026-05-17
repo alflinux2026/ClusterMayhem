@@ -43,48 +43,95 @@ def forward_to_leader(event: ClusterEvent):
     except:
         return {"status": "forwarded", "raw": resp.text}
 
+# =========================
+# FORWARD TO WORKER (TRANSPORT ONLY)
+# =========================
 
-# =========================
-# FORWARD TO WORKER
-# =========================
+import requests
+
+from cluster.runtime.registry import CLUSTER_REGISTRY
+from cluster.runtime.leader import compute_leader
+from cluster.utils.log_print import log_state
+from cluster.runtime.events.cluster_event import ClusterEvent
+
+
 def forward_event(node_id: str, event: ClusterEvent):
 
+    # -------------------------
+    # BUILD TARGET URL
+    # -------------------------
     node = CLUSTER_REGISTRY[node_id]
     url = f"http://{node['host']}:{node['port']}/execute"
 
+    # -------------------------
+    # TRACE ONLY (NO STATE CHANGE)
+    # -------------------------
     event.add_hop(f"worker:{node_id}")
-    event.mark_status(EventStatus.EXECUTING)
 
-    log_state("magenta", "[WORKER SEND]", f"{event.event_id} -> {node_id}", 3)
-
-    requests.post(
-        url,
-        json=event.model_dump(),
-        timeout=2
+    # -------------------------
+    # LOG TRANSPORT
+    # -------------------------
+    log_state(
+        "magenta",
+        "[WORKER SEND]",
+        f"{event.event_id} -> {node_id}",
+        3
     )
 
     # -------------------------
-    # ACK TO LEADER
+    # SEND TO WORKER
     # -------------------------
+    try:
+        requests.post(
+            url,
+            json=event.model_dump(),
+            timeout=2
+        )
+    except Exception as e:
+        log_state(
+            "red",
+            "[WORKER SEND FAIL]",
+            f"{event.event_id} -> {node_id} | {e}",
+            3
+        )
+        return {"error": "worker_send_failed"}
 
+    # -------------------------
+    # ACK TO LEADER (TRANSPORT ONLY)
+    # -------------------------
     leader = compute_leader()
 
-    if leader:
+    if not leader:
+        return {"error": "no_leader"}
 
-        leader_node = CLUSTER_REGISTRY[leader]
+    leader_node = CLUSTER_REGISTRY[leader]
 
-        ack_url = (
-            f"http://{leader_node['host']}:"
-            f"{leader_node['port']}/ack"
-        )
+    ack_url = (
+        f"http://{leader_node['host']}:"
+        f"{leader_node['port']}/ack"
+    )
 
-        event.mark_status(EventStatus.COMPLETED)
-
+    try:
         requests.post(
             ack_url,
             json=event.model_dump(),
             timeout=2
         )
+    except Exception as e:
+        log_state(
+            "red",
+            "[ACK FAIL]",
+            f"{event.event_id} | {e}",
+            3
+        )
+        return {"error": "ack_failed"}
 
-
-
+    # -------------------------
+    # IMPORTANT:
+    # NO STATE CHANGES HERE
+    # -------------------------
+    return {
+        "status": "forwarded",
+        "event_id": event.event_id,
+        "target": node_id
+    }
