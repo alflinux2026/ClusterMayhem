@@ -88,9 +88,10 @@ def forward_event(node_id: str, event: ClusterEvent):
             timeout=2
         )
 
-        if resp.status_code == 200:
+        if resp.status_code == 200: {
             transition_event(event.event_id, EventStatus.COMPLETED)
             log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT COMPLETED", 3)
+        }
 
     except Exception as e:
         log_state(
