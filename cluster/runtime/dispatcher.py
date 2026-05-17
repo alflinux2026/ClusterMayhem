@@ -100,6 +100,7 @@ def dispatch_created_event(event):
     # -------------------------
 
     event.attempt = (event.attempt or 0) + 1   # 👈 AQUI
+    event.attempt = 0
 
     event.mark_status(EventStatus.EXECUTING)
 
