@@ -1,95 +1,64 @@
 import time
 from collections import defaultdict
 
-from cluster.runtime.events.event_state import EventStatus
-from cluster.runtime.events.cluster_event import ClusterEvent
-from cluster.runtime.dispatcher import dispatch_created_event
-from cluster.runtime.event_log import load_events, append_event
-
-
-EXECUTION_TIMEOUT = 10.0
-CREATED_TIMEOUT = 20.0
-MAX_RETRIES = 3
-REQUEUE_COOLDOWN = 5.0
+from cluster.runtime.event_log import load_events
 
 
 def reconcile_tick(node_runtime):
 
+    # SOLO nodo activo
     if node_runtime.state != node_runtime.state.__class__.ACTIVE:
         return
 
-    now = time.time()
     events = load_events()
 
-    # -------------------------------------------------
-    # 1. MATERIALIZE LATEST STATE PER EVENT
-    # -------------------------------------------------
-    latest = {}
+    # -----------------------------------------
+    # 1. AGRUPAR POR EVENT_ID
+    # -----------------------------------------
+    by_id = defaultdict(list)
 
     for e in events:
-        eid = e.get("id")
+        eid = e.get("event_id")   # ✔ FIX IMPORTANTE
         if not eid:
             continue
+        by_id[eid].append(e)
 
-        # keep last occurrence (append-only log)
-        if eid not in latest or e.get("updated_at", 0) > latest[eid].get("updated_at", 0):
-            latest[eid] = e
+    now = time.time()
 
-    # -------------------------------------------------
-    # 2. RECONCILE ONLY CURRENT STATE
-    # -------------------------------------------------
-    for eid, e in latest.items():
+    print("\n\n================ RECONCILER DEBUG ================\n")
 
-        status = e.get("status")
+    # -----------------------------------------
+    # 2. PROCESAR CADA EVENTO
+    # -----------------------------------------
+    for eid, history in by_id.items():
 
-        # terminal states → ignore
-        if status in (EventStatus.COMPLETED.value, EventStatus.FAILED.value):
-            continue
+        # ordenar por tiempo real de evento
+        history.sort(key=lambda x: (
+            x.get("updated_at") or x.get("created_at") or 0
+        ))
 
-        # -------------------------------------------------
-        # EXECUTING WATCHDOG
-        # -------------------------------------------------
-        if status == EventStatus.EXECUTING.value:
+        print(f"\nEVENT_ID: {eid}")
+        print("-" * 60)
 
-            last_update = e.get("updated_at") or e.get("created_at", now)
+        for i, h in enumerate(history):
 
-            if now - last_update <= EXECUTION_TIMEOUT:
-                continue
+            ts = h.get("updated_at") or h.get("created_at")
+            status = h.get("status")
+            node = h.get("target_node")
+            attempt = h.get("attempt")
 
-            attempt = e.get("attempt", 0) + 1
+            print(
+                f"[{i}] "
+                f"ts={ts:.3f} "
+                f"status={status:<10} "
+                f"node={node} "
+                f"attempt={attempt}"
+            )
 
-            if attempt > MAX_RETRIES:
-                e["status"] = EventStatus.FAILED.value
-                e["updated_at"] = now
-                append_event(ClusterEvent(**e))
-                continue
+        latest = history[-1]
+        print("\n→ LATEST:", latest.get("status"))
 
-            e["attempt"] = attempt
-            e["status"] = EventStatus.CREATED.value
-            e["updated_at"] = now
-            e.pop("owner", None)
+        # separación visual
+        print("-" * 60)
 
-            append_event(ClusterEvent(**e))
-            continue
-
-        # -------------------------------------------------
-        # CREATED → DISPATCH CONTROLLED
-        # -------------------------------------------------
-        if status == EventStatus.CREATED.value:
-
-            created_at = e.get("created_at", 0)
-            last_update = e.get("updated_at", 0)
-
-            if now - last_update < REQUEUE_COOLDOWN:
-                continue
-
-            if now - created_at < CREATED_TIMEOUT:
-                continue
-
-            # CLAIM (soft lock)
-            e["status"] = EventStatus.EXECUTING.value
-            e["owner"] = node_runtime.node_id
-            e["updated_at"] = now
-
-            append_event(ClusterEvent(**e))
-            dispatch_created_event(ClusterEvent(**e))
+    print("\n==================================================\n")
