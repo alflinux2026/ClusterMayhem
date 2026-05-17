@@ -57,20 +57,11 @@ from cluster.runtime.events.cluster_event import ClusterEvent
 
 def forward_event(node_id: str, event: ClusterEvent):
 
-    # -------------------------
-    # BUILD TARGET URL
-    # -------------------------
     node = CLUSTER_REGISTRY[node_id]
     url = f"http://{node['host']}:{node['port']}/execute"
 
-    # -------------------------
-    # TRACE ONLY (NO STATE CHANGE)
-    # -------------------------
     event.add_hop(f"worker:{node_id}")
 
-    # -------------------------
-    # LOG TRANSPORT
-    # -------------------------
     log_state(
         "magenta",
         "[WORKER SEND]",
@@ -82,17 +73,11 @@ def forward_event(node_id: str, event: ClusterEvent):
     # SEND TO WORKER
     # -------------------------
     try:
-        resp = requests.post(
-            ack_url,
+        requests.post(
+            url,
             json=event.model_dump(),
             timeout=2
         )
-
-        if resp.status_code == 200: {
-            transition_event(event.event_id, EventStatus.COMPLETED)
-            log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT COMPLETED", 3)
-        }
-
     except Exception as e:
         log_state(
             "red",
@@ -103,7 +88,7 @@ def forward_event(node_id: str, event: ClusterEvent):
         return {"error": "worker_send_failed"}
 
     # -------------------------
-    # ACK TO LEADER (TRANSPORT ONLY)
+    # ACK TO LEADER (AFTER WORKER SEND)
     # -------------------------
     leader = compute_leader()
 
@@ -118,11 +103,23 @@ def forward_event(node_id: str, event: ClusterEvent):
     )
 
     try:
-        requests.post(
+        resp = requests.post(
             ack_url,
             json=event.model_dump(),
             timeout=2
         )
+
+        if resp.status_code == 200:
+            from cluster.runtime.state_machine import transition_event
+            transition_event(event.event_id, EventStatus.COMPLETED)
+
+            log_state(
+                "yellow",
+                "[STATE]",
+                f"{event.event_id} -> EVENT COMPLETED",
+                3
+            )
+
     except Exception as e:
         log_state(
             "red",
@@ -132,10 +129,6 @@ def forward_event(node_id: str, event: ClusterEvent):
         )
         return {"error": "ack_failed"}
 
-    # -------------------------
-    # IMPORTANT:
-    # NO STATE CHANGES HERE
-    # -------------------------
     return {
         "status": "forwarded",
         "event_id": event.event_id,
