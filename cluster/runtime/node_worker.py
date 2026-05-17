@@ -40,6 +40,12 @@ class NodeWorker:
             dispatch_tick()
 
             # -------------------------
+            # RECONCILE LOOP
+            # -------------------------
+
+            reconcile_tick()
+
+            # -------------------------
             # LOOP SLEEP
             # -------------------------
 

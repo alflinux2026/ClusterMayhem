@@ -1,15 +1,12 @@
-# =========================
-# RECONCILER LOOP (SAFE RECOVERY)
-# =========================
-
 import time
+
 from cluster.runtime.event_log import load_events
 from cluster.runtime.dispatcher import dispatch_created_event
 from cluster.runtime.events.event_state import EventStatus
 
 
-EXECUTION_TIMEOUT = 5.0
-CREATED_TIMEOUT = 10.0
+EXECUTION_TIMEOUT = 10.0
+CREATED_TIMEOUT = 20.0
 MAX_RETRIES = 3
 
 
@@ -17,18 +14,32 @@ def reconcile_tick():
 
     now = time.time()
 
-    events = [
-        e for e in load_events()
-    ]
+    events = load_events()
 
     for e in events:
 
-        # -------------------------
-        # EXECUTING STUCK RECOVERY
-        # -------------------------
-        if e["status"] == EventStatus.EXECUTING.value:
+        status = e["status"]
 
-            if now - e.get("updated_at", e["created_at"]) > EXECUTION_TIMEOUT:
+        # -----------------------------------------
+        # ❌ NEVER TOUCH COMPLETED
+        # -----------------------------------------
+        if status == EventStatus.COMPLETED.value:
+            continue
+
+        # -----------------------------------------
+        # FAILED → no retry (o policy futura)
+        # -----------------------------------------
+        if status == EventStatus.FAILED.value:
+            continue
+
+        # -----------------------------------------
+        # EXECUTING STUCK
+        # -----------------------------------------
+        if status == EventStatus.EXECUTING.value:
+
+            last_update = e.get("updated_at") or e.get("created_at", now)
+
+            if now - last_update > EXECUTION_TIMEOUT:
 
                 attempt = e.get("attempt", 0) + 1
 
@@ -37,17 +48,19 @@ def reconcile_tick():
                     continue
 
                 e["attempt"] = attempt
+
+                # 🔥 rollback seguro
                 e["status"] = EventStatus.CREATED.value
 
-                # re-dispatch SAFE (NO EXECUTING DIRECT)
                 dispatch_created_event(e)
 
+        # -----------------------------------------
+        # CREATED STUCK
+        # -----------------------------------------
+        elif status == EventStatus.CREATED.value:
 
-        # -------------------------
-        # CREATED STUCK RECOVERY
-        # -------------------------
-        elif e["status"] == EventStatus.CREATED.value:
+            created_at = e.get("created_at", now)
 
-            if now - e["created_at"] > CREATED_TIMEOUT:
+            if now - created_at > CREATED_TIMEOUT:
 
                 dispatch_created_event(e)

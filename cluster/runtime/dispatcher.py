@@ -105,6 +105,7 @@ def dispatch_created_event(event):
     # -------------------------
     # PERSIST
     # -------------------------
+    event.updated_at = time.time()
     append_event(event)
 
     #log_state("green", "[PERSIST]", event.event_id, 3)
