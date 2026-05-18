@@ -15,59 +15,107 @@ from cluster.runtime.leader import compute_leader
 from cluster.runtime.bootstrap import load_or_bootstrap_config
 from cluster.runtime.registry import CLUSTER_REGISTRY
 
-from cluster.runtime.event_log import replay_events
+from cluster.runtime.event_log import append_event, replay_events
 from cluster.runtime.ingest import ingest_event
 from cluster.runtime.events.cluster_event import ClusterEvent
 from cluster.runtime import context as ctx
 from cluster.utils.log_print import log_state
 
+from cluster.runtime.events.event_state import EventStatus
+
+from cluster.runtime.worker.event_worker import execute_event
+
+from cluster.runtime.event_log import get_latest_event
+
+from cluster.runtime.state_machine import transition_event
+
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
 
-# =====================================================
+# =========================
 # FASTAPI
-# =====================================================
+# =========================
 app = FastAPI()
 
 
-# =====================================================
-# DEBUG: ver líder en cada request (CLAVE)
-# =====================================================
-def debug_leader(tag=""):
-    leader = compute_leader()
-    print(f"[LEADER DEBUG] {tag} node={ctx.node_id} leader={leader} state={cluster_state}")
-    return leader
+@app.get("/debug/log")
+def log_dump():
+    return FileResponse("cluster/data/event_log.local.jsonl")
+
+@app.post("/execute")
+def execute_endpoint(event: ClusterEvent):
+
+    return execute_event(event)
 
 
-# =====================================================
-# EVENT FLOW
-# =====================================================
+# -------------------------
+# ACK (FINAL STATE ONLY)
+# -------------------------
+@app.post("/ack")
+def ack(event: ClusterEvent):
+
+    log_state("green", "[ACK]", f"{event.event_id} received", 3)
+
+    return {
+        "ok": True,
+        "event_id": event.event_id
+    }
+
+
+# -------------------------
+# REPLAY
+# -------------------------
+@app.post("/replay")
+def replay():
+
+    def handler(event):
+        return None
+
+    replay_events(handler)
+
+    return {"ok": True}
+
+
+# =========================
+# SINGLE ENTRYPOINT
+# =========================
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
-    leader = debug_leader(event.event_id)
+
+    leader = compute_leader()
+    #log_state("cyan", "(LEADER)", f"computed={leader}", 3)
 
     if not leader:
         log_state("red", "(NO LEADER)", event.event_id, 3)
         return {"error": "no leader"}
 
+    # -----------------------------------
+    # NOT LEADER → forward to leader
+    # -----------------------------------
     if leader != ctx.node_id:
+
+        #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
         log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
 
         node = CLUSTER_REGISTRY[leader]
         url = f"http://{node['host']}:{node['port']}/event"
 
-        try:
-            resp = requests.post(
-                url,
-                json=event.model_dump(),
-                timeout=2
-            )
-            return resp.json()
-        except Exception as e:
-            return {"error": str(e)}
+        resp = requests.post(
+            url,
+            json=event.model_dump(),
+            timeout=2
+        )
+
+        return resp.json()
+
+    # -----------------------------------
+    # LEADER → INGEST ONLY
+    # -----------------------------------
+    #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
     result = ingest_event(event, ctx.node_id)
 
@@ -78,13 +126,30 @@ def handle_event(event: ClusterEvent):
     }
 
 
-# =====================================================
-# HEALTH
-# =====================================================
+# =========================
+# CLUSTER METADATA
+# =========================
 class Heartbeat(BaseModel):
     node_id: str
     state: str
     priority: int
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "node": "alive"
+    }
+
+@app.get("/cluster")
+def get_cluster():
+    return cluster_state
+
+
+@app.get("/leader")
+def get_leader():
+    return {"leader": compute_leader()}
 
 
 @app.post("/heartbeat")
@@ -99,69 +164,16 @@ def heartbeat(hb: Heartbeat):
     return {"ok": True}
 
 
-# =====================================================
-# 🔥 FIX CRÍTICO: SLEEP / REVIVE REAL
-# =====================================================
-
-@app.post("/sleep")
-def sleep():
-
-    cluster_state[ctx.node_id] = {
-        "state": "SLEEP",
-        "priority": ctx.priority,
-        "last_seen": time.time(),
-    }
-
-    print(f"[SLEEP] {ctx.node_id} -> SLEEP")
-
-    return {"ok": True}
+def is_alive(data, timeout=3.0):
+    return (time.time() - data["last_seen"]) < timeout
 
 
-@app.post("/revive")
-def revive():
-
-    cluster_state[ctx.node_id] = {
-        "state": "STANDBY",
-        "priority": ctx.priority,
-        "last_seen": time.time(),
-    }
-
-    print(f"[REVIVE] {ctx.node_id} -> STANDBY")
-
-    return {"ok": True}
-
-
-# =====================================================
-# HEALTH
-# =====================================================
-@app.get("/cluster")
-def get_cluster():
-    return cluster_state
-
-
-@app.get("/leader")
-def get_leader():
-    return {"leader": compute_leader()}
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok", "node": ctx.node_id}
-
-
-# =====================================================
-# BOOTSTRAP (SIN CAMBIOS)
-# =====================================================
+# =========================
+# BOOTSTRAP
+# =========================
 def run_node(config):
 
     ctx.node_id = config["node_id"]
-    ctx.priority = config["priority"]
-
-    cluster_state[ctx.node_id] = {
-        "state": "STANDBY",
-        "priority": ctx.priority,
-        "last_seen": time.time(),
-    }
 
     node = NodeRuntime(
         node_id=config["node_id"],
@@ -185,9 +197,9 @@ def run_node(config):
     )
 
 
-# =====================================================
+# =========================
 # ENTRYPOINT
-# =====================================================
+# =========================
 if __name__ == "__main__":
 
     config = load_or_bootstrap_config()
