@@ -105,7 +105,7 @@ def compute_leader(debug_node_id=None):
             data['state'] = '  GONE  '   # 👈 aquí lo marcas aunque esté muerto
 
 
-    log_state("blue", "[NODE]", f"-----------------------------------------------------------", 3)
+    log_state("blue", "[NODE]", f"---------------------------------------------------", 3)
 
     if not active_nodes:
         return None
