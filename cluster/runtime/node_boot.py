@@ -126,6 +126,42 @@ def handle_event(event: ClusterEvent):
     }
 
 
+
+
+# =====================================================
+# 🔥 FIX CRÍTICO: SLEEP / REVIVE REAL
+# =====================================================
+
+@app.post("/sleep")
+def sleep():
+
+    cluster_state[ctx.node_id] = {
+        "state": "SLEEP",
+        "priority": ctx.priority,
+        "last_seen": time.time(),
+    }
+
+    print(f"[SLEEP] {ctx.node_id} -> SLEEP")
+
+    return {"ok": True}
+
+
+@app.post("/revive")
+def revive():
+
+    cluster_state[ctx.node_id] = {
+        "state": "STANDBY",
+        "priority": ctx.priority,
+        "last_seen": time.time(),
+    }
+
+    print(f"[REVIVE] {ctx.node_id} -> STANDBY")
+
+    return {"ok": True}
+
+
+
+
 # =========================
 # CLUSTER METADATA
 # =========================
