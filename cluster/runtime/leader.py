@@ -6,7 +6,7 @@ def is_alive(data, timeout=1.5):
     return (time.time() - data["last_seen"]) < timeout
 
 
-def compute_leader():
+def compute_leader_old():
 
     active_nodes = {
         node_id: data
@@ -65,5 +65,33 @@ def compute_leader_new(debug_node_id=None):
 
     print(f"[LEADER RESULT] {leader}")
     print("=" * 60 + "\n")
+
+    return leader
+
+
+def compute_leader(debug_node_id=None):
+
+    now = time.time()
+
+
+    active_nodes = {}
+
+    for node_id, data in cluster_state.items():
+
+        age = now - data.get("last_seen", 0)
+        alive = is_alive(data)
+
+
+        if alive:
+            active_nodes[node_id] = data
+
+    if not active_nodes:
+        return None
+
+    leader = min(
+        active_nodes.items(),
+        key=lambda x: (x[1]["priority"], x[0])
+    )[0]
+
 
     return leader
