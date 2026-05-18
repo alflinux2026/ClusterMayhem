@@ -88,13 +88,14 @@ def compute_leader(debug_node_id=None):
         alive = is_alive(data)
 
 
-
         log_state("blue", "[NODE]", f"| {node_id:10} | "
             f"{data.get('state'):8} | "
             f"{data.get('priority'):1} | "
             f"{age:6.3f}s | "
             f"{alive}", 3)
 
+        if data.get('state') == ' GONE ':
+           time.sleep(30)
 
 
 

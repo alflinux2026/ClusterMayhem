@@ -45,6 +45,11 @@ class NodeRuntime:
             self.transition(NodeState.STANDBY)
             return
 
+#        if self.state == NodeState.ISOLATED:
+#           print(f"[{self.node_id}] becoming ACTIVE")
+#            log_state("yellow", "    [CLUSTER]", f"[{self.node_id}] becoming ISOLATED")
+#            self.transition(NodeState.ISOLATED)
+
         # -------------------------------------------------
         # GLOBAL LEADER DECISION (external authority)
         # -------------------------------------------------
