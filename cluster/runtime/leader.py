@@ -1,3 +1,4 @@
+from cluster.utils.log_print import log_state
 from cluster.runtime.cluster_store import cluster_state
 import time
 
@@ -45,10 +46,10 @@ def compute_leader_new(debug_node_id=None):
 
         print(
             f"- {node_id:10} | "
-            f"state={data.get('state'):10} | "
-            f"priority={data.get('priority'):3} | "
-            f"age={age:6.3f}s | "
-            f"alive={alive}"
+            f"{data.get('state'):10} | "
+            f"{data.get('priority'):3} | "
+            f"{age:6.3f}s | "
+            f"{alive}"
         )
 
         if alive:
@@ -88,13 +89,13 @@ def compute_leader(debug_node_id=None):
 
         #if data.get('state') == 'ACTIVE':
 
-        print(
-            f"- {node_id:10} | "
+        log_state("blue", "[NODE]", f"- {node_id:10} | "
             f"state={data.get('state'):10} | "
             f"priority={data.get('priority'):3} | "
             f"age={age:6.3f}s | "
-            f"alive={alive}"
-        )
+            f"alive={alive}", 3)
+
+
 
 
         if alive:
