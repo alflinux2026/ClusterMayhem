@@ -75,7 +75,7 @@ def replay():
 # =====================================================
 
 def get_valid_leader():
-    leader = compute_leader()
+    leader = debug_compute_leader(event.event_id)
 
     if not leader:
         return None
@@ -242,6 +242,18 @@ def run_node(config):
         access_log=False
     )
 
+
+def debug_compute_leader(tag: str = ""):
+    leader = compute_leader()
+
+    log_state(
+        "magenta",
+        "[LEADER DEBUG]",
+        f"{tag} leader={leader} node={ctx.node_id}",
+        2
+    )
+
+    return leader
 
 # =====================================================
 # ENTRYPOINT
