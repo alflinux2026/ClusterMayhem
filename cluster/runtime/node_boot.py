@@ -44,7 +44,7 @@ def kill_node():
             "last_seen": time.time(),
         }
 
-        log_state("red", "[NODE DEAD]", ctx.node_id, 3)
+        log_state("red", "(TIME TO SLEEP)", ctx.node_id, 3)
 
 
 def revive_node():
@@ -59,7 +59,7 @@ def revive_node():
             "last_seen": time.time(),
         }
 
-        log_state("green", "[NODE REVIVED]", ctx.node_id, 3)
+        log_state("red", "(TIME TO WAKE UP)", ctx.node_id, 3)
 
 
 def is_dead():
