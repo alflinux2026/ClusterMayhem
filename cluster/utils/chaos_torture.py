@@ -1,123 +1,119 @@
 import time
 import random
-import threading
 import requests
+import threading
 
 from cluster.runtime.events.cluster_event import ClusterEvent
 
 
-# =========================
-# CONFIG
-# =========================
+# =====================================================
+# ⚙️ CONFIGURACIÓN
+# =====================================================
+
 NODES = [
     "http://100.100.1.200:7000",
     "http://100.100.1.202:7000",
     "http://100.100.1.203:7000",
 ]
 
-TOTAL_EVENTS = 100
+# 📦 Número total de eventos que se van a inyectar al cluster
+# Unidad: eventos (integer count)
+EVENTS = 50
+
+# ⏱️ Rango de tiempo entre eventos consecutivos
+# Unidad: segundos (s)
+# Ejemplo: (0.3, 1.2) = entre 300ms y 1200ms de espera entre eventos
+EVENT_DELAY_RANGE = (3, 6)
+
+# 💥 Probabilidad de lanzar un BOOT (simulación de caída o reinicio de nodo)
+# Unidad: probabilidad (0.0 → 1.0)
+# Ejemplo: 0.05 = 5% de probabilidad por evento
+BOOT_PROBABILITY = 0.3
+
+# ⛔ Duración del estado BOOT del nodo (simulación de downtime)
+# Unidad: segundos (s)
+# Ejemplo: (1.5, 4.0) = el nodo estará “caído” entre 1.5s y 4s
+BOOT_DURATION_RANGE = (5, 15)
+
+# 🌐 Timeout de las peticiones HTTP hacia el cluster
+# Unidad: segundos (s)
+# Ejemplo: 5 = si no responde en 5s, se considera fallo
+REQUEST_TIMEOUT = 5
 
 
-# =========================
-# BOOT CONTROL
-# =========================
-def boot_on(node):
+# =====================================================
+# 🧨 BOOT CHAOS
+# =====================================================
+
+def boot_node(node, seconds):
     try:
-        requests.post(f"{node}/debug/boot/on", timeout=1)
-        print(f"[CHAOS] BOOT ON {node}")
+        requests.post(
+            f"{node}/boot",
+            json={"seconds": seconds},
+            timeout=1
+        )
+        print(f"[CHAOS] BOOT {node} {seconds:.2f}s")
     except Exception as e:
-        print(f"[BOOT ERROR ON] {node}: {e}")
+        print(f"[CHAOS FAIL] {node} -> {repr(e)}")
 
 
-def boot_off(node):
-    try:
-        requests.post(f"{node}/debug/boot/off", timeout=1)
-        print(f"[CHAOS] BOOT OFF {node}")
-    except Exception as e:
-        print(f"[BOOT ERROR OFF] {node}: {e}")
+# =====================================================
+# 📦 EVENT SENDING (CORRECT FORMAT)
+# =====================================================
 
-
-def boot_cycle(node):
-    duration = random.uniform(1.5, 5.0)
-    boot_on(node)
-    time.sleep(duration)
-    boot_off(node)
-
-
-def chaos_boot_loop(stop_event):
-    while not stop_event.is_set():
-        node = random.choice(NODES)
-        boot_cycle(node)
-        time.sleep(random.uniform(0.5, 2.0))
-
-
-# =========================
-# EVENT SENDER
-# =========================
 def send_event(i):
     node = random.choice(NODES)
 
-    event = {
-        "event_id": i,
-        "event_type": "test",
-        "payload": {"value": i}
-    }
+    event = ClusterEvent(
+        event_type="chaos.test",
+        payload={
+            "msg": f"message-{i}",
+            "seq": i,
+            "source": "chaos_torture"
+        },
+        created_at=time.time()
+    )
 
     try:
-        r = requests.post(f"{node}/event", json=event, timeout=2)
-        if r.status_code != 200:
-            print(f"[TORTURE FAIL {i}] {r.text}")
-        else:
-            print(f"[TORTURE OK {i}]")
-            return True
+        r = requests.post(
+            f"{node}/event",
+            json=event.model_dump(),
+            timeout=REQUEST_TIMEOUT
+        )
+
+        print(f"[TORTURE] {i} -> {node} ({r.status_code}) {r.text}")
 
     except Exception as e:
-        print(f"[TORTURE FAIL {i}] {e}")
-
-    return False
+        print(f"[TORTURE FAIL] {node} -> {repr(e)}")
 
 
-# =========================
-# MAIN
-# =========================
+# =====================================================
+# 🔥 MAIN LOOP
+# =====================================================
+
+def chaos_loop():
+    for i in range(EVENTS):
+
+        if random.random() < BOOT_PROBABILITY:
+            node = random.choice(NODES)
+            threading.Thread(
+                target=boot_node,
+                args=(node, random.uniform(*BOOT_DURATION_RANGE)),
+                daemon=True
+            ).start()
+
+        send_event(i)
+        time.sleep(random.uniform(*EVENT_DELAY_RANGE))
+
+
+# =====================================================
+# 🚀 ENTRYPOINT
+# =====================================================
+
 def main():
-
-    print("[MAIN] starting chaos torture")
-
-    stop_boot = threading.Event()
-
-    # BOOT chaos thread
-    boot_thread = threading.Thread(
-        target=chaos_boot_loop,
-        args=(stop_boot,),
-        daemon=True
-    )
-    boot_thread.start()
-
-    seen = 0
-
-    try:
-        for i in range(TOTAL_EVENTS):
-            if send_event(i):
-                seen += 1
-
-            time.sleep(random.uniform(0.05, 0.2))
-
-    finally:
-        print("[MAIN] stopping BOOT chaos...")
-        stop_boot.set()
-        boot_thread.join(timeout=3)
-
-        # cleanup safety
-        for n in NODES:
-            boot_off(n)
-
-    print("\n===== RESULT =====")
-    print(f"sent: {TOTAL_EVENTS}")
-    print(f"seen: {seen}")
-    print(f"missing: {TOTAL_EVENTS - seen}")
-    print("==================")
-
+    print("[MAIN] starting cluster chaos torture")
+    chaos_loop()
+    print("[MAIN] done")
 
 
 if __name__ == "__main__":
