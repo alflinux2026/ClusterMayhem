@@ -203,8 +203,8 @@ def heartbeat(hb: Heartbeat):
     with HB_LOCK:
 
         if ctx.node_id == "lnx200nas":
-            log_state("red", "(HB FREEZE)", "sleeping 20s", 3)
-            time.sleep(20)
+            log_state("red", "(HB FREEZE 3s)", "sleeping 20s", 3)
+            # time.sleep(3)
 
         if is_sleeping():
             log_state("white", "(NO HEARTBEAT)", f"{ctx.node_id} -> NO HEARTBEAT", 3)
