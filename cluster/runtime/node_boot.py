@@ -191,27 +191,30 @@ def get_leader():
     return {"leader": compute_leader()}
 
 
+HB_LOCK = threading.Lock()
+
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
-    if ctx.node_id == "lnx200nas":
-        log_state("red", "(HB FREEZE)", "sleeping 20s", 3)
-        time.sleep(20)
+    with HB_LOCK:
 
-    # ❌ BLOQUEO CRÍTICO: nodo en SLEEP no refresca vida
-    if  is_sleeping():
-        log_state("white", "(NO HEARTBEAT)", f"{ctx.node_id} -> NO HEARTBEAT", 3)
-        return {"ok": True, "ignored": True}
+        if ctx.node_id == "lnx200nas":
+            log_state("red", "(HB FREEZE)", "sleeping 20s", 3)
+            time.sleep(20)
 
-    log_state("white", "(HEARTBEAT)", f"{ctx.node_id} -> HEARTBEAT", 3)
+        if is_sleeping():
+            log_state("white", "(NO HEARTBEAT)", f"{ctx.node_id} -> NO HEARTBEAT", 3)
+            return {"ok": True, "ignored": True}
 
-    cluster_state[hb.node_id] = {
-        "state": hb.state,
-        "priority": hb.priority,
-        "last_seen": time.time(),
-    }
+        log_state("white", "(HEARTBEAT)", f"{ctx.node_id} -> HEARTBEAT", 3)
 
-    return {"ok": True}
+        cluster_state[hb.node_id] = {
+            "state": hb.state,
+            "priority": hb.priority,
+            "last_seen": time.time(),
+        }
+
+        return {"ok": True}
 
 
 # =====================================================
