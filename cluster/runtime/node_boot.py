@@ -72,9 +72,16 @@ app = FastAPI()
 @app.middleware("http")
 async def death_middleware(request: Request, call_next):
 
-    if request.url.path == "/health":
+    # endpoints permitidos incluso muerto
+    ALWAYS_ALLOWED = {
+        "/health",
+        "/revive",
+    }
+
+    if request.url.path in ALWAYS_ALLOWED:
         return await call_next(request)
 
+    # nodo muerto = blackout total
     if is_dead():
         return Response(
             status_code=503,
