@@ -4,8 +4,8 @@ import uvicorn
 import logging
 import requests
 
-from fastapi import FastAPI, Request
-from fastapi.responses import Response, FileResponse
+from fastapi.responses import FileResponse
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 from cluster.runtime.cluster_store import cluster_state
@@ -14,192 +14,116 @@ from cluster.node.node_runtime import NodeRuntime
 from cluster.runtime.leader import compute_leader
 from cluster.runtime.bootstrap import load_or_bootstrap_config
 from cluster.runtime.registry import CLUSTER_REGISTRY
+
 from cluster.runtime.event_log import replay_events
 from cluster.runtime.ingest import ingest_event
 from cluster.runtime.events.cluster_event import ClusterEvent
 from cluster.runtime import context as ctx
 from cluster.utils.log_print import log_state
-from cluster.runtime.worker.event_worker import execute_event
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
-# =========================================================
-# NODE FAILURE STATE (REAL KILL / REVIVE)
-# =========================================================
 
-NODE_DEAD = False
-NODE_LOCK = threading.Lock()
+# =====================================================
+# NODE STATES (NEW)
+# =====================================================
 
+STATE_BOOT = "BOOT"
+STATE_ACTIVE = "ACTIVE"
+STATE_SLEEP = "SLEEP"
 
-def kill_node():
-    global NODE_DEAD
-
-    with NODE_LOCK:
-        NODE_DEAD = True
-
-        # 🔴 FIX: eliminar elegibilidad inmediata del líder
-        cluster_state[ctx.node_id] = {
-            "state": "sleep",
-            "priority": ctx.priority,
-            "last_seen": 0,
-        }
-
-        log_state("red", "(TIME TO SLEEP)", ctx.node_id, 3)
+def is_leader_eligible(node_id: str) -> bool:
+    state = cluster_state.get(node_id, {}).get("state")
+    return state == STATE_ACTIVE
 
 
-def revive_node():
-    global NODE_DEAD
-
-    with NODE_LOCK:
-        NODE_DEAD = False
-
-        cluster_state[ctx.node_id] = {
-            "state": "STANDBY",
-            "priority": ctx.priority,
-            "last_seen": time.time(),
-        }
-
-        log_state("red", "(TIME TO WAKE UP)", ctx.node_id, 3)
-
-
-def is_dead():
-    with NODE_LOCK:
-        return NODE_DEAD
-
-
-# =========================================================
+# =====================================================
 # FASTAPI
-# =========================================================
+# =====================================================
 
 app = FastAPI()
 
 
-# =========================================================
-# HARD KILL MIDDLEWARE
-# =========================================================
-
-@app.middleware("http")
-async def death_middleware(request: Request, call_next):
-
-    ALWAYS_ALLOWED = {
-        "/health",
-        "/revive",
-        "/kill",
-    }
-
-    if request.url.path in ALWAYS_ALLOWED:
-        return await call_next(request)
-
-    if is_dead():
-        return Response(
-            status_code=503,
-            content='{"error":"node_dead"}',
-            media_type="application/json"
-        )
-
-    return await call_next(request)
+@app.get("/debug/log")
+def log_dump():
+    return FileResponse("cluster/data/event_log.local.jsonl")
 
 
-# =========================================================
-# CONTROL API
-# =========================================================
-
-@app.post("/kill")
-def kill():
-    kill_node()
-    return {"ok": True, "state": "dead"}
+@app.post("/execute")
+def execute_endpoint(event: ClusterEvent):
+    return ingest_event(event, ctx.node_id)
 
 
-@app.post("/revive")
-def revive():
-    revive_node()
-    return {"ok": True, "state": "alive"}
+@app.post("/ack")
+def ack(event: ClusterEvent):
+    log_state("green", "[ACK]", event.event_id, 3)
+    return {"ok": True}
 
 
-# =========================================================
-# HEALTH
-# =========================================================
+@app.post("/replay")
+def replay():
+    def handler(event):
+        return None
 
-@app.get("/health")
-def health():
-    return {
-        "status": "dead" if is_dead() else "alive",
-        "node": ctx.node_id,
-    }
+    replay_events(handler)
+    return {"ok": True}
 
 
-# =========================================================
-# EVENT FLOW
-# =========================================================
+# =====================================================
+# LEADER RESOLUTION (FIX HERE)
+# =====================================================
 
-@app.post("/event")
-def event(event: ClusterEvent):
-    return handle_event(event)
-
-
-def handle_event(event: ClusterEvent):
-
-    if is_dead():
-        return {"status": "error", "error": "node_dead"}
-
-    # =====================================================
-    # LEADER RESOLUTION (FIXED)
-    # =====================================================
-
+def get_valid_leader():
     leader = compute_leader()
 
-    # 🔴 FIX: validar estado real del líder
-    if leader:
-        leader_state = cluster_state.get(leader)
+    if not leader:
+        return None
 
+    if not is_leader_eligible(leader):
+        return None
+
+    return leader
+
+
+# =====================================================
+# EVENT FLOW
+# =====================================================
+
+@app.post("/event")
+def handle_event(event: ClusterEvent):
+
+    leader = get_valid_leader()
 
     if not leader:
-        log_state("yellow", "[NO LEADER]", event.event_id, 3)
-        return {"status": "error", "error": "no leader"}
+        log_state("red", "(NO LEADER)", event.event_id, 3)
+        return {"error": "no leader"}
 
-    # =====================================================
-    # FORWARD TO LEADER
-    # =====================================================
+    # -----------------------------------
+    # NOT LEADER → forward
+    # -----------------------------------
 
     if leader != ctx.node_id:
 
         log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
 
-        node = CLUSTER_REGISTRY.get(leader)
-
-        if not node:
-            return {"status": "error", "error": "leader not found"}
-
+        node = CLUSTER_REGISTRY[leader]
         url = f"http://{node['host']}:{node['port']}/event"
 
         try:
             resp = requests.post(
                 url,
                 json=event.model_dump(),
-                timeout=3
+                timeout=2
             )
-
-            if resp.status_code >= 500:
-                return {"status": "error", "error": "leader unavailable"}
-
-            try:
-                data = resp.json()
-
-                if isinstance(data, list):
-                    return {"status": "error", "error": "invalid response format"}
-
-                return data
-
-            except Exception:
-                return {"status": "error", "error": "bad json response"}
+            return resp.json()
 
         except Exception as e:
-            return {"status": "error", "error": str(e)}
+            return {"error": str(e)}
 
-    # =====================================================
-    # LEADER INGEST
-    # =====================================================
+    # -----------------------------------
+    # LEADER → INGEST
+    # -----------------------------------
 
     result = ingest_event(event, ctx.node_id)
 
@@ -210,37 +134,9 @@ def handle_event(event: ClusterEvent):
     }
 
 
-# =========================================================
-# EXECUTE
-# =========================================================
-
-@app.post("/execute")
-def execute_endpoint(event: ClusterEvent):
-
-    if is_dead():
-        return {"status": "error", "error": "node_dead"}
-
-    return execute_event(event)
-
-
-# =========================================================
-# ACK
-# =========================================================
-
-@app.post("/ack")
-def ack(event: ClusterEvent):
-
-    if is_dead():
-        return {"status": "error", "error": "node_dead"}
-
-    log_state("green", "[ACK]", event.event_id, 3)
-
-    return {"ok": True, "event_id": event.event_id}
-
-
-# =========================================================
-# HEARTBEAT
-# =========================================================
+# =====================================================
+# CLUSTER METADATA
+# =====================================================
 
 class Heartbeat(BaseModel):
     node_id: str
@@ -248,21 +144,26 @@ class Heartbeat(BaseModel):
     priority: int
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "node": ctx.node_id}
+
+
+@app.get("/cluster")
+def get_cluster():
+    return cluster_state
+
+
+@app.get("/leader")
+def get_leader():
+    return {"leader": compute_leader()}
+
+
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
-    # 🔴 FIX: nodo muerto no revive por heartbeat propio
-    if hb.node_id == ctx.node_id and is_dead():
-        return {"ignored": True}
-
-    existing = cluster_state.get(hb.node_id)
-
-    # 🔴 FIX: no resucitar nodos muertos
-    if existing and existing.get("state") == "dead":
-        return {"ignored": True}
-
     cluster_state[hb.node_id] = {
-        "state": "alive",
+        "state": hb.state,
         "priority": hb.priority,
         "last_seen": time.time(),
     }
@@ -270,44 +171,44 @@ def heartbeat(hb: Heartbeat):
     return {"ok": True}
 
 
-# =========================================================
-# DEBUG
-# =========================================================
+# =====================================================
+# CONTROL (NEW IMPORTANT PART)
+# =====================================================
 
-@app.get("/debug/log")
-def log_dump():
-    return FileResponse("cluster/data/event_log.local.jsonl")
-
-
-# =========================================================
-# REPLAY
-# =========================================================
-
-@app.post("/replay")
-def replay():
-
-    if is_dead():
-        return {"status": "error", "error": "node_dead"}
-
-    def handler(event):
-        return None
-
-    replay_events(handler)
-
+@app.post("/sleep")
+def sleep():
+    cluster_state[ctx.node_id] = {
+        "state": STATE_SLEEP,
+        "priority": ctx.priority,
+        "last_seen": time.time(),
+    }
+    log_state("red", "(SLEEP)", ctx.node_id, 3)
     return {"ok": True}
 
 
-# =========================================================
-# BOOT
-# =========================================================
+@app.post("/wake")
+def wake():
+    cluster_state[ctx.node_id] = {
+        "state": STATE_ACTIVE,
+        "priority": ctx.priority,
+        "last_seen": time.time(),
+    }
+    log_state("green", "(WAKE)", ctx.node_id, 3)
+    return {"ok": True}
+
+
+# =====================================================
+# BOOTSTRAP
+# =====================================================
 
 def run_node(config):
 
     ctx.node_id = config["node_id"]
     ctx.priority = config["priority"]
 
+    # BOOT STATE (NOT LEADER ELIGIBLE INITIALLY)
     cluster_state[ctx.node_id] = {
-        "state": "alive",
+        "state": STATE_BOOT,
         "priority": ctx.priority,
         "last_seen": time.time(),
     }
@@ -323,10 +224,15 @@ def run_node(config):
         interval=1.0
     )
 
-    threading.Thread(
-        target=worker.start,
-        daemon=True
-    ).start()
+    threading.Thread(target=worker.start, daemon=True).start()
+
+    # auto transition BOOT → ACTIVE
+    def boot_transition():
+        time.sleep(2)
+        cluster_state[ctx.node_id]["state"] = STATE_ACTIVE
+        log_state("green", "(BOOT -> ACTIVE)", ctx.node_id, 3)
+
+    threading.Thread(target=boot_transition, daemon=True).start()
 
     uvicorn.run(
         app,
@@ -337,10 +243,11 @@ def run_node(config):
     )
 
 
-# =========================================================
+# =====================================================
 # ENTRYPOINT
-# =========================================================
+# =====================================================
 
 if __name__ == "__main__":
+
     config = load_or_bootstrap_config()
     run_node(config)
