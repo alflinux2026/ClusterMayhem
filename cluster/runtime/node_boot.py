@@ -51,8 +51,9 @@ def log_dump():
 @app.post("/execute")
 def execute_endpoint(event: ClusterEvent):
 
-    if is_sleeping():
-        return {"error": "node sleeping"}
+    if ctx.node.state == NodeState.ISOLATED:
+        log_state("red", "/execute when (ISOLATED)", event.event_id, 3)
+        return {"error": "node isolated"}
 
     return execute_event(event)
 
