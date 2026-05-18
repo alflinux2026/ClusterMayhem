@@ -17,12 +17,14 @@ def ingest_event(event, node_id):
     append_event(event)
 
 
+    msg = event.payload.get("msg", "<no-msg>")
+
     log_state(
-                "cyan",
-                "[EVENT OK]",
-                f"{event.event_id} msg={event.event_type} msg={msg}",
-                3
-            )
+        "cyan",
+        "[EVENT OK]",
+        f"{event.event_id} msg={msg}",
+        3
+    )
 
     return {
         "event_id": event.event_id,
