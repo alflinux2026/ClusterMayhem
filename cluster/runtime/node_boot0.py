@@ -1,10 +1,10 @@
-
 import threading
 import time
 import uvicorn
 import logging
 import requests
 
+from fastapi.responses import FileResponse
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -21,6 +21,15 @@ from cluster.runtime.events.cluster_event import ClusterEvent
 from cluster.runtime import context as ctx
 from cluster.utils.log_print import log_state
 
+from cluster.runtime.events.event_state import EventStatus
+
+from cluster.runtime.worker.event_worker import execute_event
+
+from cluster.runtime.event_log import get_latest_event
+
+from cluster.runtime.state_machine import transition_event
+
+
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
@@ -31,18 +40,28 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 app = FastAPI()
 
 
+@app.get("/debug/log")
+def log_dump():
+    return FileResponse("cluster/data/event_log.local.jsonl")
+
+@app.post("/execute")
+def execute_endpoint(event: ClusterEvent):
+
+    return execute_event(event)
+
+
 # -------------------------
 # ACK (FINAL STATE ONLY)
 # -------------------------
 @app.post("/ack")
 def ack(event: ClusterEvent):
 
-    log_state("green", "[ACK]", f"{event.event_id} completed", 3)
+    log_state("green", "[ACK]", f"{event.event_id} received", 3)
 
-    event.mark_status("completed")
-    append_event(event)
-
-    return {"ok": True}
+    return {
+        "ok": True,
+        "event_id": event.event_id
+    }
 
 
 # -------------------------
@@ -98,7 +117,13 @@ def handle_event(event: ClusterEvent):
     # -----------------------------------
     #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
-    return ingest_event(event, ctx.node_id)
+    result = ingest_event(event, ctx.node_id)
+
+    return {
+        "status": "ok",
+        "event_id": event.event_id,
+        "result": result
+    }
 
 
 # =========================
@@ -109,6 +134,13 @@ class Heartbeat(BaseModel):
     state: str
     priority: int
 
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "node": "alive"
+    }
 
 @app.get("/cluster")
 def get_cluster():
@@ -170,5 +202,6 @@ def run_node(config):
 # =========================
 if __name__ == "__main__":
 
+    log_state("red", "[BOOTING...]", f"Booting system ver NO SLEEP", 3)
     config = load_or_bootstrap_config()
     run_node(config)
