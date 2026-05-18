@@ -194,6 +194,9 @@ def get_leader():
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
+    if ctx.node_id == "lnx200nas":
+        log_state("red", "(HB FREEZE)", "sleeping 20s", 3)
+        time.sleep(20)
 
     # ❌ BLOQUEO CRÍTICO: nodo en SLEEP no refresca vida
     if  is_sleeping():
