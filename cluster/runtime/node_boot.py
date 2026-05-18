@@ -177,7 +177,19 @@ def handle_event(event: ClusterEvent):
     if is_dead():
         return {"status": "error", "error": "node_dead"}
 
+    # =====================================================
+    # LEADER RESOLUTION
+    # =====================================================
+
     leader = compute_leader()
+
+    # líder inválido si está marcado dead
+    if leader:
+
+        leader_state = cluster_state.get(leader)
+
+        if not leader_state or leader_state.get("state") != "alive":
+            leader = None
 
     if not leader:
 
