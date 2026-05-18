@@ -1,0 +1,192 @@
+{
+  "test_config": {
+    "nodes": [
+      "http://100.100.1.200:7000",
+      "http://100.100.1.202:7000",
+      "http://100.100.1.203:7000"
+    ],
+    "events": 15,
+    "event_delay_range": [
+      0.2,
+      1.0
+    ],
+    "kill_probability": 0.1,
+    "death_time_range": [
+      5.0,
+      10.0
+    ],
+    "request_timeout": 5.0,
+    "max_retries": 10,
+    "sleep_only_node": null,
+    "slow_event_threshold_ms": 500.0,
+    "seed": null,
+    "run_id": "20260519_005603",
+    "stats_file": "chaos_stats_20260519_005603.json"
+  },
+  "run_meta": {
+    "started_at_epoch": 1779144963.2625592,
+    "ended_at_epoch": 1779144975.9430337,
+    "started_at_iso": "2026-05-19T00:56:03.262559",
+    "ended_at_iso": "2026-05-19T00:56:15.943034",
+    "duration_seconds": 12.68
+  },
+  "stats": {
+    "events_total": 15,
+    "events_ok": 15,
+    "events_failed": 0,
+    "events_retried": 0,
+    "events_no_leader": 0,
+    "events_timeout": 0,
+    "events_connection_error": 0,
+    "events_forward_error": 0,
+    "events_unexpected_fail": 0,
+    "events_slow": 0,
+    "kills": 4,
+    "revives": 4,
+    "kill_attempts": 4,
+    "kill_failures": 0,
+    "revive_failures": 0,
+    "per_node_ok": {
+      "http://100.100.1.200:7000": 4,
+      "http://100.100.1.202:7000": 5,
+      "http://100.100.1.203:7000": 6
+    },
+    "per_node_fail": {},
+    "leaders_seen": {
+      "lnx200nas": 3,
+      "lnx203hp": 2
+    },
+    "latency": [
+      27.744770050048828,
+      8.492469787597656,
+      8.685827255249023,
+      6.445884704589844,
+      12.541055679321289,
+      10.138750076293945,
+      8.149147033691406,
+      27.445077896118164,
+      26.615142822265625,
+      9.694337844848633,
+      11.682987213134766,
+      13.740301132202148,
+      8.933305740356445,
+      9.486913681030273,
+      13.297319412231445
+    ],
+    "unexpected_failures": [],
+    "slow_events": [],
+    "kill_events": [
+      {
+        "action": "sleep",
+        "node": "http://100.100.1.202:7000",
+        "ok": true,
+        "seconds": 6.976682990555105,
+        "payload": {
+          "ok": true,
+          "node": "lnx202pc",
+          "state": "ISOLATED"
+        },
+        "error": null,
+        "timestamp": "2026-05-19T00:56:03.275801"
+      },
+      {
+        "action": "sleep",
+        "node": "http://100.100.1.200:7000",
+        "ok": true,
+        "seconds": 5.4575253608538645,
+        "payload": {
+          "ok": true,
+          "node": "lnx200nas",
+          "state": "ISOLATED"
+        },
+        "error": null,
+        "timestamp": "2026-05-19T00:56:06.765917"
+      },
+      {
+        "action": "sleep",
+        "node": "http://100.100.1.200:7000",
+        "ok": true,
+        "seconds": 5.145906694433858,
+        "payload": {
+          "ok": true,
+          "node": "lnx200nas",
+          "state": "ISOLATED"
+        },
+        "error": null,
+        "timestamp": "2026-05-19T00:56:07.230393"
+      },
+      {
+        "action": "sleep",
+        "node": "http://100.100.1.203:7000",
+        "ok": true,
+        "seconds": 6.581361407846266,
+        "payload": {
+          "ok": true,
+          "node": "lnx203hp",
+          "state": "ISOLATED"
+        },
+        "error": null,
+        "timestamp": "2026-05-19T00:56:09.288111"
+      },
+      {
+        "action": "revive",
+        "node": "http://100.100.1.202:7000",
+        "ok": true,
+        "seconds": null,
+        "payload": {
+          "ok": true,
+          "node": "lnx202pc",
+          "state": "STAND-BY"
+        },
+        "error": null,
+        "timestamp": "2026-05-19T00:56:10.261486"
+      },
+      {
+        "action": "revive",
+        "node": "http://100.100.1.200:7000",
+        "ok": true,
+        "seconds": null,
+        "payload": {
+          "ok": true,
+          "node": "lnx200nas",
+          "state": "STAND-BY"
+        },
+        "error": null,
+        "timestamp": "2026-05-19T00:56:12.242343"
+      },
+      {
+        "action": "revive",
+        "node": "http://100.100.1.200:7000",
+        "ok": true,
+        "seconds": null,
+        "payload": {
+          "ok": true,
+          "node": "lnx200nas",
+          "state": "STAND-BY"
+        },
+        "error": null,
+        "timestamp": "2026-05-19T00:56:12.393319"
+      },
+      {
+        "action": "revive",
+        "node": "http://100.100.1.203:7000",
+        "ok": true,
+        "seconds": null,
+        "payload": {
+          "ok": true,
+          "node": "lnx203hp",
+          "state": "STAND-BY"
+        },
+        "error": null,
+        "timestamp": "2026-05-19T00:56:15.885476"
+      }
+    ],
+    "success_rate": 100.0,
+    "latency_avg": 13.54,
+    "latency_min": 6.446,
+    "latency_p50": 10.139,
+    "latency_p95": 27.535,
+    "latency_p99": 27.703,
+    "latency_max": 27.745
+  }
+}

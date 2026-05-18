@@ -3,30 +3,70 @@ import json
 import random
 import requests
 import threading
+import uuid
+import argparse
 from datetime import datetime
 from collections import defaultdict
 
-from cluster.runtime.events.cluster_event import ClusterEvent
-
 
 # =====================================================
-# CONFIG
+# DEFAULT CONFIG
 # =====================================================
 
-NODES = [
-    "http://100.100.1.200:7000",  # leader
+DEFAULT_NODES = [
+    "http://100.100.1.200:7000",
     "http://100.100.1.202:7000",
     "http://100.100.1.203:7000",
 ]
 
-EVENTS = 1000
-EVENT_DELAY_RANGE = (0.2, 0.5)
-KILL_PROBABILITY = 0.15
-DEATH_TIME_RANGE = (5, 10)
-REQUEST_TIMEOUT = 5
-MAX_RETRIES = 10
-SLEEP_ONLY_NODE = None
-# SLEEP_ONLY_NODE = "http://100.100.1.200:7000"
+DEFAULT_EVENTS = 15
+DEFAULT_EVENT_DELAY_MIN = 1
+DEFAULT_EVENT_DELAY_MAX = 2.0
+DEFAULT_KILL_PROBABILITY = 0.10
+DEFAULT_DEATH_TIME_MIN = 5.0
+DEFAULT_DEATH_TIME_MAX = 10.0
+DEFAULT_REQUEST_TIMEOUT = 5.0
+DEFAULT_MAX_RETRIES = 10
+DEFAULT_SLOW_EVENT_THRESHOLD_MS = 500.0
+DEFAULT_SLEEP_ONLY_NODE = None
+
+
+# =====================================================
+# CLI
+# =====================================================
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Universal chaos torture runner (Termux/server)")
+    parser.add_argument("--nodes", nargs="+", default=DEFAULT_NODES, help="Node base URLs")
+    parser.add_argument("--events", type=int, default=DEFAULT_EVENTS, help="Number of events")
+    parser.add_argument("--delay-min", type=float, default=DEFAULT_EVENT_DELAY_MIN, help="Min delay between events")
+    parser.add_argument("--delay-max", type=float, default=DEFAULT_EVENT_DELAY_MAX, help="Max delay between events")
+    parser.add_argument("--kill-prob", type=float, default=DEFAULT_KILL_PROBABILITY, help="Probability of kill per event")
+    parser.add_argument("--death-min", type=float, default=DEFAULT_DEATH_TIME_MIN, help="Min isolation time")
+    parser.add_argument("--death-max", type=float, default=DEFAULT_DEATH_TIME_MAX, help="Max isolation time")
+    parser.add_argument("--timeout", type=float, default=DEFAULT_REQUEST_TIMEOUT, help="HTTP request timeout")
+    parser.add_argument("--retries", type=int, default=DEFAULT_MAX_RETRIES, help="Max retries per event")
+    parser.add_argument("--sleep-only-node", default=DEFAULT_SLEEP_ONLY_NODE, help="Always kill the same node")
+    parser.add_argument("--slow-ms", type=float, default=DEFAULT_SLOW_EVENT_THRESHOLD_MS, help="Slow event threshold in ms")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
+    parser.add_argument("--output", default=None, help="Optional explicit output JSON filename")
+    return parser.parse_args()
+
+
+ARGS = parse_args()
+
+if ARGS.seed is not None:
+    random.seed(ARGS.seed)
+
+NODES = ARGS.nodes
+EVENTS = ARGS.events
+EVENT_DELAY_RANGE = (ARGS.delay_min, ARGS.delay_max)
+KILL_PROBABILITY = ARGS.kill_prob
+DEATH_TIME_RANGE = (ARGS.death_min, ARGS.death_max)
+REQUEST_TIMEOUT = ARGS.timeout
+MAX_RETRIES = ARGS.retries
+SLEEP_ONLY_NODE = ARGS.sleep_only_node
+SLOW_EVENT_THRESHOLD_MS = ARGS.slow_ms
 
 
 # =====================================================
@@ -35,7 +75,7 @@ SLEEP_ONLY_NODE = None
 
 TEST_STARTED_AT = time.time()
 RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
-STATS_FILE = f"chaos_stats_{RUN_ID}.json"
+STATS_FILE = ARGS.output or f"chaos_stats_{RUN_ID}.json"
 
 TEST_CONFIG = {
     "nodes": NODES,
@@ -46,6 +86,8 @@ TEST_CONFIG = {
     "request_timeout": REQUEST_TIMEOUT,
     "max_retries": MAX_RETRIES,
     "sleep_only_node": SLEEP_ONLY_NODE,
+    "slow_event_threshold_ms": SLOW_EVENT_THRESHOLD_MS,
+    "seed": ARGS.seed,
     "run_id": RUN_ID,
     "stats_file": STATS_FILE,
 }
@@ -71,19 +113,47 @@ stats = {
     "events_connection_error": 0,
     "events_forward_error": 0,
     "events_unexpected_fail": 0,
+    "events_slow": 0,
     "kills": 0,
     "revives": 0,
+    "kill_attempts": 0,
+    "kill_failures": 0,
+    "revive_failures": 0,
     "per_node_ok": defaultdict(int),
     "per_node_fail": defaultdict(int),
     "leaders_seen": defaultdict(int),
     "latency": [],
     "unexpected_failures": [],
+    "slow_events": [],
+    "kill_events": [],
 }
 
 
 # =====================================================
 # HELPERS
 # =====================================================
+
+def build_event(i):
+    return {
+        "event_id": str(uuid.uuid4()),
+        "event_type": "chaos.test",
+        "schema_version": "1",
+        "created_at": time.time(),
+        "received_at": None,
+        "trace_id": str(uuid.uuid4()),
+        "parent_event_id": None,
+        "source_node": None,
+        "target_node": None,
+        "route_hops": [],
+        "status": "created",
+        "attempt": 0,
+        "payload": {
+            "msg": f"msg: {i}",
+            "seq": i,
+            "source": "chaos_203"
+        }
+    }
+
 
 def stat_inc(key, amount=1):
     with stats_lock:
@@ -124,11 +194,51 @@ def stat_unexpected_failure(event_index, attempt, node, status_code=None, payloa
         })
 
 
+def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+    with stats_lock:
+        stats["events_slow"] += 1
+        stats["slow_events"].append({
+            "event_index": event_index,
+            "attempt": attempt,
+            "node": node,
+            "latency_ms": round(latency_ms, 3),
+            "leader": leader,
+            "payload": payload,
+            "timestamp": datetime.now().isoformat(),
+        })
+
+
+def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+    with stats_lock:
+        stats["kill_events"].append({
+            "action": action,
+            "node": node,
+            "ok": ok,
+            "seconds": seconds,
+            "payload": payload,
+            "error": error,
+            "timestamp": datetime.now().isoformat(),
+        })
+
+
+def percentile(data, p):
+    if not data:
+        return 0.0
+    values = sorted(data)
+    if len(values) == 1:
+        return float(values[0])
+    rank = (len(values) - 1) * (p / 100.0)
+    low = int(rank)
+    high = min(low + 1, len(values) - 1)
+    fraction = rank - low
+    return float(values[low] + (values[high] - values[low]) * fraction)
+
+
 def is_retryable_response(payload):
     if not isinstance(payload, dict):
         return False
 
-    if payload.get("error") == "no leader":
+    if payload.get("error") in {"no leader", "node isolated"}:
         return True
 
     error = str(payload.get("error", "")).lower()
@@ -138,6 +248,7 @@ def is_retryable_response(payload):
         "connection",
         "refused",
         "temporarily unavailable",
+        "isolated",
     ]
 
     return any(p in error for p in retry_patterns)
@@ -158,6 +269,8 @@ def print_test_config():
     print(f"request_timeout.....: {REQUEST_TIMEOUT}")
     print(f"max_retries.........: {MAX_RETRIES}")
     print(f"sleep_only_node.....: {SLEEP_ONLY_NODE}")
+    print(f"slow_threshold_ms...: {SLOW_EVENT_THRESHOLD_MS}")
+    print(f"seed................: {ARGS.seed}")
     print("=" * 60 + "\n")
 
 
@@ -165,39 +278,76 @@ def print_test_config():
 # KILL / REVIVE
 # =====================================================
 
-def kill_node(node):
+def kill_node(node, seconds=None):
+    stat_inc("kill_attempts")
+
     try:
-        requests.post(f"{node}/sleep", timeout=1)
+        resp = requests.post(f"{node}/sleep", timeout=2)
+        payload = {}
 
-        with dead_lock:
-            dead_nodes.add(node)
+        try:
+            payload = resp.json()
+        except Exception:
+            payload = {"raw_text": resp.text}
 
-        stat_inc("kills")
-        print(f"[CHAOS] SLEEP {node}")
+        if resp.status_code == 200 and payload.get("ok") is True:
+            with dead_lock:
+                dead_nodes.add(node)
+
+            stat_inc("kills")
+            stat_kill_event(node=node, action="sleep", ok=True, payload=payload, seconds=seconds)
+            print(f"[CHAOS] SLEEP {node}")
+            return True
+
+        stat_inc("kill_failures")
+        stat_kill_event(node=node, action="sleep", ok=False, payload=payload, seconds=seconds)
+        print(f"[CHAOS FAIL SLEEP] {node} -> status={resp.status_code} payload={payload}")
+        return False
 
     except Exception as e:
+        stat_inc("kill_failures")
+        stat_kill_event(node=node, action="sleep", ok=False, error=str(e), seconds=seconds)
         print(f"[CHAOS FAIL SLEEP] {node} -> {e}")
+        return False
 
 
 def revive_node(node):
     try:
-        requests.post(f"{node}/revive", timeout=1)
+        resp = requests.post(f"{node}/revive", timeout=2)
+        payload = {}
 
-        with dead_lock:
-            dead_nodes.discard(node)
+        try:
+            payload = resp.json()
+        except Exception:
+            payload = {"raw_text": resp.text}
 
-        stat_inc("revives")
-        print(f"[CHAOS] REVIVE {node}")
+        if resp.status_code == 200 and payload.get("ok") is True:
+            with dead_lock:
+                dead_nodes.discard(node)
+
+            stat_inc("revives")
+            stat_kill_event(node=node, action="revive", ok=True, payload=payload)
+            print(f"[CHAOS] REVIVE {node}")
+            return True
+
+        stat_inc("revive_failures")
+        stat_kill_event(node=node, action="revive", ok=False, payload=payload)
+        print(f"[CHAOS FAIL REVIVE] {node} -> status={resp.status_code} payload={payload}")
+        return False
 
     except Exception as e:
+        stat_inc("revive_failures")
+        stat_kill_event(node=node, action="revive", ok=False, error=str(e))
         print(f"[CHAOS FAIL REVIVE] {node} -> {e}")
+        return False
 
 
 def kill_cycle(node, seconds):
     try:
-        kill_node(node)
-        print(f"[CHAOS] DEAD {node} for {seconds:.2f}s")
-        time.sleep(seconds)
+        ok = kill_node(node, seconds=seconds)
+        if ok:
+            print(f"[CHAOS] DEAD {node} for {seconds:.2f}s")
+            time.sleep(seconds)
     finally:
         revive_node(node)
 
@@ -210,15 +360,7 @@ def send_event(i):
     stat_inc("events_total")
     tried = set()
 
-    event = ClusterEvent(
-        event_type="chaos.test",
-        payload={
-            "msg": f"msg: {i}",
-            "seq": i,
-            "source": "chaos"
-        },
-        created_at=time.time()
-    )
+    event = build_event(i)
 
     for attempt in range(MAX_RETRIES):
         available = [n for n in NODES if n not in tried]
@@ -233,7 +375,7 @@ def send_event(i):
         try:
             r = requests.post(
                 f"{node}/event",
-                json=event.model_dump(),
+                json=event,
                 timeout=REQUEST_TIMEOUT
             )
 
@@ -246,17 +388,27 @@ def send_event(i):
             except Exception:
                 payload = {"raw_text": r.text}
 
+            leader = None
+            if isinstance(payload, dict):
+                if "result" in payload and isinstance(payload["result"], dict):
+                    leader = payload["result"].get("leader")
+                else:
+                    leader = payload.get("leader")
+
+            if leader:
+                stat_leader(leader)
+
+            if elapsed_ms >= SLOW_EVENT_THRESHOLD_MS:
+                stat_slow_event(
+                    event_index=i,
+                    attempt=attempt + 1,
+                    node=node,
+                    latency_ms=elapsed_ms,
+                    leader=leader,
+                    payload=payload,
+                )
+
             if r.status_code == 200:
-                leader = None
-                if isinstance(payload, dict):
-                    if "result" in payload and isinstance(payload["result"], dict):
-                        leader = payload["result"].get("leader")
-                    else:
-                        leader = payload.get("leader")
-
-                if leader:
-                    stat_leader(leader)
-
                 stat_inc("events_ok")
                 stat_node_ok(node)
 
@@ -275,7 +427,7 @@ def send_event(i):
             if is_retryable_response(payload) or r.status_code >= 500:
                 stat_inc("events_retried")
 
-                if payload.get("error") == "no leader":
+                if isinstance(payload, dict) and payload.get("error") == "no leader":
                     stat_inc("events_no_leader")
 
                 print(
@@ -404,7 +556,7 @@ def revive_everything():
 
     for node in unique_nodes:
         try:
-            requests.post(f"{node}/revive", timeout=1)
+            requests.post(f"{node}/revive", timeout=2)
             print(f"[FORCE REVIVE] {node}")
         except Exception as e:
             print(f"[FORCE REVIVE FAIL] {node} -> {e}")
@@ -440,13 +592,12 @@ def print_stats():
 
         success_rate = ((ok / total) * 100) if total else 0
 
-        avg_latency = (
-            sum(stats["latency"]) / len(stats["latency"])
-            if stats["latency"] else 0
-        )
-
+        avg_latency = (sum(stats["latency"]) / len(stats["latency"])) if stats["latency"] else 0
         max_latency = max(stats["latency"]) if stats["latency"] else 0
         min_latency = min(stats["latency"]) if stats["latency"] else 0
+        p50_latency = percentile(stats["latency"], 50)
+        p95_latency = percentile(stats["latency"], 95)
+        p99_latency = percentile(stats["latency"], 99)
 
         print(f"events_total........: {total}")
         print(f"events_ok...........: {ok}")
@@ -461,16 +612,23 @@ def print_stats():
         print(f"connection_errors...: {stats['events_connection_error']}")
         print(f"forward_errors......: {stats['events_forward_error']}")
         print(f"unexpected_fail.....: {stats['events_unexpected_fail']}")
+        print(f"slow_events.........: {stats['events_slow']}")
 
         print()
 
+        print(f"kill_attempts.......: {stats['kill_attempts']}")
         print(f"kills...............: {stats['kills']}")
+        print(f"kill_failures.......: {stats['kill_failures']}")
         print(f"revives.............: {stats['revives']}")
+        print(f"revive_failures.....: {stats['revive_failures']}")
 
         print()
 
         print(f"latency_avg.........: {avg_latency:.1f} ms")
         print(f"latency_min.........: {min_latency:.1f} ms")
+        print(f"latency_p50.........: {p50_latency:.1f} ms")
+        print(f"latency_p95.........: {p95_latency:.1f} ms")
+        print(f"latency_p99.........: {p99_latency:.1f} ms")
         print(f"latency_max.........: {max_latency:.1f} ms")
 
         print()
@@ -489,18 +647,36 @@ def print_stats():
             print(f"  {node:30} -> {count}")
 
         print()
+        print("SLOW EVENTS")
+        if stats["slow_events"]:
+            for idx, item in enumerate(stats["slow_events"][:20], start=1):
+                print(
+                    f"  #{idx:02} "
+                    f"event={item.get('event_index')} "
+                    f"attempt={item.get('attempt')} "
+                    f"node={item.get('node')} "
+                    f"leader={item.get('leader')} "
+                    f"latency_ms={item.get('latency_ms')}"
+                )
+            if len(stats["slow_events"]) > 20:
+                print(f"  ... and {len(stats['slow_events']) - 20} more")
+        else:
+            print("  none")
+
+        print()
         print("UNEXPECTED FAILURES")
         if stats["unexpected_failures"]:
-            for idx, item in enumerate(stats["unexpected_failures"], start=1):
+            for idx, item in enumerate(stats["unexpected_failures"][:20], start=1):
                 print(
                     f"  #{idx:02} "
                     f"event={item.get('event_index')} "
                     f"attempt={item.get('attempt')} "
                     f"node={item.get('node')} "
                     f"status={item.get('status_code')} "
-                    f"reason={item.get('reason')} "
-                    f"payload={item.get('payload')}"
+                    f"reason={item.get('reason')}"
                 )
+            if len(stats["unexpected_failures"]) > 20:
+                print(f"  ... and {len(stats['unexpected_failures']) - 20} more")
         else:
             print("  none")
 
@@ -520,6 +696,9 @@ def print_stats():
                 "success_rate": round(success_rate, 2),
                 "latency_avg": round(avg_latency, 3),
                 "latency_min": round(min_latency, 3),
+                "latency_p50": round(p50_latency, 3),
+                "latency_p95": round(p95_latency, 3),
+                "latency_p99": round(p99_latency, 3),
                 "latency_max": round(max_latency, 3),
                 "per_node_ok": dict(stats["per_node_ok"]),
                 "per_node_fail": dict(stats["per_node_fail"]),
@@ -538,7 +717,7 @@ def print_stats():
 # =====================================================
 
 def main():
-    print("[MAIN] starting REAL cluster chaos")
+    print("[MAIN] starting UNIVERSAL chaos torture")
     print_test_config()
 
     try:
