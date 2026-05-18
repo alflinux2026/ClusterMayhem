@@ -25,23 +25,9 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
 
-# =====================================================
-# NODE STATES (NEW)
-# =====================================================
-
-STATE_BOOT = "BOOT"
-STATE_ACTIVE = "ACTIVE"
-STATE_SLEEP = "SLEEP"
-
-def is_leader_eligible(node_id: str) -> bool:
-    state = cluster_state.get(node_id, {}).get("state")
-    return state == STATE_ACTIVE
-
-
-# =====================================================
+# =========================
 # FASTAPI
-# =====================================================
-
+# =========================
 app = FastAPI()
 
 
@@ -57,8 +43,8 @@ def execute_endpoint(event: ClusterEvent):
 
 @app.post("/ack")
 def ack(event: ClusterEvent):
-    log_state("green", "[ACK]", event.event_id, 3)
-    return {"ok": True}
+    log_state("green", "[ACK]", f"{event.event_id} received", 3)
+    return {"ok": True, "event_id": event.event_id}
 
 
 @app.post("/replay")
@@ -70,38 +56,17 @@ def replay():
     return {"ok": True}
 
 
-# =====================================================
-# LEADER RESOLUTION (FIX HERE)
-# =====================================================
-
-def get_valid_leader():
-    leader = debug_compute_leader(event.event_id)
-
-    if not leader:
-        return None
-
-    if not is_leader_eligible(leader):
-        return None
-
-    return leader
-
-
-# =====================================================
-# EVENT FLOW
-# =====================================================
-
+# =========================
+# LEADER FLOW
+# =========================
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
-    leader = get_valid_leader()
+    leader = compute_leader()
 
     if not leader:
         log_state("red", "(NO LEADER)", event.event_id, 3)
         return {"error": "no leader"}
-
-    # -----------------------------------
-    # NOT LEADER → forward
-    # -----------------------------------
 
     if leader != ctx.node_id:
 
@@ -121,10 +86,6 @@ def handle_event(event: ClusterEvent):
         except Exception as e:
             return {"error": str(e)}
 
-    # -----------------------------------
-    # LEADER → INGEST
-    # -----------------------------------
-
     result = ingest_event(event, ctx.node_id)
 
     return {
@@ -134,10 +95,9 @@ def handle_event(event: ClusterEvent):
     }
 
 
-# =====================================================
-# CLUSTER METADATA
-# =====================================================
-
+# =========================
+# METADATA
+# =========================
 class Heartbeat(BaseModel):
     node_id: str
     state: str
@@ -161,57 +121,31 @@ def get_leader():
 
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
-
     cluster_state[hb.node_id] = {
         "state": hb.state,
         "priority": hb.priority,
         "last_seen": time.time(),
     }
-
     return {"ok": True}
 
 
-# =====================================================
-# CONTROL (NEW IMPORTANT PART)
-# =====================================================
-
-@app.post("/sleep")
-def sleep():
-    cluster_state[ctx.node_id] = {
-        "state": STATE_SLEEP,
-        "priority": ctx.priority,
-        "last_seen": time.time(),
-    }
-    log_state("red", "(SLEEP)", ctx.node_id, 3)
-    return {"ok": True}
-
-
-@app.post("/wake")
-def wake():
-    cluster_state[ctx.node_id] = {
-        "state": STATE_ACTIVE,
-        "priority": ctx.priority,
-        "last_seen": time.time(),
-    }
-    log_state("green", "(WAKE)", ctx.node_id, 3)
-    return {"ok": True}
-
-
-# =====================================================
-# BOOTSTRAP
-# =====================================================
-
+# =========================
+# BOOTSTRAP FIX (CRÍTICO)
+# =========================
 def run_node(config):
 
     ctx.node_id = config["node_id"]
     ctx.priority = config["priority"]
 
-    # BOOT STATE (NOT LEADER ELIGIBLE INITIALLY)
+    # ✅ IMPORTANTE: NO usar BOOT como estado que bloquea election
+    # directamente ACTIVE desde el inicio
     cluster_state[ctx.node_id] = {
-        "state": STATE_BOOT,
+        "state": "ACTIVE",   # 🔥 FIX PRINCIPAL
         "priority": ctx.priority,
         "last_seen": time.time(),
     }
+
+    log_state("green", "(BOOT -> ACTIVE)", ctx.node_id, 3)
 
     node = NodeRuntime(
         node_id=config["node_id"],
@@ -226,14 +160,6 @@ def run_node(config):
 
     threading.Thread(target=worker.start, daemon=True).start()
 
-    # auto transition BOOT → ACTIVE
-    def boot_transition():
-        time.sleep(2)
-        cluster_state[ctx.node_id]["state"] = STATE_ACTIVE
-        log_state("green", "(BOOT -> ACTIVE)", ctx.node_id, 3)
-
-    threading.Thread(target=boot_transition, daemon=True).start()
-
     uvicorn.run(
         app,
         host=config.get("bind_host", "0.0.0.0"),
@@ -243,22 +169,9 @@ def run_node(config):
     )
 
 
-def debug_compute_leader(tag: str = ""):
-    leader = compute_leader()
-
-    log_state(
-        "magenta",
-        "[LEADER DEBUG]",
-        f"{tag} leader={leader} node={ctx.node_id}",
-        2
-    )
-
-    return leader
-
-# =====================================================
+# =========================
 # ENTRYPOINT
-# =====================================================
-
+# =========================
 if __name__ == "__main__":
 
     config = load_or_bootstrap_config()
