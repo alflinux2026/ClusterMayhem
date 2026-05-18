@@ -2,7 +2,7 @@ from cluster.runtime.cluster_store import cluster_state
 import time
 
 
-def is_alive(data, timeout=0.5):
+def is_alive(data, timeout=1.5):
     return (time.time() - data["last_seen"]) < timeout
 
 
