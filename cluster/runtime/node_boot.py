@@ -142,9 +142,7 @@ def sleep():
 
     ctx.node.transition(NodeState.ISOLATED)
 
-    time.sleep(30)
-
-    return {"ok": True}
+    return {"ok": True, "node": ctx.node_id, "state": ctx.node.state.value}
 
 
 @app.post("/revive")
@@ -156,7 +154,7 @@ def revive():
 
     ctx.node.transition(NodeState.STANDBY)
 
-    return {"ok": True}
+    return {"ok": True, "node": ctx.node_id, "state": ctx.node.state.value}
 
 
 # =====================================================
@@ -173,7 +171,7 @@ def health():
     return {
         "status": "ok",
         "node": ctx.node_id,
-        "sleeping": is_sleeping()
+        "sleeping": ctx.node.state == NodeState.ISOLATED
     }
 
 
