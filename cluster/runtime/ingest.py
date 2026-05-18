@@ -20,7 +20,7 @@ def ingest_event(event, node_id):
     log_state(
                 "cyan",
                 "[EVENT OK]",
-                f"{event.event_id} event_type={event.event_type}",
+                f"{event.event_id} msg={event.event_type} msg={msg}",
                 3
             )
 
