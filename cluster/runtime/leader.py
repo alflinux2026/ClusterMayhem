@@ -81,7 +81,7 @@ def compute_leader(debug_node_id=None):
         age = now - data.get("last_seen", 0)
         alive = is_alive(data)
 
-        if data.get('priority') == 1:
+        if data.get('state') == 'ACTIVE':
 
             print(
                 f"- {node_id:10} | "
