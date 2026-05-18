@@ -102,42 +102,101 @@ def kill_cycle(node, seconds):
         revive_node(node)
 
 
+
 # =====================================================
-# EVENT SENDING
+# EVENT SEND WITH FAILOVER
 # =====================================================
 
 def send_event(i):
 
-    node = random.choice(NODES)
-
     event = ClusterEvent(
         event_type="chaos.test",
         payload={
-            "msg": f"message-{i}",
+            "msg": f"msg: {i}",
             "seq": i,
             "source": "chaos"
         },
         created_at=time.time()
     )
 
-    try:
+    # random order every try
+    candidates = random.sample(NODES, len(NODES))
 
-        r = requests.post(
-            f"{node}/event",
-            json=event.model_dump(),
-            timeout=REQUEST_TIMEOUT
-        )
+    last_error = None
 
-        print(
-            f"[TORTURE] {i} -> "
-            f"{node} "
-            f"({r.status_code}) "
-            f"{r.text}"
-        )
+    for node in candidates:
 
-    except Exception as e:
+        try:
 
-        print(f"[TORTURE FAIL] {node} -> {e}")
+            r = requests.post(
+                f"{node}/event",
+                json=event.model_dump(),
+                timeout=REQUEST_TIMEOUT
+            )
+
+            # =========================================
+            # HTTP ERROR
+            # =========================================
+
+            if r.status_code != 200:
+
+                print(
+                    f"[RETRY] {node} "
+                    f"http={r.status_code}"
+                )
+
+                continue
+
+            # =========================================
+            # JSON RESPONSE
+            # =========================================
+
+            data = r.json()
+
+            # cluster-level logical errors
+            if "error" in data:
+
+                print(
+                    f"[RETRY] {node} "
+                    f"error={data['error']}"
+                )
+
+                last_error = data["error"]
+
+                continue
+
+            # =========================================
+            # SUCCESS
+            # =========================================
+
+            print(
+                f"[TORTURE] {i} -> "
+                f"{node} "
+                f"OK "
+                f"{data}"
+            )
+
+            return True
+
+        except Exception as e:
+
+            print(
+                f"[RETRY FAIL] {node} -> {e}"
+            )
+
+            last_error = str(e)
+
+    # =============================================
+    # TOTAL FAILURE
+    # =============================================
+
+    print(
+        f"[EVENT LOST] seq={i} "
+        f"error={last_error}"
+    )
+
+    return False
+
 
 
 # =====================================================

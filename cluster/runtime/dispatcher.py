@@ -104,7 +104,7 @@ def dispatch_created_event(event):
 
     event.mark_status(EventStatus.EXECUTING)
 
-    log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT EXECUTING", 3)
+    log_state("yellow", "(EVENT)", f"{event.event_id} -> EVENT EXECUTING", 3)
 
     # -------------------------
     # PERSIST
