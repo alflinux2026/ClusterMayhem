@@ -106,6 +106,8 @@ def handle_event(event: ClusterEvent):
         log_state("red", "(SLEEP DROP EVENT)", event.event_id, 3)
         return {"error": "node sleeping"}
 
+    log_state("red", "(STILL ALIVE!)", event.event_id, 3)
+
     leader = compute_leader()
 
     if not leader:
