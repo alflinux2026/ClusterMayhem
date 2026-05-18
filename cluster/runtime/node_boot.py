@@ -38,10 +38,11 @@ def kill_node():
     with NODE_LOCK:
         NODE_DEAD = True
 
+        # 🔴 FIX: eliminar elegibilidad inmediata del líder
         cluster_state[ctx.node_id] = {
             "state": "dead",
             "priority": ctx.priority,
-            "last_seen": time.time(),
+            "last_seen": 0,
         }
 
         log_state("red", "(TIME TO SLEEP)", ctx.node_id, 3)
@@ -81,7 +82,6 @@ app = FastAPI()
 @app.middleware("http")
 async def death_middleware(request: Request, call_next):
 
-    # endpoints permitidos incluso muerto
     ALWAYS_ALLOWED = {
         "/health",
         "/revive",
@@ -91,7 +91,6 @@ async def death_middleware(request: Request, call_next):
     if request.url.path in ALWAYS_ALLOWED:
         return await call_next(request)
 
-    # blackout total
     if is_dead():
         return Response(
             status_code=503,
@@ -124,43 +123,10 @@ def revive():
 
 @app.get("/health")
 def health():
-
     return {
         "status": "dead" if is_dead() else "alive",
         "node": ctx.node_id,
     }
-
-
-# =========================================================
-# SAFE LEADER
-# =========================================================
-
-def compute_leader_safe():
-
-    # limpia nodos muertos por timeout
-    now = time.time()
-
-    for node_id, state in list(cluster_state.items()):
-
-        last_seen = state.get("last_seen", 0)
-
-        if now - last_seen > 5:
-            state["state"] = "dead"
-
-    leader = compute_leader()
-
-    if not leader:
-        return None
-
-    leader_state = cluster_state.get(leader)
-
-    if not leader_state:
-        return None
-
-    if leader_state.get("state") != "alive":
-        return None
-
-    return leader
 
 
 # =========================================================
@@ -178,27 +144,25 @@ def handle_event(event: ClusterEvent):
         return {"status": "error", "error": "node_dead"}
 
     # =====================================================
-    # LEADER RESOLUTION
+    # LEADER RESOLUTION (FIXED)
     # =====================================================
 
     leader = compute_leader()
 
-    # líder inválido si está marcado dead
+    # 🔴 FIX: validar estado real del líder
     if leader:
-
         leader_state = cluster_state.get(leader)
 
-        if not leader_state or leader_state.get("state") != "alive":
+        if (
+            not leader_state
+            or leader_state.get("state") != "alive"
+            or leader_state.get("last_seen", 0) == 0
+        ):
             leader = None
 
     if not leader:
-
         log_state("yellow", "[NO LEADER]", event.event_id, 3)
-
-        return {
-            "status": "error",
-            "error": "no leader"
-        }
+        return {"status": "error", "error": "no leader"}
 
     # =====================================================
     # FORWARD TO LEADER
@@ -206,64 +170,38 @@ def handle_event(event: ClusterEvent):
 
     if leader != ctx.node_id:
 
-        log_state(
-            "cyan",
-            "[EVENT FWD]",
-            f"{event.event_id} -> {leader}",
-            3
-        )
+        log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
 
         node = CLUSTER_REGISTRY.get(leader)
 
         if not node:
-            return {
-                "status": "error",
-                "error": "leader not found"
-            }
+            return {"status": "error", "error": "leader not found"}
 
         url = f"http://{node['host']}:{node['port']}/event"
 
         try:
-
             resp = requests.post(
                 url,
                 json=event.model_dump(),
                 timeout=3
             )
 
-            # nodo muerto
             if resp.status_code >= 500:
-
-                return {
-                    "status": "error",
-                    "error": "leader unavailable"
-                }
+                return {"status": "error", "error": "leader unavailable"}
 
             try:
                 data = resp.json()
 
-                # FIX CRÍTICO
                 if isinstance(data, list):
-                    return {
-                        "status": "error",
-                        "error": "invalid response format"
-                    }
+                    return {"status": "error", "error": "invalid response format"}
 
                 return data
 
             except Exception:
-
-                return {
-                    "status": "error",
-                    "error": "bad json response"
-                }
+                return {"status": "error", "error": "bad json response"}
 
         except Exception as e:
-
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
     # =====================================================
     # LEADER INGEST
@@ -303,10 +241,7 @@ def ack(event: ClusterEvent):
 
     log_state("green", "[ACK]", event.event_id, 3)
 
-    return {
-        "ok": True,
-        "event_id": event.event_id
-    }
+    return {"ok": True, "event_id": event.event_id}
 
 
 # =========================================================
@@ -319,17 +254,16 @@ class Heartbeat(BaseModel):
     priority: int
 
 
-
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
-    # nodo local muerto -> ignorar heartbeats propios
+    # 🔴 FIX: nodo muerto no revive por heartbeat propio
     if hb.node_id == ctx.node_id and is_dead():
         return {"ignored": True}
 
     existing = cluster_state.get(hb.node_id)
 
-    # no revivir nodos muertos automáticamente
+    # 🔴 FIX: no resucitar nodos muertos
     if existing and existing.get("state") == "dead":
         return {"ignored": True}
 
@@ -340,8 +274,6 @@ def heartbeat(hb: Heartbeat):
     }
 
     return {"ok": True}
-
-
 
 
 # =========================================================
@@ -380,7 +312,6 @@ def run_node(config):
     ctx.node_id = config["node_id"]
     ctx.priority = config["priority"]
 
-    # self register alive
     cluster_state[ctx.node_id] = {
         "state": "alive",
         "priority": ctx.priority,
@@ -417,7 +348,5 @@ def run_node(config):
 # =========================================================
 
 if __name__ == "__main__":
-
     config = load_or_bootstrap_config()
-
     run_node(config)
