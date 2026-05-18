@@ -196,7 +196,7 @@ def heartbeat(hb: Heartbeat):
 
 
     # ❌ BLOQUEO CRÍTICO: nodo en SLEEP no refresca vida
-    if hb.state == "SLEEP":
+    if  not is_sleeping():
         log_state("white", "(NO HEARTBEAT)", f"{ctx.node_id} -> NO HEARTBEAT", 3)
         return {"ok": True, "ignored": True}
 
