@@ -177,7 +177,7 @@ def handle_event(event: ClusterEvent):
     if is_dead():
         return {"status": "error", "error": "node_dead"}
 
-    leader = compute_leader_safe()
+    leader = compute_leader()
 
     if not leader:
 
