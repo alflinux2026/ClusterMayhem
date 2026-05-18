@@ -156,7 +156,7 @@ def revive():
 
     set_sleep(False)
 
-    log_state("green", "(WAKEUP)", f"{ctx.node_id} -> ACTIVE", 3)
+    log_state("red", "(WAKEUP)", f"{ctx.node_id} -> WAKEUP", 3)
 
     return {"ok": True}
 
@@ -191,6 +191,11 @@ def get_leader():
 
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
+
+
+    # ❌ BLOQUEO CRÍTICO: nodo en SLEEP no refresca vida
+    if hb.state == "SLEEP":
+        return {"ok": True, "ignored": True}
 
     cluster_state[hb.node_id] = {
         "state": hb.state,
