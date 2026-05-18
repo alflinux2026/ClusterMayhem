@@ -15,7 +15,7 @@ def cleanup_cluster():
 
         # 🔥 NUEVO: reconciliación de estado
         if not alive and data.get("state") == "ACTIVE":
-            data["state"] = "STANDBY"
+            data["state"] = "STAND-BY"
 
     # eliminación real
     to_delete = [

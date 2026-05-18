@@ -89,11 +89,11 @@ def compute_leader(debug_node_id=None):
 
         #if data.get('state') == 'ACTIVE':
 
-        log_state("blue", "[NODE]", f"- {node_id:10} | "
-            f"state={data.get('state'):10} | "
-            f"priority={data.get('priority'):3} | "
-            f"age={age:6.3f}s | "
-            f"alive={alive}", 3)
+        log_state("blue", "[NODE]", f"| {node_id:10} | "
+            f"{data.get('state'):8} | "
+            f"{data.get('priority'):1} | "
+            f"{age:6.3f}s | "
+            f"{alive}", 3)
 
 
 
@@ -102,8 +102,10 @@ def compute_leader(debug_node_id=None):
             active_nodes[node_id] = data
 
         else:
-            data['state'] = ' GONE '   # 👈 aquí lo marcas aunque esté muerto
+            data['state'] = '  GONE  '   # 👈 aquí lo marcas aunque esté muerto
 
+
+    log_state("blue", "[NODE]", f"-----------------------------------------------------------", 3)
 
     if not active_nodes:
         return None
