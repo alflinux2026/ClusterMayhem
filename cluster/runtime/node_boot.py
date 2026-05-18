@@ -307,11 +307,19 @@ class Heartbeat(BaseModel):
     priority: int
 
 
+
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
-    if is_dead():
-        return {"error": "node_dead"}, 503
+    # nodo local muerto -> ignorar heartbeats propios
+    if hb.node_id == ctx.node_id and is_dead():
+        return {"ignored": True}
+
+    existing = cluster_state.get(hb.node_id)
+
+    # no revivir nodos muertos automáticamente
+    if existing and existing.get("state") == "dead":
+        return {"ignored": True}
 
     cluster_state[hb.node_id] = {
         "state": "alive",
@@ -320,6 +328,8 @@ def heartbeat(hb: Heartbeat):
     }
 
     return {"ok": True}
+
+
 
 
 # =========================================================
