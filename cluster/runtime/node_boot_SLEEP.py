@@ -15,20 +15,11 @@ from cluster.runtime.leader import compute_leader
 from cluster.runtime.bootstrap import load_or_bootstrap_config
 from cluster.runtime.registry import CLUSTER_REGISTRY
 
-from cluster.runtime.event_log import append_event, replay_events
+from cluster.runtime.event_log import replay_events
 from cluster.runtime.ingest import ingest_event
 from cluster.runtime.events.cluster_event import ClusterEvent
 from cluster.runtime import context as ctx
 from cluster.utils.log_print import log_state
-
-from cluster.runtime.events.event_state import EventStatus
-
-from cluster.runtime.worker.event_worker import execute_event
-
-from cluster.runtime.event_log import get_latest_event
-
-from cluster.runtime.state_machine import transition_event
-
 
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
@@ -44,78 +35,56 @@ app = FastAPI()
 def log_dump():
     return FileResponse("cluster/data/event_log.local.jsonl")
 
+
 @app.post("/execute")
 def execute_endpoint(event: ClusterEvent):
+    return ingest_event(event, ctx.node_id)
 
-    return execute_event(event)
 
-
-# -------------------------
-# ACK (FINAL STATE ONLY)
-# -------------------------
 @app.post("/ack")
 def ack(event: ClusterEvent):
-
     log_state("green", "[ACK]", f"{event.event_id} received", 3)
-
-    return {
-        "ok": True,
-        "event_id": event.event_id
-    }
+    return {"ok": True, "event_id": event.event_id}
 
 
-# -------------------------
-# REPLAY
-# -------------------------
 @app.post("/replay")
 def replay():
-
     def handler(event):
         return None
 
     replay_events(handler)
-
     return {"ok": True}
 
 
 # =========================
-# SINGLE ENTRYPOINT
+# LEADER FLOW
 # =========================
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
-
     leader = compute_leader()
-    #log_state("cyan", "(LEADER)", f"computed={leader}", 3)
 
     if not leader:
         log_state("red", "(NO LEADER)", event.event_id, 3)
         return {"error": "no leader"}
 
-    # -----------------------------------
-    # NOT LEADER → forward to leader
-    # -----------------------------------
     if leader != ctx.node_id:
-
-        #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
 
         log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
 
         node = CLUSTER_REGISTRY[leader]
         url = f"http://{node['host']}:{node['port']}/event"
 
-        resp = requests.post(
-            url,
-            json=event.model_dump(),
-            timeout=2
-        )
+        try:
+            resp = requests.post(
+                url,
+                json=event.model_dump(),
+                timeout=2
+            )
+            return resp.json()
 
-        return resp.json()
-
-    # -----------------------------------
-    # LEADER → INGEST ONLY
-    # -----------------------------------
-    #log_state("cyan", "[EVENT IN]", f"{event.event_id} type={event.event_type}", 3)
+        except Exception as e:
+            return {"error": str(e)}
 
     result = ingest_event(event, ctx.node_id)
 
@@ -127,7 +96,7 @@ def handle_event(event: ClusterEvent):
 
 
 # =========================
-# CLUSTER METADATA
+# METADATA
 # =========================
 class Heartbeat(BaseModel):
     node_id: str
@@ -137,10 +106,8 @@ class Heartbeat(BaseModel):
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "node": "alive"
-    }
+    return {"status": "ok", "node": ctx.node_id}
+
 
 @app.get("/cluster")
 def get_cluster():
@@ -154,26 +121,31 @@ def get_leader():
 
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
-
     cluster_state[hb.node_id] = {
         "state": hb.state,
         "priority": hb.priority,
         "last_seen": time.time(),
     }
-
     return {"ok": True}
 
 
-def is_alive(data, timeout=3.0):
-    return (time.time() - data["last_seen"]) < timeout
-
-
 # =========================
-# BOOTSTRAP
+# BOOTSTRAP FIX (CRÍTICO)
 # =========================
 def run_node(config):
 
     ctx.node_id = config["node_id"]
+    ctx.priority = config["priority"]
+
+    # ✅ IMPORTANTE: NO usar BOOT como estado que bloquea election
+    # directamente ACTIVE desde el inicio
+    cluster_state[ctx.node_id] = {
+        "state": "ACTIVE",   # 🔥 FIX PRINCIPAL
+        "priority": ctx.priority,
+        "last_seen": time.time(),
+    }
+
+    log_state("green", "(BOOT -> ACTIVE)", ctx.node_id, 3)
 
     node = NodeRuntime(
         node_id=config["node_id"],
@@ -202,6 +174,5 @@ def run_node(config):
 # =========================
 if __name__ == "__main__":
 
-    log_state("red", "[BOOTING...]", f"Booting system ver NO SLEEP", 3)
     config = load_or_bootstrap_config()
     run_node(config)
