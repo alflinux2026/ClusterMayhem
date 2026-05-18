@@ -27,7 +27,7 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
 
-HB_LOCK = threading.Lock()
+
 
 
 # =====================================================
@@ -35,22 +35,6 @@ HB_LOCK = threading.Lock()
 # =====================================================
 app = FastAPI()
 
-# =====================================================
-# LOCAL SLEEP STATE (NO CLUSTER TOUCH)
-# =====================================================
-NODE_SLEEP = False
-NODE_LOCK = threading.Lock()
-
-
-def is_sleeping():
-    with NODE_LOCK:
-        return NODE_SLEEP
-
-
-def set_sleep(value: bool):
-    global NODE_SLEEP
-    with NODE_LOCK:
-        NODE_SLEEP = value
 
 
 # =====================================================
@@ -107,11 +91,9 @@ def replay():
 @app.post("/event")
 def handle_event(event: ClusterEvent):
 
-    if is_sleeping():
-        log_state("red", "(SLEEP DROP EVENT)", event.event_id, 3)
-        return {"error": "node sleeping"}
-
-    log_state("red", "(STILL ALIVE!)", event.event_id, 3)
+    if ctx.node.state == NodeState.ISOLATED:
+        log_state("red", "/event when (ISOLATED)", event.event_id, 3)
+        return {"error": "node isolated"}
 
     leader = compute_leader()
 
@@ -207,25 +189,28 @@ def get_leader():
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
-    with HB_LOCK:
+    if ctx.node.state == NodeState.ISOLATED:
+        log_state("red", "/heartbeat when (ISOLATED)", event.event_id, 3)
+        return {"error": "node isolated"}
 
-        #if ctx.node_id == "lnx200nas":
-         #   log_state("red", "(HB FREEZE 3s)", "sleeping 20s", 3)
-            # time.sleep(3)
 
-        if is_sleeping():
-            log_state("white", "(NO HEARTBEAT)", f"{ctx.node_id} -> NO HEARTBEAT", 3)
-            return {"ok": True, "ignored": True}
+    #if ctx.node_id == "lnx200nas":
+        #   log_state("red", "(HB FREEZE 3s)", "sleeping 20s", 3)
+        # time.sleep(3)
 
-        #log_state("white", "(HEARTBEAT)", f"{ctx.node_id} -> HEARTBEAT", 3)
+#    if is_sleeping():
+#        log_state("white", "(NO HEARTBEAT)", f"{ctx.node_id} -> NO HEARTBEAT", 3)
+#        return {"ok": True, "ignored": True}
 
-        cluster_state[hb.node_id] = {
-            "state": hb.state,
-            "priority": hb.priority,
-            "last_seen": time.time(),
-        }
+    #log_state("white", "(HEARTBEAT)", f"{ctx.node_id} -> HEARTBEAT", 3)
 
-        return {"ok": True}
+    cluster_state[hb.node_id] = {
+        "state": hb.state,
+        "priority": hb.priority,
+        "last_seen": time.time(),
+    }
+
+    return {"ok": True}
 
 
 # =====================================================
