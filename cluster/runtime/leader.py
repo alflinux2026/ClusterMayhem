@@ -2,11 +2,11 @@ from cluster.runtime.cluster_store import cluster_state
 import time
 
 
-def is_alive_old(data, timeout=1.5):
+def is_alive(data, timeout=1.5):
     return (time.time() - data["last_seen"]) < timeout
 
 
-def compute_leader_old():
+def compute_leader():
 
     active_nodes = {
         node_id: data
@@ -25,11 +25,11 @@ def compute_leader_old():
 
 
 
-def is_alive(data, timeout=1.5):
+def is_alive_new(data, timeout=1.5):
     return (time.time() - data["last_seen"]) < timeout
 
 
-def compute_leader(debug_node_id=None):
+def compute_leader_new(debug_node_id=None):
 
     now = time.time()
 
