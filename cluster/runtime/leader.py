@@ -101,7 +101,7 @@ def compute_leader(debug_node_id=None):
             active_nodes[node_id] = data
 
         else:
-            data['state'] = 'gone'   # 👈 aquí lo marcas aunque esté muerto
+            data['state'] = ' GONE '   # 👈 aquí lo marcas aunque esté muerto
 
 
     if not active_nodes:
