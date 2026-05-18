@@ -64,12 +64,12 @@ class NodeRuntime:
         # -------------------------------------------------
 
         if leader == self.node_id:
-            if self.state != NodeState.ACTIVE and self.state == NodeState.STANDBY:
+            if self.state == NodeState.STANDBY:
 #                print(f"[{self.node_id}] becoming ACTIVE")
                 log_state("yellow", "    [CLUSTER]", f"[{self.node_id}] becoming ACTIVE")
                 self.transition(NodeState.ACTIVE)
         else:
-            if self.state != NodeState.STANDBY and self.state == NodeState.ACTIVE:
+            if self.state == NodeState.ACTIVE:
 #                print(f"[{self.node_id}] becoming STANDBY")
                 log_state("yellow", "    [CLUSTER]", f"[{self.node_id}] becoming STANDBY")
                 self.transition(NodeState.STANDBY)

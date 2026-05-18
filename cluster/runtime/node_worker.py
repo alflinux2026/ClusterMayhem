@@ -39,18 +39,21 @@ class NodeWorker:
             self.node.tick()
 
             if self.node.state == NodeState.ISOLATED:
+                time.sleep(self.interval)
                 continue
             else:
                 self.node.emit_heartbeat(self.peers)
 
             # dispatch (leader only)
             if self.node.state == NodeState.ISOLATED:
+                time.sleep(self.interval)
                 continue
             else:
                 dispatch_tick()
 
             # reconcile (leader only inside)
             if self.node.state == NodeState.ISOLATED:
+                time.sleep(self.interval)
                 continue
             else:
                 reconcile_tick(self.node)
