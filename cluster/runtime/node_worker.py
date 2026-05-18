@@ -3,6 +3,7 @@ import threading
 
 from cluster.runtime.dispatcher import dispatch_tick
 from cluster.runtime.reconciler.reconciler_loop import reconcile_tick
+from cluster.runtime.state import NodeState
 
 
 class NodeWorker:
@@ -36,12 +37,22 @@ class NodeWorker:
 
             # cluster tick
             self.node.tick()
-            self.node.emit_heartbeat(self.peers)
+
+            if self.node.state == NodeState.ISOLATED:
+                continue
+            else:
+                self.node.emit_heartbeat(self.peers)
 
             # dispatch (leader only)
-            dispatch_tick()
+            if self.node.state == NodeState.ISOLATED:
+                continue
+            else:
+                dispatch_tick()
 
             # reconcile (leader only inside)
-            reconcile_tick(self.node)
+            if self.node.state == NodeState.ISOLATED:
+                continue
+            else:
+                reconcile_tick(self.node)
 
             time.sleep(self.interval)

@@ -150,9 +150,11 @@ def handle_event(event: ClusterEvent):
 @app.post("/sleep")
 def sleep():
 
-    set_sleep(True)
+#    set_sleep(True)
 
     log_state("red", "(SLEEP)", f"{ctx.node_id} -> SLEEP", 3)
+
+    self.transition(NodeState.ISOLATED)
 
     return {"ok": True}
 
@@ -160,9 +162,11 @@ def sleep():
 @app.post("/revive")
 def revive():
 
-    set_sleep(False)
+#    set_sleep(False)
 
     log_state("red", "(WAKEUP)", f"{ctx.node_id} -> WAKEUP", 3)
+
+    self.transition(NodeState.STANDBY)
 
     return {"ok": True}
 
