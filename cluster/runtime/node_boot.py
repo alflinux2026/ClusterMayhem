@@ -25,6 +25,10 @@ from cluster.runtime.worker.event_worker import execute_event
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
+
+HB_LOCK = threading.Lock()
+
+
 # =====================================================
 # FASTAPI
 # =====================================================
@@ -191,7 +195,7 @@ def get_leader():
     return {"leader": compute_leader()}
 
 
-HB_LOCK = threading.Lock()
+
 
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
