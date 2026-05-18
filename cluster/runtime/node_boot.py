@@ -4,9 +4,9 @@ import uvicorn
 import logging
 import requests
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import Response, FileResponse
 from pydantic import BaseModel
-from fastapi.responses import FileResponse
 
 from cluster.runtime.cluster_store import cluster_state
 from cluster.runtime.node_worker import NodeWorker
@@ -25,38 +25,27 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
 # =========================================================
-# BOOT CONTROL (FIXED: safer + auto-release fallback)
+# NODE FAILURE STATE (REAL "DEAD NODE" SIMULATION)
 # =========================================================
-BOOT_UNTIL = 0
-BOOT_LOCK = threading.Lock()
-
-BOOT_DEFAULT_SECONDS = 3.0  # safety net: NEVER infinite boot
+NODE_DEAD = False
+NODE_LOCK = threading.Lock()
 
 
-def is_booting():
-    return time.time() < BOOT_UNTIL
+def kill_node():
+    global NODE_DEAD
+    with NODE_LOCK:
+        NODE_DEAD = True
 
 
-def set_boot(seconds: float):
-    global BOOT_UNTIL
-    with BOOT_LOCK:
-        BOOT_UNTIL = time.time() + seconds
+def revive_node():
+    global NODE_DEAD
+    with NODE_LOCK:
+        NODE_DEAD = False
 
 
-def auto_boot_release():
-    """Failsafe: ensures node NEVER stays in boot forever"""
-    global BOOT_UNTIL
-    while True:
-        time.sleep(1.0)
-        with BOOT_LOCK:
-            if BOOT_UNTIL == 0:
-                BOOT_UNTIL = time.time() + BOOT_DEFAULT_SECONDS
-            elif time.time() > BOOT_UNTIL + 10:
-                # hard escape if something went wrong
-                BOOT_UNTIL = time.time() - 1
+def is_dead():
+    return NODE_DEAD
 
-
-threading.Thread(target=auto_boot_release, daemon=True).start()
 
 # =========================================================
 # FASTAPI
@@ -65,29 +54,53 @@ app = FastAPI()
 
 
 # =========================================================
-# CHAOS CONTROL
+# GLOBAL DEATH MIDDLEWARE (CORE FIX)
 # =========================================================
-@app.post("/boot")
-def boot_control(payload: dict):
-    seconds = float(payload.get("seconds", BOOT_DEFAULT_SECONDS))
-    set_boot(seconds)
-    return {"ok": True, "boot_until": BOOT_UNTIL}
+@app.middleware("http")
+async def death_middleware(request: Request, call_next):
+
+    # allow health ALWAYS (important for cluster recovery)
+    if request.url.path == "/health":
+        return await call_next(request)
+
+    if is_dead():
+        return Response(
+            status_code=503,
+            content='{"error":"node_dead"}',
+            media_type="application/json"
+        )
+
+    return await call_next(request)
 
 
 # =========================================================
-# HEALTH (IMPORTANT: NEVER BLOCKED COMPLETELY)
+# CHAOS CONTROL API
+# =========================================================
+@app.post("/kill")
+def kill(payload: dict = None):
+    kill_node()
+    return {"ok": True, "state": "dead"}
+
+
+@app.post("/revive")
+def revive(payload: dict = None):
+    revive_node()
+    return {"ok": True, "state": "alive"}
+
+
+# =========================================================
+# HEALTH (IMPORTANT: ALWAYS AVAILABLE)
 # =========================================================
 @app.get("/health")
 def health():
-    # allow health even in boot → cluster can recover
     return {
-        "status": "booting" if is_booting() else "ok",
+        "status": "dead" if is_dead() else "alive",
         "node": ctx.node_id
     }
 
 
 # =========================================================
-# HEARTBEAT (CRITICAL FIX: NEVER BLOCK THIS)
+# HEARTBEAT (still works unless you want full blackout)
 # =========================================================
 class Heartbeat(BaseModel):
     node_id: str
@@ -97,54 +110,35 @@ class Heartbeat(BaseModel):
 
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
+
+    # even dead nodes can optionally stop heartbeat
+    if is_dead():
+        return {"error": "node_dead"}, 503
+
     cluster_state[hb.node_id] = {
         "state": hb.state,
         "priority": hb.priority,
         "last_seen": time.time(),
     }
+
     return {"ok": True}
 
 
 # =========================================================
-# EXECUTE
-# =========================================================
-@app.post("/execute")
-def execute_endpoint(event: ClusterEvent):
-    if is_booting():
-        return {"error": "booting"}, 503
-    return execute_event(event)
-
-
-# =========================================================
-# ACK
-# =========================================================
-@app.post("/ack")
-def ack(event: ClusterEvent):
-    if is_booting():
-        return {"error": "booting"}, 503
-
-    log_state("green", "[ACK]", event.event_id, 3)
-    return {"ok": True, "event_id": event.event_id}
-
-
-# =========================================================
-# EVENT ENTRYPOINT
+# EVENT FLOW
 # =========================================================
 @app.post("/event")
 def event(event: ClusterEvent):
-    if is_booting():
-        return {"error": "booting"}, 503
     return handle_event(event)
 
 
 def handle_event(event: ClusterEvent):
+
     leader = compute_leader()
 
-    # FIX: empty cluster fallback → SELF becomes leader
     if not leader:
         leader = ctx.node_id
 
-    # forward if not leader
     if leader != ctx.node_id:
 
         log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
@@ -156,22 +150,15 @@ def handle_event(event: ClusterEvent):
         url = f"http://{node['host']}:{node['port']}/event"
 
         try:
-            resp = requests.post(
-                url,
-                json=event.model_dump(),
-                timeout=3
-            )
+            resp = requests.post(url, json=event.model_dump(), timeout=3)
 
-            # =========================
-            # FIX CRITICAL BUG HERE
-            # =========================
             try:
                 data = resp.json()
                 if isinstance(data, list):
-                    return {"status": "error", "error": "invalid list response"}
+                    return {"error": "invalid response format"}
                 return data
             except Exception:
-                return {"status": "error", "error": "bad json response"}
+                return {"error": "bad response"}
 
         except Exception as e:
             return {"error": str(e)}
@@ -187,18 +174,20 @@ def handle_event(event: ClusterEvent):
 
 
 # =========================================================
-# REPLAY
+# EXECUTE
 # =========================================================
-@app.post("/replay")
-def replay():
-    if is_booting():
-        return {"error": "booting"}, 503
+@app.post("/execute")
+def execute_endpoint(event: ClusterEvent):
+    return execute_event(event)
 
-    def handler(event):
-        return None
 
-    replay_events(handler)
-    return {"ok": True}
+# =========================================================
+# ACK
+# =========================================================
+@app.post("/ack")
+def ack(event: ClusterEvent):
+    log_state("green", "[ACK]", event.event_id, 3)
+    return {"ok": True, "event_id": event.event_id}
 
 
 # =========================================================
@@ -228,10 +217,6 @@ def run_node(config):
     )
 
     threading.Thread(target=worker.start, daemon=True).start()
-
-    # IMPORTANT FIX:
-    # ensure node exits boot after startup
-    set_boot(BOOT_DEFAULT_SECONDS)
 
     uvicorn.run(
         app,
