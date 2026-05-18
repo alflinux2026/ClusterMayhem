@@ -13,23 +13,21 @@ from cluster.runtime.events.cluster_event import ClusterEvent
 
 NODES = [
     "http://100.100.1.200:7000", # LEADER
-    "http://100.100.1.200:7000",
-    "http://100.100.1.200:7000",
-    "http://100.100.1.200:7000",
 
     "http://100.100.1.202:7000", # STANDBY NO WORKER
     "http://100.100.1.202:7000",
 
     "http://100.100.1.203:7000",# STANDBY WORKER
+    "http://100.100.1.203:7000"
 ]
 
 EVENTS = 20
 
 EVENT_DELAY_RANGE = (0.5, 2.0)
 
-KILL_PROBABILITY = 0.9
+KILL_PROBABILITY = 0.3
 
-DEATH_TIME_RANGE = (60, 65)
+DEATH_TIME_RANGE = (5, 15)
 
 REQUEST_TIMEOUT = 5
 
@@ -158,7 +156,7 @@ def chaos_loop():
 
             node = random.choice(NODES)
 
-            node = SLEEP_ONLY_NODE  # 👈 FORZADO
+#            node = SLEEP_ONLY_NODE  # 👈 FORZADO
 
             seconds = random.uniform(*DEATH_TIME_RANGE)
 
