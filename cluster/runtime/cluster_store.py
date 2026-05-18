@@ -8,6 +8,16 @@ NODE_TTL = 5.0  # segundos
 def cleanup_cluster():
     now = time.time()
 
+    for node_id, data in list(cluster_state.items()):
+
+        age = now - data.get("last_seen", 0)
+        alive = age <= NODE_TTL
+
+        # 🔥 NUEVO: reconciliación de estado
+        if not alive and data.get("state") == "ACTIVE":
+            data["state"] = "STANDBY"
+
+    # eliminación real
     to_delete = [
         node_id
         for node_id, data in list(cluster_state.items())
