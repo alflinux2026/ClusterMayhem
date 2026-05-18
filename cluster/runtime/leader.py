@@ -54,6 +54,11 @@ def compute_leader_new(debug_node_id=None):
         if alive:
             active_nodes[node_id] = data
 
+        else:
+            data['state'] = 'gone'   # 👈 aquí lo marcas aunque esté muerto
+
+
+
     if not active_nodes:
         print("[LEADER RESULT] None (no active nodes)")
         return None
@@ -81,19 +86,23 @@ def compute_leader(debug_node_id=None):
         age = now - data.get("last_seen", 0)
         alive = is_alive(data)
 
-        if data.get('state') == 'ACTIVE':
+        #if data.get('state') == 'ACTIVE':
 
-            print(
-                f"- {node_id:10} | "
-                f"state={data.get('state'):10} | "
-                f"priority={data.get('priority'):3} | "
-                f"age={age:6.3f}s | "
-                f"alive={alive}"
-            )
+        print(
+            f"- {node_id:10} | "
+            f"state={data.get('state'):10} | "
+            f"priority={data.get('priority'):3} | "
+            f"age={age:6.3f}s | "
+            f"alive={alive}"
+        )
 
 
         if alive:
             active_nodes[node_id] = data
+
+        else:
+            data['state'] = 'gone'   # 👈 aquí lo marcas aunque esté muerto
+
 
     if not active_nodes:
         return None
