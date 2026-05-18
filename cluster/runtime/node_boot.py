@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from cluster.runtime.cluster_store import cluster_state
 from cluster.runtime.node_worker import NodeWorker
 from cluster.node.node_runtime import NodeRuntime
-from cluster.node.node_state import NodeState
+from cluster.node.node_runtime import NodeState
 from cluster.runtime.leader import compute_leader
 from cluster.runtime.bootstrap import load_or_bootstrap_config
 from cluster.runtime.registry import CLUSTER_REGISTRY
