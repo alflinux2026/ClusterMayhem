@@ -36,7 +36,7 @@ class NodeRuntime:
 
     def tick(self):
 
-#        print(f"[TICK] {self.node_id} state={self.state.value}")
+        print(f"[TICK] {self.node_id} state={self.state.value}")
 #        print(f"[STATE] {self.state.value}")
 #        log_state("yellow", "CLUSTER", f"State: {self.state.value}")
 
