@@ -154,7 +154,7 @@ def sleep():
 
     log_state("red", "(SLEEP)", f"{ctx.node_id} -> SLEEP", 3)
 
-    node.transition(NodeState.ISOLATED)
+    ctx.node.transition(NodeState.ISOLATED)
 
     time.sleep(30)
 
@@ -168,7 +168,7 @@ def revive():
 
     log_state("red", "(WAKEUP)", f"{ctx.node_id} -> WAKEUP", 3)
 
-    node.transition(NodeState.STANDBY)
+    ctx.node.transition(NodeState.STANDBY)
 
     return {"ok": True}
 
@@ -239,6 +239,8 @@ def run_node(config):
         node_id=config["node_id"],
         priority=config["priority"],
     )
+
+    ctx.node = node
 
     worker = NodeWorker(
         node=node,
