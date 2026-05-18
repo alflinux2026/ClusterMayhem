@@ -44,27 +44,16 @@ def is_booting():
 
 
 def set_boot(seconds: float):
-    global BOOT_UNTIL, _last_boot_time
+    global BOOT_UNTIL
 
     now = time.monotonic()
 
     with BOOT_LOCK:
 
-        # anti-spam: ignora boots demasiado seguidos
-        if now - _last_boot_time < MIN_BOOT_GAP:
-            return
+        seconds = float(seconds)
 
-        _last_boot_time = now
-
-        # CLAMP: nunca permitir boot infinito
-        seconds = min(float(seconds), MAX_BOOT_SECONDS)
-
-        # IMPORTANTE:
-        # si ya estás en boot, NO lo extiendas agresivamente
-        if BOOT_UNTIL > now:
-            BOOT_UNTIL = max(BOOT_UNTIL, now + seconds * 0.3)
-        else:
-            BOOT_UNTIL = now + seconds
+        # CLAVE: boot SIEMPRE sobrescribe, nunca acumula
+        BOOT_UNTIL = now + min(seconds, MAX_BOOT_SECONDS)
 
 
 # =========================
