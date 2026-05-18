@@ -13,14 +13,17 @@ from cluster.runtime.events.cluster_event import ClusterEvent
 NODES = [
     "http://100.100.1.200:7000",
     "http://100.100.1.202:7000",
+    "http://100.100.1.202:7000",
+    "http://100.100.1.202:7000",
+    "http://100.100.1.203:7000",
     "http://100.100.1.203:7000",
 ]
 
 EVENTS = 50
 EVENT_DELAY_RANGE = (0.5, 2.0)
 
-KILL_PROBABILITY = 0.25
-DEATH_TIME_RANGE = (3, 10)
+KILL_PROBABILITY = 0.2
+DEATH_TIME_RANGE = (2, 5)
 
 REQUEST_TIMEOUT = 5
 
