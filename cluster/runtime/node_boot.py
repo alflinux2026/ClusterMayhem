@@ -40,7 +40,7 @@ def kill_node():
 
         # 🔴 FIX: eliminar elegibilidad inmediata del líder
         cluster_state[ctx.node_id] = {
-            "state": "dead",
+            "state": "sleep",
             "priority": ctx.priority,
             "last_seen": 0,
         }
@@ -55,7 +55,7 @@ def revive_node():
         NODE_DEAD = False
 
         cluster_state[ctx.node_id] = {
-            "state": "alive",
+            "state": "STANDBY",
             "priority": ctx.priority,
             "last_seen": time.time(),
         }
@@ -153,12 +153,6 @@ def handle_event(event: ClusterEvent):
     if leader:
         leader_state = cluster_state.get(leader)
 
-        if (
-            not leader_state
-            or leader_state.get("state") != "alive"
-            or leader_state.get("last_seen", 0) == 0
-        ):
-            leader = None
 
     if not leader:
         log_state("yellow", "[NO LEADER]", event.event_id, 3)

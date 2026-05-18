@@ -33,6 +33,8 @@ DEATH_TIME_RANGE = (5, 8)
 
 REQUEST_TIMEOUT = 5
 
+SLEEP_ONLY_NODE = "http://100.100.1.200:7000"
+
 
 # =====================================================
 # GLOBALS
@@ -155,6 +157,8 @@ def chaos_loop():
         if random.random() < KILL_PROBABILITY:
 
             node = random.choice(NODES)
+
+            node = SLEEP_ONLY_NODE  # 👈 FORZADO
 
             seconds = random.uniform(*DEATH_TIME_RANGE)
 
