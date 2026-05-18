@@ -94,7 +94,7 @@ def compute_leader(debug_node_id=None):
             f"{age:6.3f}s | "
             f"{alive}", 3)
 
-        if data.get('state') == ' GONE ':
+        if data.get('state') == '  GONE  ':
            time.sleep(30)
 
 
