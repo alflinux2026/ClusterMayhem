@@ -136,7 +136,8 @@ def handle_event(event: ClusterEvent):
 def sleep():
 
 
-    print(f"[SLEEP] {ctx.node_id} -> SLEEP")
+    log_state("red", "(SLEEP)", f"{ctx.node_id} -> SLEEP", 3)
+
 
     return {"ok": True}
 
@@ -145,7 +146,7 @@ def sleep():
 def revive():
 
 
-    print(f"[REVIVE] {ctx.node_id} -> STANDBY")
+    log_state("red", "(WAKEUP)", f"{ctx.node_id} -> WAKEUP", 3)
 
     return {"ok": True}
 
