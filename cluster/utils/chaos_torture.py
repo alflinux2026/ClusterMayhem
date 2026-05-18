@@ -56,18 +56,18 @@ def kill_node(node):
     try:
 
         requests.post(
-            f"{node}/kill",
+            f"{node}/sleep",
             timeout=1
         )
 
         with dead_lock:
             dead_nodes.add(node)
 
-        print(f"[CHAOS] KILL {node}")
+        print(f"[CHAOS] SLEEP {node}")
 
     except Exception as e:
 
-        print(f"[CHAOS FAIL KILL] {node} -> {e}")
+        print(f"[CHAOS FAIL SLEEP] {node} -> {e}")
 
 
 def revive_node(node):
