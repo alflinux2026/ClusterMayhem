@@ -4,9 +4,9 @@ import uvicorn
 import logging
 import requests
 
-from fastapi.responses import FileResponse
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.responses import FileResponse
 
 from cluster.runtime.cluster_store import cluster_state
 from cluster.runtime.node_worker import NodeWorker
@@ -14,7 +14,6 @@ from cluster.node.node_runtime import NodeRuntime
 from cluster.runtime.leader import compute_leader
 from cluster.runtime.bootstrap import load_or_bootstrap_config
 from cluster.runtime.registry import CLUSTER_REGISTRY
-
 from cluster.runtime.event_log import replay_events
 from cluster.runtime.ingest import ingest_event
 from cluster.runtime.events.cluster_event import ClusterEvent
@@ -26,17 +25,17 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 
 
-# =========================
-# BOOT CONTROL (FIXED)
-# =========================
+# =========================================================
+# STATE GLOBAL
+# =========================================================
 
 BOOT_UNTIL = 0.0
 BOOT_LOCK = threading.Lock()
 
-# evita “boot infinito por spam”
-MAX_BOOT_SECONDS = 8.0
-MIN_BOOT_GAP = 0.5
-_last_boot_time = 0.0
+NODE_READY = False
+NODE_START_TIME = 0.0
+
+BOOT_MAX_SECONDS = 6.0
 
 
 def is_booting():
@@ -49,21 +48,24 @@ def set_boot(seconds: float):
     now = time.monotonic()
 
     with BOOT_LOCK:
-
-        seconds = float(seconds)
-
-        # CLAVE: boot SIEMPRE sobrescribe, nunca acumula
-        BOOT_UNTIL = now + min(seconds, MAX_BOOT_SECONDS)
+        seconds = min(float(seconds), BOOT_MAX_SECONDS)
+        BOOT_UNTIL = now + seconds
 
 
-# =========================
+def is_ready():
+    return NODE_READY
+
+
+# =========================================================
 # FASTAPI
-# =========================
+# =========================================================
+
 app = FastAPI()
 
 
 @app.post("/boot")
 def boot_control(payload: dict):
+
     seconds = float(payload.get("seconds", 1.0))
     set_boot(seconds)
 
@@ -79,39 +81,55 @@ def log_dump():
     return FileResponse("cluster/data/event_log.local.jsonl")
 
 
-# =========================
-# EXECUTE (bloquea pero NO rompe cluster)
-# =========================
-@app.post("/execute")
-def execute_endpoint(event: ClusterEvent):
+# =========================================================
+# SAFE GUARD
+# =========================================================
+
+def guard():
+    if not NODE_READY:
+        return {"status": "starting"}, 503
 
     if is_booting():
         return {"error": "booting"}, 503
+
+    return None
+
+
+# =========================================================
+# EXECUTION
+# =========================================================
+
+@app.post("/execute")
+def execute_endpoint(event: ClusterEvent):
+
+    g = guard()
+    if g:
+        return g
 
     return execute_event(event)
 
 
-# =========================
-# ACK (IMPORTANTE: NO bloquear cluster state)
-# =========================
 @app.post("/ack")
 def ack(event: ClusterEvent):
 
-    if is_booting():
-        return {"error": "booting"}, 503
+    g = guard()
+    if g:
+        return g
 
     log_state("green", "[ACK]", f"{event.event_id}", 3)
     return {"ok": True, "event_id": event.event_id}
 
 
-# =========================
-# EVENT CORE
-# =========================
+# =========================================================
+# EVENT SYSTEM
+# =========================================================
+
 @app.post("/event")
 def event(event: ClusterEvent):
 
-    if is_booting():
-        return {"error": "booting"}, 503
+    g = guard()
+    if g:
+        return g
 
     return handle_event(event)
 
@@ -121,9 +139,9 @@ def handle_event(event: ClusterEvent):
     leader = compute_leader()
 
     if not leader:
-        log_state("red", "(NO LEADER)", event.event_id, 3)
         return {"error": "no leader"}
 
+    # forward if not leader
     if leader != ctx.node_id:
 
         log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
@@ -138,15 +156,15 @@ def handle_event(event: ClusterEvent):
                 timeout=2
             )
 
-            # FIX CRÍTICO: evitar el bug de list/dict
             try:
                 return resp.json()
             except Exception:
-                return {"error": "invalid response from leader"}
+                return {"error": "bad leader response"}
 
         except Exception as e:
             return {"error": str(e)}
 
+    # leader path
     result = ingest_event(event, ctx.node_id)
 
     return {
@@ -156,9 +174,10 @@ def handle_event(event: ClusterEvent):
     }
 
 
-# =========================
-# HEARTBEAT (NO BLOQUEAR DURANTE BOOT)
-# =========================
+# =========================================================
+# HEARTBEAT (IMPORTANT: SOLO CUANDO READY)
+# =========================================================
+
 class Heartbeat(BaseModel):
     node_id: str
     state: str
@@ -168,8 +187,9 @@ class Heartbeat(BaseModel):
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
 
-    # 🔥 IMPORTANTE: NO bloquear heartbeat en boot
-    # si no, pierdes cluster_state y nunca hay líder
+    if not NODE_READY:
+        return {"error": "starting"}, 503
+
     cluster_state[hb.node_id] = {
         "state": hb.state,
         "priority": hb.priority,
@@ -179,16 +199,20 @@ def heartbeat(hb: Heartbeat):
     return {"ok": True}
 
 
-# =========================
-# HEALTH (bloquea solo API, no cluster interno)
-# =========================
+# =========================================================
+# HEALTH
+# =========================================================
+
 @app.get("/health")
 def health():
+
+    if not NODE_READY:
+        return {"status": "starting"}, 503
 
     if is_booting():
         return {"status": "booting"}, 503
 
-    return {"status": "ok", "node": "alive"}
+    return {"status": "ok", "node": ctx.node_id}
 
 
 @app.get("/cluster")
@@ -198,15 +222,18 @@ def get_cluster():
 
 @app.get("/leader")
 def get_leader():
+
+    if not NODE_READY:
+        return {"leader": None, "status": "starting"}
+
     return {"leader": compute_leader()}
 
 
-# =========================
-# BOOTSTRAP
-# =========================
-def run_node(config):
+# =========================================================
+# WORKER THREAD START
+# =========================================================
 
-    ctx.node_id = config["node_id"]
+def start_worker(config):
 
     node = NodeRuntime(
         node_id=config["node_id"],
@@ -221,6 +248,27 @@ def run_node(config):
 
     threading.Thread(target=worker.start, daemon=True).start()
 
+
+# =========================================================
+# BOOTSTRAP SEQUENCE (CRITICAL FIX)
+# =========================================================
+
+def run_node(config):
+
+    global NODE_READY, NODE_START_TIME
+
+    ctx.node_id = config["node_id"]
+
+    NODE_START_TIME = time.monotonic()
+
+    start_worker(config)
+
+    # 🔥 FASE 1: dar tiempo a inicialización
+    time.sleep(2.0)
+
+    # 🔥 FASE 2: habilitar cluster
+    NODE_READY = True
+
     uvicorn.run(
         app,
         host=config.get("bind_host", "0.0.0.0"),
@@ -229,6 +277,10 @@ def run_node(config):
         access_log=False
     )
 
+
+# =========================================================
+# ENTRYPOINT
+# =========================================================
 
 if __name__ == "__main__":
 
