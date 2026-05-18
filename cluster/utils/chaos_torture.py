@@ -61,11 +61,11 @@ def kill_node(node):
         with dead_lock:
             dead_nodes.add(node)
 
-        print(f"[CHAOS] SLEEP {node}")
+        print(f"[CHAOS] ISOLATE {node}")
 
     except Exception as e:
 
-        print(f"[CHAOS FAIL SLEEP] {node} -> {e}")
+        print(f"[CHAOS FAIL ISOLATE] {node} -> {e}")
 
 
 def revive_node(node):
@@ -93,7 +93,7 @@ def kill_cycle(node, seconds):
 
         kill_node(node)
 
-        print(f"[CHAOS] DEAD {node} for {seconds:.2f}s")
+        print(f"[CHAOS] ISOLATE {node} for {seconds:.2f}s")
 
         time.sleep(seconds)
 
@@ -141,7 +141,7 @@ def send_event(i):
             if r.status_code != 200:
 
                 print(
-                    f"[RETRY] {node} "
+                    f"[RETRY] {i} {node} "
                     f"http={r.status_code}"
                 )
 
@@ -157,7 +157,7 @@ def send_event(i):
             if "error" in data:
 
                 print(
-                    f"[RETRY] {node} "
+                    f"[RETRY] {i} {node} "
                     f"error={data['error']}"
                 )
 
@@ -181,7 +181,7 @@ def send_event(i):
         except Exception as e:
 
             print(
-                f"[RETRY FAIL] {node} -> {e}"
+                f"[RETRY FAIL] {i} {node} -> {e}"
             )
 
             last_error = str(e)
@@ -191,7 +191,7 @@ def send_event(i):
     # =============================================
 
     print(
-        f"[EVENT LOST] seq={i} "
+        f"[EVENT LOST] {i} "
         f"error={last_error}"
     )
 
@@ -272,7 +272,7 @@ def revive_everything():
 
 def wait_kills():
 
-    print("\n[MAIN] waiting active kill cycles...\n")
+    print("\n[MAIN] waiting active isolated cycles...\n")
 
     for t in kill_threads:
         t.join(timeout=30)

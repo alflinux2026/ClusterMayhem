@@ -52,8 +52,8 @@ def log_dump():
 def execute_endpoint(event: ClusterEvent):
 
     if ctx.node.state == NodeState.ISOLATED:
-        log_state("red", "(ISOLATED)", "/execute when (ISOLATED)", 3)
-        time.sleep(5)
+        #log_state("red", "(ISOLATED)", "/execute when (ISOLATED)", 3)
+        #time.sleep(5)
         return {"error": "node isolated"}
 
     return execute_event(event)
@@ -94,8 +94,8 @@ def replay():
 def handle_event(event: ClusterEvent):
 
     if ctx.node.state == NodeState.ISOLATED:
-        log_state("red", "(ISOLATED)", "/event when (ISOLATED)", 3)
-        time.sleep(5)
+        #log_state("red", "(ISOLATED)", "/event when (ISOLATED)", 3)
+        #time.sleep(5)
         return {"error": "node isolated"}
 
     leader = compute_leader()
@@ -193,8 +193,8 @@ def get_leader():
 def heartbeat(hb: Heartbeat):
 
     if ctx.node.state == NodeState.ISOLATED:
-        log_state("red", "(ISOLATED)", "/heartbeat when (ISOLATED)", 3)
-        time.sleep(5)
+        #log_state("red", "(ISOLATED)", "/heartbeat when (ISOLATED)", 3)
+        #time.sleep(5)
         return {"error": "node isolated"}
 
 
