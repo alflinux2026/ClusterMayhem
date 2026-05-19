@@ -61,6 +61,15 @@ def discover_seed(peers):
 # CONFIG GENERATION
 # -------------------------------------------------
 def generate_local_config(peers):
+
+    state = discover_seed(peers)
+
+    used_priorities = {
+        n.get("priority")
+        for n in state.values()
+        if n.get("priority") is not None
+    }
+
     hostname = get_hostname()
 
     priority = deterministic_priority(hostname)
