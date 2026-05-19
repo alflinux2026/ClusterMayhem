@@ -78,7 +78,9 @@ def dispatch_created_event(event):
   #  log_state("yellow", "[DISPATCH]", f"event={event.event_id}", 3)
   #  log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
 
-    target = max(
+
+    # calculo identico de worker que de leader
+    target = min(
         alive.items(),
         key=lambda x: (x[1]["priority"], x[0])
     )[0]
