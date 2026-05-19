@@ -113,7 +113,7 @@ def forward_event(node_id: str, event: ClusterEvent):
         log_state(
             "yellow",
             "(EVENT)",
-            f"{msg:12} -> EVENT COMPLETED",
+            f"{msg:12} -> COMPLETED",
             3
         )
 

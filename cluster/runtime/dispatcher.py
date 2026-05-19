@@ -36,7 +36,7 @@ def dispatch_tick():
     log_state(
         "magenta",
         "[DISPATCH]",
-        f"pending={len(events)}",
+        f"{len(events):3}",
         3
     )
 
@@ -109,7 +109,7 @@ def dispatch_created_event(event):
 
     msg = event.payload.get("msg", "<no-msg>")
 
-    log_state("yellow", "(EVENT)", f"{msg:12} -> EVENT EXECUTING", 3)
+    log_state("yellow", "(EVENT)", f"{msg:12} -> EXECUTING", 3)
 
     # -------------------------
     # PERSIST

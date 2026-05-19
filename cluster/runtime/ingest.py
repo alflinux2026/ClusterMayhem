@@ -16,7 +16,7 @@ def ingest_event(event, node_id):
 
     msg = event.payload.get("msg", "<no-msg>")
 
-    log_state("yellow", "(EVENT)", f"{msg:12} -> EVENT CREATED", 3)
+    log_state("yellow", "(EVENT)", f"{msg:12} -> CREATED", 3)
 
     log_state(
         "cyan",

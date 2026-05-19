@@ -140,7 +140,7 @@ def sleep():
 
 #    set_sleep(True)
 
-    log_state("red", "(SLEEP)", f"{ctx.node_id} -> SLEEP", 3)
+    log_state("red", "- SLEEP -", f"{ctx.node_id} -> SLEEP", 3)
 
     ctx.node.transition(NodeState.ISOLATED)
 
@@ -152,7 +152,7 @@ def revive():
 
 #    set_sleep(False)
 
-    log_state("red", "(WAKEUP)", f"{ctx.node_id} -> WAKEUP", 3)
+    log_state("red", "- WAKEUP -", f"{ctx.node_id} -> WAKEUP", 3)
 
     ctx.node.transition(NodeState.STANDBY)
 
