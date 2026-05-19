@@ -62,10 +62,12 @@ def forward_event(node_id: str, event: ClusterEvent):
 
     event.add_hop(f"worker:{node_id}")
 
+        msg = event.payload.get("msg", "<no-msg>")
+
     log_state(
         "magenta",
         "[WORKER SEND]",
-        f"{event.event_id} -> {node_id}",
+        f"{msg:12} -> {node_id}",
         3
     )
 
@@ -89,7 +91,7 @@ def forward_event(node_id: str, event: ClusterEvent):
         log_state(
             "red",
             "[WORKER SEND FAIL]",
-            f"{event.event_id} -> {node_id} | {e}",
+            f"{msg:12} -> {node_id} | {e}",
             3
         )
         return {"error": "worker_send_failed"}
@@ -107,7 +109,6 @@ def forward_event(node_id: str, event: ClusterEvent):
             EventStatus.COMPLETED
         )
 
-        msg = event.payload.get("msg", "<no-msg>")
 
         log_state(
             "yellow",

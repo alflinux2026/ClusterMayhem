@@ -106,7 +106,9 @@ def handle_event(event: ClusterEvent):
 
     if leader != ctx.node_id:
 
-        log_state("cyan", "[EVENT FWD]", f"{event.event_id} -> {leader}", 3)
+        msg = event.payload.get("msg", "<no-msg>")
+
+        log_state("cyan", "[EVENT FWD]", f"{msg:12} -> {leader}", 3)
 
         node = CLUSTER_REGISTRY[leader]
         url = f"http://{node['host']}:{node['port']}/event"

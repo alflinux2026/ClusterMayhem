@@ -62,7 +62,9 @@ def execute_event(event):
     # -------------------------
     executed_keys.add(event.execution_key)
 
-    log_state("green", "[EXECUTE]", event.event_id, 3)
+        msg = event.payload.get("msg", "<no-msg>")
+
+    log_state("green", "[EXECUTE]", f"{msg:12}", 3)
 
 #    event.mark_status(EventStatus.COMPLETED)
 
