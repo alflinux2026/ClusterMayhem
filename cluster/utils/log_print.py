@@ -1,8 +1,12 @@
 
 from datetime import datetime
 
+modeGhost = True
 
 def log_state(color, typ, msg, decimals=0):
+
+    if modeGhost:
+        return
 
     colors = {
         "red": "\033[91m",
