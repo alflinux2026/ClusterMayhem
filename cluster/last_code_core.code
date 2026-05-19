@@ -174,45 +174,54 @@
   61: # CONFIG GENERATION
   62: # -------------------------------------------------
   63: def generate_local_config(peers):
-  64:     hostname = get_hostname()
-  65: 
-  66:     priority = deterministic_priority(hostname)
-  67: 
-  68:     # resolve collisions deterministically (NO LOOP DRIFT)
-  69:     while priority in used_priorities:
-  70:         priority += 1000  # salt step to avoid clustering collisions
-  71: 
-  72:     config = {
-  73:         "node_id": hostname,
-  74:         "priority": priority,
-  75:         "bind_host": "0.0.0.0",
-  76:         "bind_port": 7000,
-  77:         "peers": peers
-  78:     }
-  79: 
-  80:     os.makedirs("config", exist_ok=True)
-  81: 
-  82:     with open("config/node.local.json", "w") as f:
-  83:         json.dump(config, f, indent=2)
-  84: 
-  85:     return config
-  86: 
-  87: 
-  88: # -------------------------------------------------
-  89: # BOOTSTRAP OR LOAD
-  90: # -------------------------------------------------
-  91: def load_or_bootstrap_config():
-  92:     try:
-  93:         return load_config()
-  94:     except FileNotFoundError:
+  64: 
+  65:     state = discover_seed(peers)
+  66: 
+  67:     used_priorities = {
+  68:         n.get("priority")
+  69:         for n in state.values()
+  70:         if n.get("priority") is not None
+  71:     }
+  72: 
+  73:     hostname = get_hostname()
+  74: 
+  75:     priority = deterministic_priority(hostname)
+  76: 
+  77:     # resolve collisions deterministically (NO LOOP DRIFT)
+  78:     while priority in used_priorities:
+  79:         priority += 1000  # salt step to avoid clustering collisions
+  80: 
+  81:     config = {
+  82:         "node_id": hostname,
+  83:         "priority": priority,
+  84:         "bind_host": "0.0.0.0",
+  85:         "bind_port": 7000,
+  86:         "peers": peers
+  87:     }
+  88: 
+  89:     os.makedirs("config", exist_ok=True)
+  90: 
+  91:     with open("config/node.local.json", "w") as f:
+  92:         json.dump(config, f, indent=2)
+  93: 
+  94:     return config
   95: 
-  96:         peers = [
-  97:             {"host": "100.100.1.200", "port": 7000},
-  98:             {"host": "100.100.1.202", "port": 7000},
-  99:             {"host": "100.100.1.203", "port": 7000},
- 100:         ]
- 101: 
- 102:         return generate_local_config(peers)
+  96: 
+  97: # -------------------------------------------------
+  98: # BOOTSTRAP OR LOAD
+  99: # -------------------------------------------------
+ 100: def load_or_bootstrap_config():
+ 101:     try:
+ 102:         return load_config()
+ 103:     except FileNotFoundError:
+ 104: 
+ 105:         peers = [
+ 106:             {"host": "100.100.1.200", "port": 7000},
+ 107:             {"host": "100.100.1.202", "port": 7000},
+ 108:             {"host": "100.100.1.203", "port": 7000},
+ 109:         ]
+ 110: 
+ 111:         return generate_local_config(peers)
 
 
 
