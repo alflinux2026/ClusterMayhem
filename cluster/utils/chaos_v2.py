@@ -19,10 +19,10 @@ DEFAULT_NODES = [
     "http://100.100.1.203:7000",
 ]
 
-DEFAULT_EVENTS = 15
+DEFAULT_EVENTS = 150
 DEFAULT_EVENT_DELAY_MIN = 1
 DEFAULT_EVENT_DELAY_MAX = 2.0
-DEFAULT_KILL_PROBABILITY = 0.10
+DEFAULT_KILL_PROBABILITY = 0.0
 DEFAULT_DEATH_TIME_MIN = 5.0
 DEFAULT_DEATH_TIME_MAX = 10.0
 DEFAULT_REQUEST_TIMEOUT = 5.0
@@ -148,7 +148,7 @@ def build_event(i):
         "status": "created",
         "attempt": 0,
         "payload": {
-            "msg": f"msg: {i}",
+            "msg": f"msg-203: {i}",
             "seq": i,
             "source": "chaos_203"
         }

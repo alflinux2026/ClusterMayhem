@@ -106,7 +106,10 @@ def dispatch_created_event(event):
 
     event.mark_status(EventStatus.EXECUTING)
 
-    log_state("yellow", "(EVENT)", f"{event.event_id} -> EVENT EXECUTING", 3)
+
+    msg = event.payload.get("msg", "<no-msg>")
+
+    log_state("yellow", "(EVENT)", f"{msg:12} -> EVENT EXECUTING", 3)
 
     # -------------------------
     # PERSIST

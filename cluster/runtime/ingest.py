@@ -12,17 +12,16 @@ def ingest_event(event, node_id):
     # SOLO el leader ejecuta esto
     event.mark_status(EventStatus.CREATED)
 
-    log_state("yellow", "(EVENT)", f"{event.event_id} -> EVENT CREATED", 3)
-
     append_event(event)
 
-
     msg = event.payload.get("msg", "<no-msg>")
+
+    log_state("yellow", "(EVENT)", f"{msg:12} -> EVENT CREATED", 3)
 
     log_state(
         "cyan",
         "[EVENT OK]",
-        f"{event.event_id} msg={msg}",
+        f"{event.event_id} {msg}",
         3
     )
 

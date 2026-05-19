@@ -107,10 +107,12 @@ def forward_event(node_id: str, event: ClusterEvent):
             EventStatus.COMPLETED
         )
 
+        msg = event.payload.get("msg", "<no-msg>")
+
         log_state(
             "yellow",
             "(EVENT)",
-            f"{event.event_id} -> EVENT COMPLETED",
+            f"{msg:12} -> EVENT COMPLETED",
             3
         )
 
