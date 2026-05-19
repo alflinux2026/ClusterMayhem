@@ -62,7 +62,7 @@ def forward_event(node_id: str, event: ClusterEvent):
 
     event.add_hop(f"worker:{node_id}")
 
-        msg = event.payload.get("msg", "<no-msg>")
+    msg = event.payload.get("msg", "<no-msg>")
 
     log_state(
         "magenta",
