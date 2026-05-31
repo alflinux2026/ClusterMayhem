@@ -1,0 +1,753 @@
+=== FILES ===
+4:===== ./__init__.py =====
+8:===== ./_lease/__init__.py =====
+12:===== ./_lease/lease.py =====
+35:===== ./_lease/lease_manager.py =====
+115:===== ./api/__init__.py =====
+119:===== ./api/routes_cluster.py =====
+123:===== ./api/routes_health.py =====
+127:===== ./cluster_live.py =====
+1051:===== ./config/__init__.py =====
+1055:===== ./config/loader.py =====
+1066:===== ./core/node.py =====
+1084:===== ./core/transitions.py =====
+1127:===== ./datasets/__init__.py =====
+1131:===== ./datasets/dataset_manager.py =====
+1135:===== ./datasets/revisioning.py =====
+1139:===== ./dump-repo-lite/cluster_live.py =====
+1972:===== ./dump-repo/cluster_live.py =====
+2805:===== ./dump-repo/recopila-logs.py =====
+3027:===== ./dump-repo/recopila-logs_0.py =====
+3206:===== ./dump-repo/run_node.py =====
+3260:===== ./election/__init__.py =====
+3264:===== ./election/election_engine.py =====
+3282:===== ./election/leader.py =====
+3289:===== ./election/lease_validation.py =====
+3293:===== ./models/__init__.py =====
+3297:===== ./models/dataset.py =====
+3301:===== ./models/host.py =====
+3305:===== ./models/lease.py =====
+3309:===== ./network/__init__.py =====
+3313:===== ./network/http_client.py =====
+3317:===== ./node/__init__.py =====
+3321:===== ./persistence/__init__.py =====
+3325:===== ./replication/__init__.py =====
+3329:===== ./replication/pull_sync.py =====
+3333:===== ./replication/replication_engine.py =====
+3337:===== ./runtime/reconciler/reconciler_loop.py =====
+3404:===== ./runtime/replication.py =====
+3544:===== ./runtime/worker/event_worker.py =====
+3586:===== ./storage/__init__.py =====
+3590:===== ./storage/backend.py =====
+3594:===== ./storage/json_backend.py =====
+3598:===== ./transport/client.py =====
+3633:===== ./utils/__init__.py =====
+3637:===== ./utils/chaos/cluster_live.py =====
+4470:===== ./utils/chaos_runner_final.py =====
+5128:===== ./utils/chaos_runner_final_v2.py =====
+5719:===== ./utils/chaos_runner_final_v5.py =====
+6309:===== ./utils/chaos_v2.py =====
+7068:===== ./utils/chaos_v3.py =====
+8012:===== ./utils/chaos_v4.py =====
+8730:===== ./watchdog/__init__.py =====
+8734:===== ./watchdog/healthcheck.py =====
+8738:===== ./watchdog/watchdog.py =====
+8742:===== ./workers/__init__.py =====
+8746:===== ./workers/cluster_worker.py =====
+8798:===== ./workers/heartbeat_worker.py =====
+8881:===== ./workers/lease_worker.py =====
+8885:===== ./workers/replication_worker.py =====
+8889:===== ./workers/watchdog_worker.py =====
+
+=== FILES/IMPORTS/DEFS ===
+
+===== ./__init__.py =====
+
+===== ./_lease/__init__.py =====
+
+===== ./_lease/lease.py =====
+   1: from dataclasses import dataclass
+   2: import time
+   6: class Lease:
+  11:     def expires_at(self) -> float:
+  14:     def is_valid(self, now: float | None = None) -> bool:
+  18:     def renew(self):
+
+===== ./_lease/lease_manager.py =====
+   1: import time
+   4: class Lease:
+   6:     def __init__(self, owner, ttl):
+  12:     def is_valid(self):
+  17: class LeaseManager:
+  19:     def __init__(self):
+  25:     def grant(self, node_id, ttl):
+  31:     def is_valid(self, node_id):
+  39:     def expire(self):
+  54:     def active_leader(self):
+  66:     def get_active_nodes(self):
+
+===== ./api/__init__.py =====
+
+===== ./api/routes_cluster.py =====
+
+===== ./api/routes_health.py =====
+
+===== ./cluster_live.py =====
+   1: import csv
+   2: import curses
+   3: import json
+   4: import re
+   5: import time
+   6: from datetime import datetime
+   7: from pathlib import Path
+   9: import paramiko
+  10: import requests
+  45: def ssh_ls(node):
+  70: def parse_ls_output(node_name, text):
+ 102: def parse_ev_output(node_name, text):
+ 135: def fetch_json(url, timeout=4):
+ 144: def fetch_api_snapshot(node):
+ 161: def build_groups_ev(rows):
+ 167: def build_groups(rows):
+ 174: def check_consistency(groups):
+ 188: def _node_runtime_view(api_snapshots, node_name):
+ 189:     def fallback(*values):
+ 195:     def score_row(row):
+ 279: def setup_colors():
+ 295: def color_for_health(value):
+ 304: def color_for_state(state, stale=False):
+ 320: def color_for_dirty(value):
+ 326: def color_for_count(label, value):
+ 341: def color_for_age(value, warn_s=1.5, stale_s=3.0):
+ 355: def color_for_busy(value):
+ 363: def color_for_progress_active(value):
+ 369: def color_for_progress_stalled(value):
+ 375: def color_for_progress_stage(stage):
+ 381: def render_top_summary_1(api_snapshots, groups):
+ 401:     def cut(value, width):
+ 405:     def fmt_age(value):
+ 418:     def fmt_busy(value):
+ 425:     def fmt_progress(current, total, pct):
+ 482: def draw_top_summary_curses(stdscr, start_y, api_snapshots, width):
+ 501:     def cut(value, width):
+ 505:     def fmt_age(value):
+ 518:     def fmt_busy(value):
+ 525:     def fmt_progress(current, total, pct):
+ 537:     def put(y, x, text, attr=0):
+ 613: def render_file_inventory(groups):
+ 651: def render_events_inventory(groups_ev):
+ 690: def render_markdown(groups_ev, groups, api_snapshots):
+ 698: def collect_snapshot():
+ 724: def write_outputs(groups_ev, groups, api_snapshots):
+ 747: def save_snapshot(lines, groups, api_snapshots, errors, started_at, refresh_seconds):
+ 771: def build_screen_lines(groups_ev, groups, api_snapshots, errors, started_at, refresh_seconds):
+ 794: def ui_loop(stdscr, refresh_seconds=1.5):
+ 886: def run_live_monitor(refresh_seconds=1.5):
+ 890: def run_once():
+
+===== ./config/__init__.py =====
+
+===== ./config/loader.py =====
+   1: import json
+   3: def load_peers():
+
+===== ./core/node.py =====
+   1: from cluster.core.state import NodeState
+   2: from cluster.core.transitions import can_transition
+   4: class ClusterNode:
+   6:     def __init__(self, node_id: str):
+  10:     def set_state(self, new_state: NodeState):
+
+===== ./core/transitions.py =====
+   1: from cluster.core.state import NodeState
+  38: def can_transition(from_state: NodeState, to_state: NodeState) -> bool:
+
+===== ./datasets/__init__.py =====
+
+===== ./datasets/dataset_manager.py =====
+
+===== ./datasets/revisioning.py =====
+
+===== ./dump-repo-lite/cluster_live.py =====
+   1: import csv
+   2: import curses
+   3: import json
+   4: import re
+   5: import time
+   6: from datetime import datetime
+   7: from pathlib import Path
+   9: import paramiko
+  10: import requests
+  45: def ssh_ls(node):
+  70: def parse_ls_output(node_name, text):
+ 103: def fetch_json(url, timeout=4):
+ 112: def fetch_api_snapshot(node):
+ 129: def build_groups(rows):
+ 136: def check_consistency(groups):
+ 150: def _node_runtime_view(api_snapshots, node_name):
+ 151:     def fallback(*values):
+ 157:     def score_row(row):
+ 241: def setup_colors():
+ 257: def color_for_health(value):
+ 266: def color_for_state(state, stale=False):
+ 282: def color_for_dirty(value):
+ 288: def color_for_count(label, value):
+ 303: def color_for_age(value, warn_s=1.5, stale_s=3.0):
+ 317: def color_for_busy(value):
+ 325: def color_for_progress_active(value):
+ 331: def color_for_progress_stalled(value):
+ 337: def color_for_progress_stage(stage):
+ 343: def render_top_summary_1(api_snapshots, groups):
+ 363:     def cut(value, width):
+ 367:     def fmt_age(value):
+ 380:     def fmt_busy(value):
+ 387:     def fmt_progress(current, total, pct):
+ 444: def draw_top_summary_curses(stdscr, start_y, api_snapshots, width):
+ 463:     def cut(value, width):
+ 467:     def fmt_age(value):
+ 480:     def fmt_busy(value):
+ 487:     def fmt_progress(current, total, pct):
+ 499:     def put(y, x, text, attr=0):
+ 575: def render_file_inventory(groups):
+ 614: def render_markdown(groups, api_snapshots):
+ 621: def collect_snapshot():
+ 644: def write_outputs(groups, api_snapshots):
+ 663: def save_snapshot(lines, groups, api_snapshots, errors, started_at, refresh_seconds):
+ 687: def build_screen_lines(groups, api_snapshots, errors, started_at, refresh_seconds):
+ 709: def ui_loop(stdscr, refresh_seconds=1.5):
+ 799: def run_live_monitor(refresh_seconds=1.5):
+ 803: def run_once():
+
+===== ./dump-repo/cluster_live.py =====
+   1: import csv
+   2: import curses
+   3: import json
+   4: import re
+   5: import time
+   6: from datetime import datetime
+   7: from pathlib import Path
+   9: import paramiko
+  10: import requests
+  45: def ssh_ls(node):
+  70: def parse_ls_output(node_name, text):
+ 103: def fetch_json(url, timeout=4):
+ 112: def fetch_api_snapshot(node):
+ 129: def build_groups(rows):
+ 136: def check_consistency(groups):
+ 150: def _node_runtime_view(api_snapshots, node_name):
+ 151:     def fallback(*values):
+ 157:     def score_row(row):
+ 241: def setup_colors():
+ 257: def color_for_health(value):
+ 266: def color_for_state(state, stale=False):
+ 282: def color_for_dirty(value):
+ 288: def color_for_count(label, value):
+ 303: def color_for_age(value, warn_s=1.5, stale_s=3.0):
+ 317: def color_for_busy(value):
+ 325: def color_for_progress_active(value):
+ 331: def color_for_progress_stalled(value):
+ 337: def color_for_progress_stage(stage):
+ 343: def render_top_summary_1(api_snapshots, groups):
+ 363:     def cut(value, width):
+ 367:     def fmt_age(value):
+ 380:     def fmt_busy(value):
+ 387:     def fmt_progress(current, total, pct):
+ 444: def draw_top_summary_curses(stdscr, start_y, api_snapshots, width):
+ 463:     def cut(value, width):
+ 467:     def fmt_age(value):
+ 480:     def fmt_busy(value):
+ 487:     def fmt_progress(current, total, pct):
+ 499:     def put(y, x, text, attr=0):
+ 575: def render_file_inventory(groups):
+ 614: def render_markdown(groups, api_snapshots):
+ 621: def collect_snapshot():
+ 644: def write_outputs(groups, api_snapshots):
+ 663: def save_snapshot(lines, groups, api_snapshots, errors, started_at, refresh_seconds):
+ 687: def build_screen_lines(groups, api_snapshots, errors, started_at, refresh_seconds):
+ 709: def ui_loop(stdscr, refresh_seconds=1.5):
+ 799: def run_live_monitor(refresh_seconds=1.5):
+ 803: def run_once():
+
+===== ./dump-repo/recopila-logs.py =====
+   2: import re
+   3: import csv
+   4: import paramiko
+   5: from pathlib import Path
+  35: def ssh_ls(node):
+  59: def parse_ls_output(node_name, text):
+  94: def build_groups(rows):
+ 100: def check_consistency(groups):
+ 115: def render_markdown(groups):
+ 189: def main():
+
+===== ./dump-repo/recopila-logs_0.py =====
+   2: import re
+   3: import csv
+   4: import paramiko
+   5: from pathlib import Path
+  35: def ssh_ls(node):
+  59: def parse_ls_output(node_name, text):
+  94: def build_groups(rows):
+ 100: def check_consistency(groups):
+ 115: def render_markdown(groups):
+ 146: def main():
+
+===== ./dump-repo/run_node.py =====
+   1: import json
+   3: from cluster.node.node_runtime import NodeRuntime
+   5: from cluster.runtime.state import NodeState
+   6: from cluster.workers.cluster_worker import ClusterWorker
+   7: from cluster.transport.server import register_local_node
+  12: def load_config():
+  18: def build_peers(config, self_id):
+  26: def main(node_id, priority):
+
+===== ./election/__init__.py =====
+
+===== ./election/election_engine.py =====
+   1: from cluster.runtime.cluster_store import get_active_cluster
+   3: class ElectionEngine:
+   6:     def can_become_leader(node_id, priority):
+
+===== ./election/leader.py =====
+   1: def choose_leader(candidates):
+
+===== ./election/lease_validation.py =====
+
+===== ./models/__init__.py =====
+
+===== ./models/dataset.py =====
+
+===== ./models/host.py =====
+
+===== ./models/lease.py =====
+
+===== ./network/__init__.py =====
+
+===== ./network/http_client.py =====
+
+===== ./node/__init__.py =====
+
+===== ./persistence/__init__.py =====
+
+===== ./replication/__init__.py =====
+
+===== ./replication/pull_sync.py =====
+
+===== ./replication/replication_engine.py =====
+
+===== ./runtime/reconciler/reconciler_loop.py =====
+   1: import logging
+   2: import time
+   3: from collections import defaultdict
+   5: from cluster.utils.log_print import log_state
+   7: from cluster.runtime.event_log import load_events, append_event
+   8: from cluster.runtime.events.cluster_event import ClusterEvent
+   9: from cluster.runtime.events.event_state import EventStatus
+  15: def _event_ts(e):
+  19: def reconcile_tick(node_runtime):
+
+===== ./runtime/replication.py =====
+   1: import logging
+   2: import os
+   3: import time
+   4: from pathlib import Path
+   6: import requests
+   8: from cluster.runtime import context as ctx
+   9: from cluster.runtime.cluster_store import cluster_state
+  10: from cluster.runtime.registry import CLUSTER_REGISTRY
+  11: from cluster.runtime.event_log import (
+  18: from cluster.utils.log_print import log_state
+  26: def read_log_file(path: str) -> str:
+  33: def basename(path_or_name: str) -> str:
+  37: def base_prefix(local_filename: str) -> str:
+  46: def replica_name(base: str, node_id: str) -> str:
+  50: def canonical_replica_node_id() -> str:
+  54: def alive_peer_ids():
+  66: def configured_peer_ids():
+  81: def target_peer_ids():
+  87: def replicate_file(local_filename: str, node_id: str) -> bool:
+
+===== ./runtime/worker/event_worker.py =====
+   1: from cluster.runtime.event_log import append_event
+   2: from cluster.runtime.events.event_state import EventStatus
+   3: from cluster.utils.log_print import log_state
+   8: def run_business_logic(payload: dict):
+  12: def execute_event(event, stream=None):
+
+===== ./storage/__init__.py =====
+
+===== ./storage/backend.py =====
+
+===== ./storage/json_backend.py =====
+
+===== ./transport/client.py =====
+   1: import requests
+   4: def send_heartbeat(peer_host, peer_port, payload, timeout=1.0):
+  23: def broadcast_heartbeat(peers, payload):
+
+===== ./utils/__init__.py =====
+
+===== ./utils/chaos/cluster_live.py =====
+   1: import csv
+   2: import curses
+   3: import json
+   4: import re
+   5: import time
+   6: from datetime import datetime
+   7: from pathlib import Path
+   9: import paramiko
+  10: import requests
+  45: def ssh_ls(node):
+  70: def parse_ls_output(node_name, text):
+ 103: def fetch_json(url, timeout=4):
+ 112: def fetch_api_snapshot(node):
+ 129: def build_groups(rows):
+ 136: def check_consistency(groups):
+ 150: def _node_runtime_view(api_snapshots, node_name):
+ 151:     def fallback(*values):
+ 157:     def score_row(row):
+ 241: def setup_colors():
+ 257: def color_for_health(value):
+ 266: def color_for_state(state, stale=False):
+ 282: def color_for_dirty(value):
+ 288: def color_for_count(label, value):
+ 303: def color_for_age(value, warn_s=1.5, stale_s=3.0):
+ 317: def color_for_busy(value):
+ 325: def color_for_progress_active(value):
+ 331: def color_for_progress_stalled(value):
+ 337: def color_for_progress_stage(stage):
+ 343: def render_top_summary_1(api_snapshots, groups):
+ 363:     def cut(value, width):
+ 367:     def fmt_age(value):
+ 380:     def fmt_busy(value):
+ 387:     def fmt_progress(current, total, pct):
+ 444: def draw_top_summary_curses(stdscr, start_y, api_snapshots, width):
+ 463:     def cut(value, width):
+ 467:     def fmt_age(value):
+ 480:     def fmt_busy(value):
+ 487:     def fmt_progress(current, total, pct):
+ 499:     def put(y, x, text, attr=0):
+ 575: def render_file_inventory(groups):
+ 614: def render_markdown(groups, api_snapshots):
+ 621: def collect_snapshot():
+ 644: def write_outputs(groups, api_snapshots):
+ 663: def save_snapshot(lines, groups, api_snapshots, errors, started_at, refresh_seconds):
+ 687: def build_screen_lines(groups, api_snapshots, errors, started_at, refresh_seconds):
+ 709: def ui_loop(stdscr, refresh_seconds=1.5):
+ 799: def run_live_monitor(refresh_seconds=1.5):
+ 803: def run_once():
+
+===== ./utils/chaos_runner_final.py =====
+   1: import time
+   2: import json
+   3: import random
+   4: import requests
+   5: import threading
+   6: import uuid
+   7: import argparse
+   8: import queue
+   9: import csv
+  10: from dataclasses import dataclass, field
+  11: from datetime import datetime
+  12: from collections import defaultdict
+  13: from pathlib import Path
+  15: from cluster.runtime.models import StreamKey
+  41: def parse_args():
+ 166: class PendingEvent:
+ 174: def build_event(i):
+ 210: def stat_inc(key, amount=1):
+ 215: def stat_node_ok(node):
+ 220: def stat_node_fail(node):
+ 225: def stat_leader(name):
+ 230: def stat_latency(ms):
+ 235: def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+ 241: def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+ 247: def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+ 252: def percentile(data, p):
+ 264: def is_retryable_response(payload):
+ 273: def extract_leader(payload):
+ 281: def classify_submit_response(status_code, payload):
+ 294: def next_enqueue_seq():
+ 301: def enqueue_pending(pending, delay_seconds=0.0):
+ 308: def mark_producer_done():
+ 314: def is_producer_done():
+ 319: def compute_retry_backoff(retries_done):
+ 323: def print_test_config():
+ 337: def get_session(worker_id):
+ 348: def kill_node(node, seconds=None):
+ 374: def revive_node(node):
+ 399: def kill_cycle(node, seconds):
+ 409: def process_pending_event(pending: PendingEvent, worker_id: int):
+ 500: def sender_worker(worker_id):
+ 520: def chaos_loop():
+ 534: def revive_everything():
+ 546: def wait_kills():
+ 554: def wait_queue_drain():
+ 565: def write_csv_and_json():
+ 593: def print_stats():
+ 624: def main():
+
+===== ./utils/chaos_runner_final_v2.py =====
+   1: import time
+   2: import json
+   3: import random
+   4: import requests
+   5: import threading
+   6: import uuid
+   7: import argparse
+   8: import queue
+   9: import csv
+  10: from dataclasses import dataclass, field
+  11: from datetime import datetime
+  12: from collections import defaultdict
+  13: from pathlib import Path
+  15: import sys
+  16: from pathlib import Path
+  22: from runtime.models import StreamKey
+  44: def parse_args():
+ 149: class PendingEvent:
+ 157: def build_event(i):
+ 161: def stat_inc(key, amount=1):
+ 166: def stat_node_ok(node):
+ 171: def stat_node_fail(node):
+ 176: def stat_leader(name):
+ 181: def stat_latency(ms):
+ 186: def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+ 192: def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+ 198: def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+ 203: def percentile(data, p):
+ 215: def is_retryable_response(payload):
+ 223: def extract_leader(payload):
+ 231: def classify_submit_response(status_code, payload):
+ 244: def next_enqueue_seq():
+ 251: def enqueue_pending(pending, delay_seconds=0.0):
+ 258: def mark_producer_done():
+ 264: def is_producer_done():
+ 269: def compute_retry_backoff(retries_done):
+ 273: def print_test_config():
+ 285: def get_session(worker_id):
+ 296: def kill_node(node, seconds=None):
+ 322: def revive_node(node):
+ 347: def kill_cycle(node, seconds):
+ 356: def process_pending_event(pending: PendingEvent, worker_id: int):
+ 447: def sender_worker(worker_id):
+ 467: def chaos_loop():
+ 481: def revive_everything():
+ 491: def wait_kills():
+ 497: def wait_queue_drain():
+ 508: def write_csv_and_json():
+ 531: def print_stats():
+ 561: def main():
+
+===== ./utils/chaos_runner_final_v5.py =====
+   1: import time
+   2: import json
+   3: import random
+   4: import requests
+   5: import threading
+   6: import uuid
+   7: import argparse
+   8: import queue
+   9: import csv
+  10: from dataclasses import dataclass, field
+  11: from datetime import datetime
+  12: from collections import defaultdict
+  13: from pathlib import Path
+  15: import sys
+  16: from pathlib import Path
+  22: from runtime.models import StreamKey
+  44: def parse_args():
+ 148: class PendingEvent:
+ 156: def build_event(i):
+ 160: def stat_inc(key, amount=1):
+ 165: def stat_node_ok(node):
+ 170: def stat_node_fail(node):
+ 175: def stat_leader(name):
+ 180: def stat_latency(ms):
+ 185: def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+ 191: def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+ 197: def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+ 202: def percentile(data, p):
+ 214: def is_retryable_response(payload):
+ 222: def extract_leader(payload):
+ 230: def classify_submit_response(status_code, payload):
+ 243: def next_enqueue_seq():
+ 250: def enqueue_pending(pending, delay_seconds=0.0):
+ 257: def mark_producer_done():
+ 263: def is_producer_done():
+ 268: def compute_retry_backoff(retries_done):
+ 272: def print_test_config():
+ 284: def get_session(worker_id):
+ 295: def kill_node(node, seconds=None):
+ 321: def revive_node(node):
+ 346: def kill_cycle(node, seconds):
+ 355: def process_pending_event(pending: PendingEvent, worker_id: int):
+ 446: def sender_worker(worker_id):
+ 466: def chaos_loop():
+ 480: def revive_everything():
+ 490: def wait_kills():
+ 496: def wait_queue_drain():
+ 507: def write_csv_and_json():
+ 530: def print_stats():
+ 560: def main():
+
+===== ./utils/chaos_v2.py =====
+   1: import time
+   2: import json
+   3: import random
+   4: import requests
+   5: import threading
+   6: import uuid
+   7: import argparse
+   8: from datetime import datetime
+   9: from collections import defaultdict
+  38: def parse_args():
+ 136: def build_event(i):
+ 158: def stat_inc(key, amount=1):
+ 163: def stat_node_ok(node):
+ 168: def stat_node_fail(node):
+ 173: def stat_leader(name):
+ 178: def stat_latency(ms):
+ 183: def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+ 197: def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+ 211: def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+ 224: def percentile(data, p):
+ 237: def is_event_submit_ok(status_code, payload):
+ 254: def is_retryable_response(payload):
+ 274: def print_test_config():
+ 298: def kill_node(node, seconds=None):
+ 331: def revive_node(node):
+ 362: def kill_cycle(node, seconds):
+ 376: def send_event(i):
+ 542: def chaos_loop():
+ 569: def revive_everything():
+ 586: def wait_kills():
+ 597: def print_stats():
+ 736: def main():
+
+===== ./utils/chaos_v3.py =====
+   1: import time
+   2: import json
+   3: import random
+   4: import requests
+   5: import threading
+   6: import uuid
+   7: import argparse
+   8: import queue
+   9: from dataclasses import dataclass, field
+  10: from datetime import datetime
+  11: from collections import defaultdict
+  43: def parse_args():
+ 165: class PendingEvent:
+ 177: def build_event(i):
+ 199: def stat_inc(key, amount=1):
+ 204: def stat_node_ok(node):
+ 209: def stat_node_fail(node):
+ 214: def stat_leader(name):
+ 219: def stat_latency(ms):
+ 224: def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+ 238: def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+ 252: def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+ 265: def percentile(data, p):
+ 278: def is_retryable_response(payload):
+ 299: def extract_leader(payload):
+ 309: def classify_submit_response(status_code, payload):
+ 330: def next_enqueue_seq():
+ 337: def enqueue_pending(pending, delay_seconds=0.0):
+ 346: def mark_producer_done():
+ 352: def is_producer_done():
+ 357: def compute_retry_backoff(retries_done):
+ 362: def print_test_config():
+ 390: def kill_node(node, seconds=None):
+ 423: def revive_node(node):
+ 454: def kill_cycle(node, seconds):
+ 468: def process_pending_event(pending: PendingEvent):
+ 651: def sender_worker(worker_id):
+ 677: def chaos_loop():
+ 711: def revive_everything():
+ 728: def wait_kills():
+ 739: def wait_queue_drain():
+ 756: def print_stats():
+ 903: def main():
+
+===== ./utils/chaos_v4.py =====
+   1: import time
+   2: import json
+   3: import random
+   4: import requests
+   5: import threading
+   6: import uuid
+   7: import argparse
+   8: import queue
+   9: from dataclasses import dataclass, field
+  10: from datetime import datetime
+  11: from collections import defaultdict
+  13: from cluster.runtime.models import StreamKey
+  14: from cluster.runtime.events.cluster_event import ClusterEvent
+  41: def parse_args():
+ 166: class PendingEvent:
+ 174: def build_event(i):
+ 188: def stat_inc(key, amount=1):
+ 193: def stat_node_ok(node):
+ 198: def stat_node_fail(node):
+ 203: def stat_leader(name):
+ 208: def stat_latency(ms):
+ 213: def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+ 227: def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+ 241: def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+ 254: def percentile(data, p):
+ 267: def is_retryable_response(payload):
+ 277: def extract_leader(payload):
+ 285: def classify_submit_response(status_code, payload):
+ 302: def next_enqueue_seq():
+ 309: def enqueue_pending(pending, delay_seconds=0.0):
+ 318: def mark_producer_done():
+ 324: def is_producer_done():
+ 329: def compute_retry_backoff(retries_done):
+ 334: def print_test_config():
+ 365: def kill_node(node, seconds=None):
+ 391: def revive_node(node):
+ 416: def kill_cycle(node, seconds):
+ 426: def process_pending_event(pending: PendingEvent):
+ 507: def sender_worker(worker_id):
+ 527: def chaos_loop():
+ 542: def revive_everything():
+ 555: def wait_kills():
+ 563: def wait_queue_drain():
+ 574: def print_stats():
+ 684: def main():
+
+===== ./watchdog/__init__.py =====
+
+===== ./watchdog/healthcheck.py =====
+
+===== ./watchdog/watchdog.py =====
+
+===== ./workers/__init__.py =====
+
+===== ./workers/cluster_worker.py =====
+   1: import time
+   3: from cluster.transport.server import register_local_node
+   5: class ClusterWorker:
+   7:     def __init__(self, node, peers, interval=1.0):
+  16:     def start(self):
+  30:     def stop(self):
+  36:     def tick(self):
+
+===== ./workers/heartbeat_worker.py =====
+   1: import time
+   2: from cluster.runtime.state import NodeState
+   5: class HeartbeatWorker:
+   7:     def __init__(self, nodes, lease_manager, interval=1.0):
+  15:     def start(self, ticks=5):
+  29:     def tick(self):
+  37:     def send_heartbeats(self):
+  52:     def expire_leases(self):
+  62:     def update_nodes(self):
+
+===== ./workers/lease_worker.py =====
+
+===== ./workers/replication_worker.py =====
+
+===== ./workers/watchdog_worker.py =====

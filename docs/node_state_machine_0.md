@@ -1,0 +1,419 @@
+# Máquina de estados de nodo
+
+## Objetivo
+
+Definir una máquina de estados de nodo más precisa que la actual, separando claramente:
+
+- comandos externos,
+- comandos automáticos,
+- estados reales del nodo,
+- salidas controladas frente a salidas bruscas.
+
+La implementación actual hace transiciones demasiado directas:
+- `BOOT -> STANDBY`
+- `STANDBY <-> ACTIVE` según `compute_leader()`
+- `/sleep -> ISOLATED`
+- `/revive -> STANDBY` [file:938]
+
+Eso es útil para el MVP, pero mezcla casos distintos:
+- arranque con trabajo pendiente,
+- pérdida ordenada de liderazgo,
+- descanso controlado,
+- aislamiento suave,
+- muerte brusca simulada. [file:938]
+
+---
+
+## Convención
+
+- Elementos **entre paréntesis**: **comandos**.
+- Elementos **sin paréntesis**: **estados**.
+
+Ejemplos:
+- `(SLEEP)`, `(WAKEUP)`, `(ISOLATE_SOFT)`, `(ISOLATE_HARD)` = comandos externos.
+- `(LEADER_SEL_UP)`, `(LEADER_SEL_DOWN)` = comandos automáticos.
+- `BOOT`, `ACTIVE`, `STANDBY`, `SLEEPING`, `ISOLATED` = estados.
+
+---
+
+## Principio de diseño
+
+Primero **cerrar ventana**.  
+Después **limpiar mesa**.  
+Y solo al final alcanzar el estado destino.
+
+Ese principio aplica a todas las salidas controladas:
+- hacia `STANDBY`,
+- hacia `SLEEPING`,
+- hacia `ISOLATED` por ruta suave.
+
+La única excepción es el aislamiento duro:
+- `(ISOLATE_HARD) -> ISOLATED`
+
+---
+
+## Estados propuestos
+
+## `BOOT`
+Estado inicial del nodo al arrancar.
+
+Responsabilidades:
+- inicialización,
+- inspección de journal local,
+- detección de trabajo pendiente,
+- decisión de entrada ordenada a operación. [file:938]
+
+No debería asumir automáticamente que puede pasar siempre a `STANDBY`.
+
+---
+
+## `DRAIN_TO_STANDBY`
+Estado transitorio de drenado con destino `STANDBY`.
+
+Uso:
+- arranque con pendientes,
+- pérdida ordenada de liderazgo,
+- salida controlada a modo follower disponible.
+
+Semántica:
+- deja de abrir trabajo nuevo como líder,
+- completa housekeeping,
+- termina obligatoriamente en `STANDBY`.
+
+---
+
+## `STANDBY`
+Nodo sano, vivo, integrado en clúster, no líder.
+
+Características:
+- puede enviar heartbeat;
+- puede ser elegible para liderazgo;
+- puede recibir comandos de sleep o isolate;
+- no debe operar como líder. [file:938]
+
+---
+
+## `ACTIVE`
+Nodo líder operativo.
+
+Características:
+- liderazgo efectivo;
+- operación normal de líder;
+- si deja de ser líder, no cae en seco a `STANDBY`, sino que pasa por `DRAIN_TO_STANDBY`. [file:938]
+
+---
+
+## `DRAIN_TO_SLEEP`
+Estado transitorio de drenado con destino `SLEEPING`.
+
+Uso:
+- descanso controlado,
+- mantenimiento ligero,
+- rotación intencional de líder.
+
+Semántica:
+- salida ordenada;
+- no cambia de destino a mitad;
+- termina obligatoriamente en `SLEEPING`.
+
+---
+
+## `SLEEPING`
+Nodo fuera de operación por decisión controlada.
+
+Características:
+- no participa en liderazgo;
+- no debería aceptar trabajo nuevo;
+- puede volver con `(WAKEUP) -> STANDBY`.
+
+---
+
+## `DRAIN_TO_ISOLATE`
+Estado transitorio de drenado con destino `ISOLATED`.
+
+Uso:
+- aislamiento suave,
+- salida ordenada del clúster con intención de quedar aislado al final.
+
+Semántica:
+- cierre controlado,
+- limpieza previa,
+- termina obligatoriamente en `ISOLATED`.
+
+---
+
+## `ISOLATED`
+Nodo fuera de clúster.
+
+Importante:
+- puede alcanzarse por ruta suave o por ruta dura,
+- pero el estado final es el mismo.
+
+Diferencia:
+- si llega por `(ISOLATE_SOFT)`, hubo drenado;
+- si llega por `(ISOLATE_HARD)`, no lo hubo.
+
+La implementación actual ya usa `ISOLATED` como estado fuera de operación. [file:938]
+
+---
+
+## Comandos
+
+## Comandos externos
+
+### `(SLEEP)`
+Orden de descanso controlado.
+
+No significa “duérmete ya”.
+Significa: iniciar secuencia ordenada hacia `SLEEPING`.
+
+Transiciones:
+- `ACTIVE -> DRAIN_TO_SLEEP`
+- `STANDBY -> DRAIN_TO_SLEEP`
+
+---
+
+### `(WAKEUP)`
+Orden de reentrada al clúster.
+
+Transiciones:
+- `SLEEPING -> STANDBY`
+- `ISOLATED -> STANDBY`
+
+---
+
+### `(ISOLATE_SOFT)`
+Orden de aislamiento suave.
+
+No significa “cae ya”.
+Significa: iniciar secuencia ordenada hacia aislamiento final.
+
+Transiciones:
+- `ACTIVE -> DRAIN_TO_ISOLATE`
+- `STANDBY -> DRAIN_TO_ISOLATE`
+
+---
+
+### `(ISOLATE_HARD)`
+Orden de aislamiento brusco.
+
+Representa:
+- chaos,
+- muerte brusca simulada,
+- corte inmediato.
+
+Transición:
+- `ANY -> ISOLATED`
+
+---
+
+## Comandos automáticos
+
+### `(LEADER_SEL_UP)`
+Comando interno emitido cuando el nodo en `STANDBY` pasa a ser el líder seleccionado.
+
+Transición:
+- `STANDBY -> ACTIVE`
+
+---
+
+### `(LEADER_SEL_DOWN)`
+Comando interno emitido cuando el nodo en `ACTIVE` deja de ser el líder seleccionado.
+
+Transición:
+- `ACTIVE -> DRAIN_TO_STANDBY`
+
+No debe hacer `ACTIVE -> STANDBY` directo. [file:938]
+
+---
+
+## Regla clave de los estados `DRAIN_TO_*`
+
+Una vez el nodo entra en:
+- `DRAIN_TO_STANDBY`,
+- `DRAIN_TO_SLEEP`,
+- `DRAIN_TO_ISOLATE`,
+
+**no debe aceptar comandos normales para cambiar de destino**.
+
+Debe completar su secuencia y alcanzar el estado final previsto.
+
+Esto evita:
+- cambios de intención a mitad,
+- estados ambiguos,
+- comportamientos no deterministas.
+
+Única excepción razonable:
+- `(ISOLATE_HARD)` puede cortar de forma brusca cualquier secuencia transitoria.
+
+---
+
+## Transiciones propuestas
+
+## Arranque
+
+### Arranque con pendientes
+`BOOT -> DRAIN_TO_STANDBY -> STANDBY`
+
+### Arranque limpio
+Dos opciones posibles:
+
+#### Opción A
+`BOOT -> DRAIN_TO_STANDBY -> STANDBY`
+
+Ventaja:
+- flujo uniforme.
+
+#### Opción B
+`BOOT -> STANDBY`
+
+Ventaja:
+- simplificación si no hay pendientes.
+
+La implementación actual usa la opción B. [file:938]
+
+---
+
+## Liderazgo
+
+### Promoción
+`STANDBY -> (LEADER_SEL_UP) -> ACTIVE`
+
+### Pérdida de liderazgo
+`ACTIVE -> (LEADER_SEL_DOWN) -> DRAIN_TO_STANDBY -> STANDBY`
+
+---
+
+## Descanso controlado
+
+### Desde líder
+`ACTIVE -> (SLEEP) -> DRAIN_TO_SLEEP -> SLEEPING`
+
+### Desde follower
+`STANDBY -> (SLEEP) -> DRAIN_TO_SLEEP -> SLEEPING`
+
+### Reentrada
+`SLEEPING -> (WAKEUP) -> STANDBY`
+
+---
+
+## Aislamiento suave
+
+### Desde líder
+`ACTIVE -> (ISOLATE_SOFT) -> DRAIN_TO_ISOLATE -> ISOLATED`
+
+### Desde follower
+`STANDBY -> (ISOLATE_SOFT) -> DRAIN_TO_ISOLATE -> ISOLATED`
+
+### Reentrada
+`ISOLATED -> (WAKEUP) -> STANDBY`
+
+---
+
+## Aislamiento duro
+
+### Desde cualquier estado
+`ANY -> (ISOLATE_HARD) -> ISOLATED`
+
+### Reentrada
+`ISOLATED -> (WAKEUP) -> STANDBY`
+
+---
+
+## Tabla resumida
+
+| Estado actual | Comando | Estado siguiente | Observación |
+|---|---|---|---|
+| `BOOT` | automático | `DRAIN_TO_STANDBY` o `STANDBY` | Según haya pendientes o no. |
+| `STANDBY` | `(LEADER_SEL_UP)` | `ACTIVE` | Promoción a líder. |
+| `ACTIVE` | `(LEADER_SEL_DOWN)` | `DRAIN_TO_STANDBY` | Pérdida ordenada de liderazgo. |
+| `DRAIN_TO_STANDBY` | automático fin de secuencia | `STANDBY` | Secuencia cerrada. |
+| `ACTIVE` | `(SLEEP)` | `DRAIN_TO_SLEEP` | Descanso controlado. |
+| `STANDBY` | `(SLEEP)` | `DRAIN_TO_SLEEP` | Descanso controlado. |
+| `DRAIN_TO_SLEEP` | automático fin de secuencia | `SLEEPING` | Secuencia cerrada. |
+| `SLEEPING` | `(WAKEUP)` | `STANDBY` | Reentrada limpia. |
+| `ACTIVE` | `(ISOLATE_SOFT)` | `DRAIN_TO_ISOLATE` | Aislamiento ordenado. |
+| `STANDBY` | `(ISOLATE_SOFT)` | `DRAIN_TO_ISOLATE` | Aislamiento ordenado. |
+| `DRAIN_TO_ISOLATE` | automático fin de secuencia | `ISOLATED` | Secuencia cerrada. |
+| `ANY` | `(ISOLATE_HARD)` | `ISOLATED` | Corte brusco. |
+| `ISOLATED` | `(WAKEUP)` | `STANDBY` | Reentrada tras aislamiento. |
+
+---
+
+## Restricciones
+
+## No válidas
+Estas transiciones no deberían permitirse:
+
+- `ACTIVE -> STANDBY` directo por pérdida de liderazgo.
+- `ACTIVE -> SLEEPING` directo.
+- `ACTIVE -> ISOLATED` directo salvo por `(ISOLATE_HARD)`.
+- `DRAIN_TO_STANDBY -> ACTIVE` por comando normal.
+- `DRAIN_TO_SLEEP -> STANDBY` por comando normal.
+- `DRAIN_TO_ISOLATE -> STANDBY` por comando normal.
+
+## Válida como override duro
+- `DRAIN_TO_* -> (ISOLATE_HARD) -> ISOLATED`
+
+---
+
+## Impacto en implementación
+
+## Lo que hace hoy el código
+Actualmente:
+- `tick()` hace `BOOT -> STANDBY`; [file:938]
+- `tick()` hace `STANDBY <-> ACTIVE` de forma directa según `compute_leader()`; [file:938]
+- `/sleep` fuerza `ISOLATED`; [file:938]
+- `/revive` fuerza `STANDBY`; [file:938]
+- `ISOLATED` corta heartbeat, dispatch, replication y reconcile en el loop. [file:938]
+
+## Lo que habría que cambiar
+1. Ampliar `NodeState` con:
+   - `DRAIN_TO_STANDBY`
+   - `DRAIN_TO_SLEEP`
+   - `DRAIN_TO_ISOLATE`
+   - `SLEEPING`
+
+2. Separar endpoints/comandos:
+   - `/sleep` => `(SLEEP)`
+   - `/isolate-soft` => `(ISOLATE_SOFT)`
+   - `/isolate-hard` => `(ISOLATE_HARD)`
+   - `/wakeup` => `(WAKEUP)`
+
+3. Hacer que `tick()` emita comandos automáticos:
+   - `(LEADER_SEL_UP)`
+   - `(LEADER_SEL_DOWN)`
+
+4. Implementar lógica automática de finalización para cada `DRAIN_TO_*`.
+
+5. Decidir qué subsistemas siguen activos en cada `DRAIN_TO_*`:
+   - heartbeat,
+   - dispatch,
+   - reconcile,
+   - log replication.
+
+---
+
+## Preguntas abiertas para mañana
+
+- ¿`BOOT` debe pasar siempre por `DRAIN_TO_STANDBY`? yes
+- ¿Qué condición exacta define “fin de drenado”? events_done
+- ¿`DRAIN_TO_SLEEP` mantiene heartbeat? no, adelanta switch_leader
+- ¿`DRAIN_TO_ISOLATE` replica una última vez antes de aislarse? sí, todos los drain
+- ¿`ISOLATE_HARD` debe interrumpir cualquier estado sin excepción? sí, es su función
+- ¿Hace falta persistir la causa de entrada en `ISOLATED` o basta con el comando recibido?
+
+---
+
+## Resumen de criterio
+
+- `STANDBY` = vivo y disponible, no líder.
+- `ACTIVE` = líder operativo.
+- `SLEEPING` = fuera por decisión controlada. STANBY_NOT_ACTIVABLE
+- `ISOLATED` = fuera de clúster, por ruta suave o dura.
+- `DRAIN_TO_*` = estados transitorios con destino explícito.
+- Los comandos expresan intención.
+- Los estados expresan condición real del nodo.
+- Las transiciones automáticas las resuelve el runtime.
+
+hay que listar funciones de nodo para asignar correctamente a cada estado

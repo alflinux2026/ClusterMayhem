@@ -1,0 +1,61 @@
+# Resumen core/no-core
+
+## Entrada analizada
+
+- Entry point base: `./runtime/node_boot.py`
+- Paquete raíz inferido: `cluster`
+
+## Métricas
+
+- Total archivos `.py` en repo: **38**
+- Total archivos `.py` en core: **18**
+- Total archivos `.py` en no-core: **20**
+
+## Archivos core
+
+- `./runtime/api_app.py`
+- `./runtime/bootstrap.py`
+- `./runtime/cluster_store.py`
+- `./runtime/context.py`
+- `./runtime/event_log.py`
+- `./runtime/events/cluster_event.py`
+- `./runtime/events/event_state.py`
+- `./runtime/integrity.py`
+- `./runtime/leader.py`
+- `./runtime/log_replication.py`
+- `./runtime/node_boot.py`
+- `./runtime/node_runtime.py`
+- `./runtime/node_worker.py`
+- `./runtime/progress_watchdog.py`
+- `./runtime/registry.py`
+- `./runtime/state.py`
+- `./runtime/watchdog.py`
+- `./utils/log_print.py`
+
+## Archivos no-core
+
+- `./__init__.py` — Fuera del core
+- `./cluster_live.py` — Fuera del core
+- `./config/__init__.py` — Fuera del core
+- `./config/loader.py` — Fuera del core
+- `./dump-repo-lite/cluster_live.py` — Fuera del core
+- `./dump-repo/cluster_live.py` — Fuera del core
+- `./dump-repo/recopila-logs.py` — Fuera del core
+- `./dump-repo/recopila-logs_0.py` — Fuera del core
+- `./dump-repo/run_node.py` — Fuera del core
+- `./utils/__init__.py` — Utilidad auxiliar posible
+- `./utils/chaos/cluster_live.py` — Utilidad auxiliar posible
+- `./utils/chaos_runner_final.py` — Utilidad auxiliar posible
+- `./utils/chaos_runner_final_v2.py` — Utilidad auxiliar posible
+- `./utils/chaos_runner_final_v5.py` — Utilidad auxiliar posible
+- `./utils/chaos_v2.py` — Utilidad auxiliar posible
+- `./utils/chaos_v3.py` — Utilidad auxiliar posible
+- `./utils/chaos_v4.py` — Utilidad auxiliar posible
+- `./watchdog/__init__.py` — Fuera del core
+- `./watchdog/healthcheck.py` — Fuera del core
+- `./watchdog/watchdog.py` — Fuera del core
+
+## Nota
+
+El core se calcula con imports estáticos recursivos desde el entrypoint.
+Un archivo no-core no es automáticamente borrable; puede ser auxiliar, test, experimento o carga dinámica.

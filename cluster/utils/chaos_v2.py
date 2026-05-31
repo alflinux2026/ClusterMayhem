@@ -19,10 +19,10 @@ DEFAULT_NODES = [
     "http://100.100.1.203:7000",
 ]
 
-DEFAULT_EVENTS = 150
-DEFAULT_EVENT_DELAY_MIN = 0.5
-DEFAULT_EVENT_DELAY_MAX = 1.0
-DEFAULT_KILL_PROBABILITY = 0.0
+DEFAULT_EVENTS = 100
+DEFAULT_EVENT_DELAY_MIN = 0.05
+DEFAULT_EVENT_DELAY_MAX = 0.2
+DEFAULT_KILL_PROBABILITY = 0.1
 DEFAULT_DEATH_TIME_MIN = 5.0
 DEFAULT_DEATH_TIME_MAX = 10.0
 DEFAULT_REQUEST_TIMEOUT = 5.0
@@ -234,6 +234,23 @@ def percentile(data, p):
     return float(values[low] + (values[high] - values[low]) * fraction)
 
 
+def is_event_submit_ok(status_code, payload):
+    if status_code != 200:
+        return False
+
+    if not isinstance(payload, dict):
+        return False
+
+    if payload.get("ok") is True:
+        return True
+
+    result = payload.get("result")
+    if isinstance(result, dict) and result.get("ok") is True:
+        return True
+
+    return False
+
+
 def is_retryable_response(payload):
     if not isinstance(payload, dict):
         return False
@@ -255,9 +272,9 @@ def is_retryable_response(payload):
 
 
 def print_test_config():
-    print("\n" + "=" * 60)
-    print("CHAOS TEST CONFIG")
-    print("=" * 60)
+    print("\n" + "="* 56)
+    print("CHAOS TEST CONFIG v2")
+    print("="* 56)
     print(f"run_id..............: {RUN_ID}")
     print(f"stats_file..........: {STATS_FILE}")
     print(f"started_at..........: {datetime.fromtimestamp(TEST_STARTED_AT).isoformat()}")
@@ -271,7 +288,7 @@ def print_test_config():
     print(f"sleep_only_node.....: {SLEEP_ONLY_NODE}")
     print(f"slow_threshold_ms...: {SLOW_EVENT_THRESHOLD_MS}")
     print(f"seed................: {ARGS.seed}")
-    print("=" * 60 + "\n")
+    print("="* 56 + "\n")
 
 
 # =====================================================
@@ -408,7 +425,7 @@ def send_event(i):
                     payload=payload,
                 )
 
-            if r.status_code == 200:
+            if is_event_submit_ok(r.status_code, payload):
                 stat_inc("events_ok")
                 stat_node_ok(node)
 
@@ -581,9 +598,9 @@ def print_stats():
     ended_at = time.time()
 
     print("\n")
-    print("=" * 60)
+    print("="* 56)
     print("FINAL CHAOS STATS")
-    print("=" * 60)
+    print("="* 56)
 
     with stats_lock:
         total = stats["events_total"]
@@ -680,7 +697,7 @@ def print_stats():
         else:
             print("  none")
 
-        print("=" * 60)
+        print("="* 56)
 
         report = {
             "test_config": TEST_CONFIG,
@@ -725,6 +742,7 @@ def main():
     finally:
         wait_kills()
         revive_everything()
+        print_test_config()
         print_stats()
         print("\n[MAIN] cluster restored\n")
 

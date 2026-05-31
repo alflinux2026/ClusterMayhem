@@ -3,6 +3,8 @@ set -euo pipefail
 
 ENTRYPOINT="./runtime/node_boot.py"
 
+STAMP="$(date +%Y%m%d_%H%M%S)"
+
 CORE_LIST="core_files.txt"
 NO_CORE_LIST="no_core_files.txt"
 
@@ -13,6 +15,34 @@ CORE_HEADER="header_last_code_core.code"
 NO_CORE_HEADER="header_last_code_no_core.code"
 
 SUMMARY_FILE="core_summary.md"
+
+
+
+# ------------------------------------------------------------
+# Carpeta snapshots
+# ------------------------------------------------------------
+
+SNAPSHOT_DIR="dump-repo"
+
+mkdir -p "$SNAPSHOT_DIR"
+
+# ------------------------------------------------------------
+# Versiones históricas
+# ------------------------------------------------------------
+
+CORE_LIST_TS="${SNAPSHOT_DIR}/core_files_${STAMP}.txt"
+NO_CORE_LIST_TS="${SNAPSHOT_DIR}/no_core_files_${STAMP}.txt"
+
+CORE_CODE_TS="${SNAPSHOT_DIR}/last_code_core_${STAMP}.code"
+NO_CORE_CODE_TS="${SNAPSHOT_DIR}/last_code_no_core_${STAMP}.code"
+
+CORE_HEADER_TS="${SNAPSHOT_DIR}/header_last_code_core_${STAMP}.code"
+NO_CORE_HEADER_TS="${SNAPSHOT_DIR}/header_last_code_no_core_${STAMP}.code"
+
+SUMMARY_FILE_TS="${SNAPSHOT_DIR}/core_summary_${STAMP}.md"
+
+
+
 
 python3 - "$ENTRYPOINT" "$CORE_LIST" "$NO_CORE_LIST" "$SUMMARY_FILE" <<'PY'
 import ast
@@ -242,6 +272,18 @@ build_header() {
     ' "$in_file"
   } > "$out_file"
 }
+
+
+cp "$CORE_LIST" "$CORE_LIST_TS"
+cp "$NO_CORE_LIST" "$NO_CORE_LIST_TS"
+
+cp "$CORE_CODE" "$CORE_CODE_TS"
+cp "$NO_CORE_CODE" "$NO_CORE_CODE_TS"
+
+cp "$CORE_HEADER" "$CORE_HEADER_TS"
+cp "$NO_CORE_HEADER" "$NO_CORE_HEADER_TS"
+
+cp "$SUMMARY_FILE" "$SUMMARY_FILE_TS"
 
 build_bundle "$CORE_LIST" "$CORE_CODE"
 build_bundle "$NO_CORE_LIST" "$NO_CORE_CODE"

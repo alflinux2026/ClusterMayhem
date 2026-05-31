@@ -1,0 +1,109 @@
+# Resumen core/no-core
+
+## Entrada analizada
+
+- Entry point base: `./runtime/node_boot.py`
+- Paquete raíz inferido: `cluster`
+
+## Métricas
+
+- Total archivos `.py` en repo: **86**
+- Total archivos `.py` en core: **19**
+- Total archivos `.py` en no-core: **67**
+
+## Archivos core
+
+- `./runtime/__init__.py`
+- `./runtime/api_app.py`
+- `./runtime/bootstrap.py`
+- `./runtime/cluster_store.py`
+- `./runtime/context.py`
+- `./runtime/event_log.py`
+- `./runtime/events/cluster_event.py`
+- `./runtime/events/event_state.py`
+- `./runtime/integrity.py`
+- `./runtime/leader.py`
+- `./runtime/log_replication.py`
+- `./runtime/node_boot.py`
+- `./runtime/node_runtime.py`
+- `./runtime/node_worker.py`
+- `./runtime/progress_watchdog.py`
+- `./runtime/registry.py`
+- `./runtime/state.py`
+- `./runtime/watchdog.py`
+- `./utils/log_print.py`
+
+## Archivos no-core
+
+- `./__init__.py` — Fuera del core
+- `./_lease/__init__.py` — Fuera del core
+- `./_lease/lease.py` — Fuera del core
+- `./_lease/lease_manager.py` — Fuera del core
+- `./api/__init__.py` — Fuera del core
+- `./api/routes_cluster.py` — Fuera del core
+- `./api/routes_health.py` — Fuera del core
+- `./cluster_live.py` — Fuera del core
+- `./config/__init__.py` — Fuera del core
+- `./config/loader.py` — Fuera del core
+- `./core/node.py` — Rama alternativa o legado posible
+- `./core/transitions.py` — Rama alternativa o legado posible
+- `./datasets/__init__.py` — Fuera del core
+- `./datasets/dataset_manager.py` — Fuera del core
+- `./datasets/revisioning.py` — Fuera del core
+- `./dump-repo-lite/cluster_live.py` — Fuera del core
+- `./dump-repo/cluster_live.py` — Fuera del core
+- `./dump-repo/recopila-logs.py` — Fuera del core
+- `./dump-repo/recopila-logs_0.py` — Fuera del core
+- `./dump-repo/run_node.py` — Fuera del core
+- `./election/__init__.py` — Módulo alternativo/no conectado posible
+- `./election/election_engine.py` — Módulo alternativo/no conectado posible
+- `./election/leader.py` — Módulo alternativo/no conectado posible
+- `./election/lease_validation.py` — Módulo alternativo/no conectado posible
+- `./models/__init__.py` — Fuera del core
+- `./models/dataset.py` — Fuera del core
+- `./models/host.py` — Fuera del core
+- `./models/lease.py` — Fuera del core
+- `./network/__init__.py` — Fuera del core
+- `./network/http_client.py` — Fuera del core
+- `./node/__init__.py` — Fuera del core
+- `./node/node_runtime.py` — Fuera del core
+- `./persistence/__init__.py` — Fuera del core
+- `./replication/__init__.py` — Fuera del core
+- `./replication/pull_sync.py` — Fuera del core
+- `./replication/replication_engine.py` — Fuera del core
+- `./runtime/cluster_view.py` — Fuera del core
+- `./runtime/dispatcher.py` — Fuera del core
+- `./runtime/ingest.py` — Fuera del core
+- `./runtime/locks.py` — Fuera del core
+- `./runtime/models.py` — Fuera del core
+- `./runtime/reconciler/reconciler_loop.py` — Fuera del core
+- `./runtime/replication.py` — Fuera del core
+- `./runtime/serialization.py` — Fuera del core
+- `./runtime/state_machine.py` — Fuera del core
+- `./runtime/worker/event_worker.py` — Fuera del core
+- `./storage/__init__.py` — Fuera del core
+- `./storage/backend.py` — Fuera del core
+- `./storage/json_backend.py` — Fuera del core
+- `./transport/client.py` — Infra auxiliar o rama no conectada
+- `./utils/__init__.py` — Utilidad auxiliar posible
+- `./utils/chaos/cluster_live.py` — Utilidad auxiliar posible
+- `./utils/chaos_runner_final.py` — Utilidad auxiliar posible
+- `./utils/chaos_runner_final_v2.py` — Utilidad auxiliar posible
+- `./utils/chaos_runner_final_v5.py` — Utilidad auxiliar posible
+- `./utils/chaos_v2.py` — Utilidad auxiliar posible
+- `./utils/chaos_v3.py` — Utilidad auxiliar posible
+- `./utils/chaos_v4.py` — Utilidad auxiliar posible
+- `./watchdog/__init__.py` — Fuera del core
+- `./watchdog/healthcheck.py` — Fuera del core
+- `./watchdog/watchdog.py` — Fuera del core
+- `./workers/__init__.py` — Worker auxiliar o rama no conectada
+- `./workers/cluster_worker.py` — Worker auxiliar o rama no conectada
+- `./workers/heartbeat_worker.py` — Worker auxiliar o rama no conectada
+- `./workers/lease_worker.py` — Worker auxiliar o rama no conectada
+- `./workers/replication_worker.py` — Worker auxiliar o rama no conectada
+- `./workers/watchdog_worker.py` — Worker auxiliar o rama no conectada
+
+## Nota
+
+El core se calcula con imports estáticos recursivos desde el entrypoint.
+Un archivo no-core no es automáticamente borrable; puede ser auxiliar, test, experimento o carga dinámica.

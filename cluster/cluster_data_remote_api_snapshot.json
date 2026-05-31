@@ -1,0 +1,62 @@
+{
+  "lnx200nas": {
+    "node": "lnx200nas",
+    "host": "100.100.1.200",
+    "health": {
+      "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Max retries exceeded with url: /health (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.200', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.200:7000/health"
+    },
+    "dashboard": {
+      "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Max retries exceeded with url: /dashboard/compact (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.200', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.200:7000/dashboard/compact"
+    },
+    "integrity": {
+      "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Max retries exceeded with url: /integrity (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.200', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.200:7000/integrity"
+    },
+    "events_summary_local": {
+      "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Max retries exceeded with url: /debug/events/summary (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.200', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.200:7000/debug/events/summary"
+    }
+  },
+  "lnx202pc": {
+    "node": "lnx202pc",
+    "host": "100.100.1.202",
+    "health": {
+      "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Max retries exceeded with url: /health (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.202', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.202:7000/health"
+    },
+    "dashboard": {
+      "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Max retries exceeded with url: /dashboard/compact (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.202', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.202:7000/dashboard/compact"
+    },
+    "integrity": {
+      "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Max retries exceeded with url: /integrity (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.202', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.202:7000/integrity"
+    },
+    "events_summary_local": {
+      "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Max retries exceeded with url: /debug/events/summary (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.202', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.202:7000/debug/events/summary"
+    }
+  },
+  "lnx203hp": {
+    "node": "lnx203hp",
+    "host": "100.100.1.203",
+    "health": {
+      "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Max retries exceeded with url: /health (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.203', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.203:7000/health"
+    },
+    "dashboard": {
+      "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Max retries exceeded with url: /dashboard/compact (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.203', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.203:7000/dashboard/compact"
+    },
+    "integrity": {
+      "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Max retries exceeded with url: /integrity (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.203', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.203:7000/integrity"
+    },
+    "events_summary_local": {
+      "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Max retries exceeded with url: /debug/events/summary (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.203', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.203:7000/debug/events/summary"
+    }
+  }
+}

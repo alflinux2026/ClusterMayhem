@@ -1,0 +1,267 @@
+{
+  "test_config": {
+    "mode": "smoke",
+    "nodes": [
+      "http://100.100.1.200:7000",
+      "http://100.100.1.202:7000",
+      "http://100.100.1.203:7000"
+    ],
+    "events": 100,
+    "event_delay_range": [
+      0.1,
+      0.2
+    ],
+    "kill_probability": 0.0,
+    "death_time_range": [
+      1.5,
+      15.0
+    ],
+    "request_timeout": 5.0,
+    "max_retries": 3,
+    "sleep_only_node": null,
+    "slow_event_threshold_ms": 500.0,
+    "seed": null,
+    "run_id": "20260531_161347",
+    "stats_file": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_161347/stats.json",
+    "events_csv": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_161347/events.csv",
+    "send_workers": 2,
+    "retry_backoff_base": 0.5,
+    "retry_backoff_max": 3.0,
+    "drain_timeout": 15.0,
+    "stream": {
+      "tenant_id": "chaos",
+      "app_id": "chaos_v4",
+      "data_type": "event",
+      "schema_version": "0.1",
+      "stream_id": "chaos.chaos_v4.event.0.1"
+    }
+  },
+  "run_meta": {
+    "started_at_epoch": 1780236827.3050148,
+    "ended_at_epoch": 1780236846.5162876,
+    "started_at_iso": "2026-05-31T16:13:47.305015",
+    "ended_at_iso": "2026-05-31T16:14:06.516334",
+    "duration_seconds": 19.211
+  },
+  "stats": {
+    "events_total": 100,
+    "events_ok": 96,
+    "events_failed": 4,
+    "events_retried": 103,
+    "events_no_leader": 7,
+    "events_timeout": 0,
+    "events_connection_error": 94,
+    "events_forward_error": 0,
+    "events_unexpected_fail": 4,
+    "events_slow": 2,
+    "kills": 0,
+    "revives": 0,
+    "kill_attempts": 0,
+    "kill_failures": 0,
+    "revive_failures": 0,
+    "per_node_ok": {
+      "http://100.100.1.203:7000": 91,
+      "http://100.100.1.200:7000": 5
+    },
+    "per_node_fail": {},
+    "leaders_seen": {
+      "lnx203hp": 88,
+      "lnx200nas": 8
+    },
+    "latency": [
+      12.656927108764648,
+      4.440546035766602,
+      3.23486328125,
+      10.835886001586914,
+      10.694026947021484,
+      14.770030975341797,
+      4.932641983032227,
+      3.735780715942383,
+      4.225730895996094,
+      3.77655029296875,
+      21.11530303955078,
+      23.915529251098633,
+      7.249116897583008,
+      4.003763198852539,
+      5.461215972900391,
+      4.184961318969727,
+      3.9038658142089844,
+      8.208751678466797,
+      5.564212799072266,
+      6.1092376708984375,
+      6.183147430419922,
+      5.505084991455078,
+      3.5047531127929688,
+      4.238128662109375,
+      5.9528350830078125,
+      15.741825103759766,
+      18.12577247619629,
+      4.634857177734375,
+      5.241155624389648,
+      8.846759796142578,
+      7.611751556396484,
+      4.39000129699707,
+      4.354000091552734,
+      4.771232604980469,
+      7.861137390136719,
+      6.388664245605469,
+      4.034280776977539,
+      5.972862243652344,
+      6.031274795532227,
+      5.676984786987305,
+      8.391141891479492,
+      7.076501846313477,
+      8.28409194946289,
+      5.999088287353516,
+      6.678104400634766,
+      13.332128524780273,
+      15.926599502563477,
+      9.008407592773438,
+      4.81414794921875,
+      9.976387023925781,
+      6.132364273071289,
+      6.126165390014648,
+      3.7124156951904297,
+      6.423473358154297,
+      25.488615036010742,
+      25.686264038085938,
+      7.380247116088867,
+      5.101680755615234,
+      4.058361053466797,
+      4.013299942016602,
+      5.281686782836914,
+      12.388229370117188,
+      6.057024002075195,
+      7.036924362182617,
+      4.453182220458984,
+      6.005764007568359,
+      6.738901138305664,
+      8.676290512084961,
+      9.482383728027344,
+      15.079736709594727,
+      13.403892517089844,
+      6.079912185668945,
+      4.522085189819336,
+      4.501581192016602,
+      4.88591194152832,
+      4.906892776489258,
+      8.139848709106445,
+      6.233692169189453,
+      14.056921005249023,
+      8.575439453125,
+      4.503965377807617,
+      3.609895706176758,
+      22.9034423828125,
+      39.44230079650879,
+      23.92888069152832,
+      4.495382308959961,
+      6.663084030151367,
+      4.369020462036133,
+      26.608943939208984,
+      18.86773109436035,
+      14.193058013916016,
+      14.997243881225586,
+      2012.312650680542,
+      2028.759479522705,
+      45.948028564453125,
+      55.191993713378906,
+      34.68728065490723,
+      77.89850234985352,
+      8.909225463867188,
+      95.54386138916016,
+      10.117530822753906,
+      10.477542877197266,
+      13.995647430419922,
+      18.050670623779297,
+      47.61481285095215
+    ],
+    "unexpected_failures": [
+      {
+        "event_index": 85,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:14:02.198057"
+      },
+      {
+        "event_index": 86,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:14:04.456786"
+      },
+      {
+        "event_index": 88,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:14:04.491835"
+      },
+      {
+        "event_index": 92,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.202:7000",
+            "http://100.100.1.200:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T16:14:04.586027"
+      }
+    ],
+    "slow_events": [
+      {
+        "event_index": 93,
+        "attempt": 2,
+        "node": "http://100.100.1.203:7000",
+        "latency_ms": 2012.313,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:14:04.410168"
+      },
+      {
+        "event_index": 96,
+        "attempt": 1,
+        "node": "http://100.100.1.200:7000",
+        "latency_ms": 2028.759,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:14:04.418572"
+      }
+    ],
+    "kill_events": [],
+    "submit_http_200": 105,
+    "submit_semantic_ok": 96,
+    "submit_hard_fail": 0,
+    "queue_requeues": 99,
+    "queue_max_depth": 10,
+    "success_rate": 96.0,
+    "latency_avg": 50.308,
+    "latency_min": 3.235,
+    "latency_p50": 6.739,
+    "latency_p95": 47.281,
+    "latency_p99": 1935.642,
+    "latency_max": 2028.759,
+    "results_csv": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_161347/events.csv"
+  }
+}

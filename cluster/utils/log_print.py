@@ -1,7 +1,22 @@
+# File: ./cluster/utils/log_print.py
+# Previous: none
+# Author: alftorres
+# Date: 2026-05-28T17:13:00+0200
+# Version: 0.0.0
+# Genealogy:
+#   ./cluster/utils/log_print.py 0.0.0 2026-05-28T17:13:00+0200
+#   God
+#
+# Purpose:
+# Notes:
+#
+# FRV-ID: 973196933f255262
+# Header_End
+
 
 from datetime import datetime
 
-modeGhost = True
+modeGhost = False
 
 def log_state(color, typ, msg, decimals=0):
 

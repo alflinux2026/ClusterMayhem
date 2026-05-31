@@ -1,0 +1,243 @@
+
+
+
+===== ./runtime/registry.py =====
+   1: CLUSTER_REGISTRY = {}
+   2: 
+   3: 
+   4: def register_node(node_id: str, host: str, port: int, priority: int = 100):
+   5:     CLUSTER_REGISTRY[node_id] = {
+   6:         "host": host,
+   7:         "port": port,
+   8:         "priority": priority,
+   9:     }
+  10:     return CLUSTER_REGISTRY[node_id]
+  11: 
+  12: 
+  13: def get_node(node_id: str):
+  14:     return CLUSTER_REGISTRY.get(node_id)
+
+
+
+===== ./runtime/bootstrap.py =====
+   1: import json
+   2: import os
+   3: import socket
+   4: from pathlib import Path
+   5: 
+   6: 
+   7: def _write_json_atomic(path: str, data: dict) -> None:
+   8:     p = Path(path)
+   9:     p.parent.mkdir(parents=True, exist_ok=True)
+  10:     tmp = p.with_suffix(p.suffix + ".tmp")
+  11:     with open(tmp, "w", encoding="utf-8") as f:
+  12:         json.dump(data, f, ensure_ascii=False, indent=2)
+  13:         f.flush()
+  14:         os.fsync(f.fileno())
+  15:     os.replace(tmp, p)
+  16: 
+  17: 
+  18: def _find_self_node(nodes: list[dict]) -> dict:
+  19:     hostname = socket.gethostname()
+  20:     host_env = os.getenv("NODE_HOST")
+  21:     ip_env = os.getenv("NODE_IP")
+  22:     node_id_env = os.getenv("NODE_ID")
+  23: 
+  24:     for node in nodes:
+  25:         if node_id_env and node.get("node_id") == node_id_env:
+  26:             return node
+  27:         if host_env and node.get("host") == host_env:
+  28:             return node
+  29:         if ip_env and node.get("host") == ip_env:
+  30:             return node
+  31:         if node.get("node_id") == hostname:
+  32:             return node
+  33: 
+  34:     raise RuntimeError(f"Cannot identify node for hostname={hostname!r} env NODE_ID={node_id_env!r} NODE_HOST={host_env!r} NODE_IP={ip_env!r}")
+  35: 
+  36: 
+  37: def load_or_bootstrap_config():
+  38:     nodes_path = Path(os.getenv("CLUSTER_NODES", "cluster/config/nodes.json"))
+  39:     config_path = Path(os.getenv("CLUSTER_CONFIG", "config/node.json"))
+  40: 
+  41:     if not nodes_path.exists():
+  42:         raise FileNotFoundError(f"Missing cluster nodes file: {nodes_path}")
+  43: 
+  44:     with open(nodes_path, "r", encoding="utf-8") as f:
+  45:         cluster_cfg = json.load(f)
+  46: 
+  47:     if not isinstance(cluster_cfg, dict) or "nodes" not in cluster_cfg:
+  48:         raise ValueError(f"Invalid cluster nodes file: {nodes_path}")
+  49: 
+  50:     nodes = cluster_cfg["nodes"]
+  51:     if not isinstance(nodes, list) or not nodes:
+  52:         raise ValueError(f"Empty node list in: {nodes_path}")
+  53: 
+  54:     self_node = _find_self_node(nodes)
+  55:     peers = [n for n in nodes if n.get("node_id") != self_node.get("node_id")]
+  56: 
+  57:     cfg = {
+  58:         "cluster_name": cluster_cfg.get("cluster_name", "mayhem-cluster"),
+  59:         "node_id": self_node["node_id"],
+  60:         "priority": int(self_node["priority"]),
+  61:         "port": int(self_node.get("port", os.getenv("NODE_PORT", "8000"))),
+  62:         "host": self_node.get("host", os.getenv("NODE_HOST", "0.0.0.0")),
+  63:         "tenant_id": os.getenv("TENANT_ID", "default"),
+  64:         "app_id": os.getenv("APP_ID", "mayhem"),
+  65:         "data_type": os.getenv("DATA_TYPE", "event"),
+  66:         "schema_version": os.getenv("SCHEMA_VERSION", "0.1"),
+  67:         "peers": [{"node_id": n["node_id"], "host": n["host"], "port": int(n["port"]), "priority": int(n["priority"])} for n in peers],
+  68:     }
+  69: 
+  70:     if config_path.exists():
+  71:         try:
+  72:             with open(config_path, "r", encoding="utf-8") as f:
+  73:                 existing = json.load(f)
+  74:             if isinstance(existing, dict) and existing.get("node_id") == cfg["node_id"]:
+  75:                 merged = {**existing, **cfg}
+  76:                 merged["peers"] = cfg["peers"]
+  77:                 return merged
+  78:         except (json.JSONDecodeError, OSError):
+  79:             pass
+  80: 
+  81:     _write_json_atomic(str(config_path), cfg)
+  82:     return cfg
+
+
+
+===== ./runtime/node_boot.py =====
+   1: import threading
+   2: import uvicorn
+   3: 
+   4: from cluster.runtime.node_worker import NodeWorker
+   5: from cluster.runtime.node_runtime import NodeRuntime
+   6: from cluster.runtime.bootstrap import load_or_bootstrap_config
+   7: from cluster.runtime import context as ctx
+   8: from cluster.runtime.api_app import app
+   9: from cluster.utils.log_print import log_state
+  10: 
+  11: 
+  12: def run_node(config):
+  13:     ctx.node_id = config["node_id"]
+  14:     ctx.priority = config["priority"]
+  15: 
+  16:     node = NodeRuntime(
+  17:         node_id=config["node_id"],
+  18:         priority=config["priority"],
+  19:     )
+  20:     ctx.node = node
+  21: 
+  22:     log_state(
+  23:         "cyan",
+  24:         "[BOOT]",
+  25:         (
+  26:             f"node={config['node_id']} "
+  27:             f"priority={config['priority']} "
+  28:             f"bind={config.get('bind_host', '0.0.0.0')}:{config.get('bind_port', 7000)} "
+  29:             f"peers={len(config.get('peers', []))}"
+  30:         ),
+  31:         3,
+  32:     )
+  33: 
+  34:     worker = NodeWorker(
+  35:         node=node,
+  36:         peers=config["peers"],
+  37:         interval=1.0,
+  38:     )
+  39: 
+  40:     threading.Thread(
+  41:         target=worker.start,
+  42:         daemon=True,
+  43:     ).start()
+  44: 
+  45:     log_state("green", "[WORKER]", f"background loop started for {config['node_id']}", 3)
+  46:     log_state(
+  47:         "green",
+  48:         "[HTTP]",
+  49:         f"serving app on {config.get('bind_host', '0.0.0.0')}:{config.get('bind_port', 7000)}",
+  50:         3,
+  51:     )
+  52: 
+  53:     uvicorn.run(
+  54:         app,
+  55:         host=config.get("bind_host", "0.0.0.0"),
+  56:         port=config.get("bind_port", 7000),
+  57:         log_level="warning",
+  58:         access_log=False,
+  59:     )
+  60: 
+  61: 
+  62: if __name__ == "__main__":
+  63:     config = load_or_bootstrap_config()
+  64:     run_node(config)
+
+
+
+===== ./runtime/event_router.py =====
+   1: import requests
+   2: 
+   3: from cluster.runtime.registry import CLUSTER_REGISTRY
+   4: from cluster.utils.log_print import log_state
+   5: from cluster.runtime.events.cluster_event import ClusterEvent
+   6: from cluster.runtime.events.event_state import EventStatus
+   7: 
+   8: 
+   9: def forward_to_leader(event: ClusterEvent):
+  10:     raise NotImplementedError("forward_to_leader is not used in the current flow")
+  11: 
+  12: 
+  13: def forward_event(node_id: str, event: ClusterEvent, stream: str | None = None):
+  14:     node = CLUSTER_REGISTRY.get(node_id)
+  15:     if not node:
+  16:         log_state("red", "[WORKER SEND FAIL]", f"{event.event_id} -> {node_id} missing registry", 3)
+  17:         return {"error": "worker_route_missing", "target": node_id, "stream": stream}
+  18: 
+  19:     url = f"http://{node['host']}:{node['port']}/execute"
+  20:     event.add_hop(f"worker:{node_id}")
+  21: 
+  22:     msg = event.payload.get("msg", "<no-msg>")
+  23: 
+  24:     log_state(
+  25:         "magenta",
+  26:         "[WORKER SEND]",
+  27:         f"{msg:12} -> {node_id}",
+  28:         3
+  29:     )
+  30: 
+  31:     try:
+  32:         resp = requests.post(
+  33:             url,
+  34:             json=event.model_dump(),
+  35:             timeout=2
+  36:         )
+  37:         worker_result = resp.json()
+  38:     except Exception as e:
+  39:         log_state(
+  40:             "red",
+  41:             "[WORKER SEND FAIL]",
+  42:             f"{msg:12} -> {node_id} | {e}",
+  43:             3
+  44:         )
+  45:         return {"error": "worker_send_failed", "target": node_id, "stream": stream}
+  46: 
+  47:     if worker_result.get("status") == "completed":
+  48:         from cluster.runtime.state_machine import transition_event
+  49: 
+  50:         transition_event(
+  51:             event.event_id,
+  52:             EventStatus.COMPLETED
+  53:         )
+  54: 
+  55:         log_state(
+  56:             "yellow",
+  57:             "(EVENT)",
+  58:             f"{msg:12} -> COMPLETED",
+  59:             3
+  60:         )
+  61: 
+  62:     return {
+  63:         "status": "forwarded",
+  64:         "event_id": event.event_id,
+  65:         "target": node_id,
+  66:         "stream": stream
+  67:     }

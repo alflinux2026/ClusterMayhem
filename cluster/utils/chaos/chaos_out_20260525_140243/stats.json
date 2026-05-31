@@ -1,0 +1,108 @@
+{
+  "test_config": {
+    "mode": "smoke",
+    "nodes": [
+      "http://100.100.1.200:7000",
+      "http://100.100.1.202:7000",
+      "http://100.100.1.203:7000"
+    ],
+    "events": 20,
+    "event_delay_range": [
+      0.0,
+      0.02
+    ],
+    "kill_probability": 0.0,
+    "death_time_range": [
+      1.5,
+      15.0
+    ],
+    "request_timeout": 5.0,
+    "max_retries": 3,
+    "sleep_only_node": null,
+    "slow_event_threshold_ms": 500.0,
+    "seed": null,
+    "run_id": "20260525_140243",
+    "stats_file": "chaos_out_20260525_140243/stats.json",
+    "events_csv": "chaos_out_20260525_140243/events.csv",
+    "send_workers": 2,
+    "retry_backoff_base": 0.5,
+    "retry_backoff_max": 3.0,
+    "drain_timeout": 15.0,
+    "stream": {
+      "tenant_id": "chaos",
+      "app_id": "chaos_v4",
+      "data_type": "event",
+      "schema_version": "0.1",
+      "stream_id": "chaos.chaos_v4.event.0.1"
+    }
+  },
+  "run_meta": {
+    "started_at_epoch": 1779710563.782444,
+    "ended_at_epoch": 1779710566.2842858,
+    "started_at_iso": "2026-05-25T14:02:43.782444",
+    "ended_at_iso": "2026-05-25T14:02:46.284307",
+    "duration_seconds": 2.502
+  },
+  "stats": {
+    "events_total": 20,
+    "events_ok": 20,
+    "events_failed": 0,
+    "events_retried": 22,
+    "events_no_leader": 0,
+    "events_timeout": 0,
+    "events_connection_error": 22,
+    "events_forward_error": 0,
+    "events_unexpected_fail": 0,
+    "events_slow": 0,
+    "kills": 0,
+    "revives": 0,
+    "kill_attempts": 0,
+    "kill_failures": 0,
+    "revive_failures": 0,
+    "per_node_ok": {
+      "http://100.100.1.203:7000": 20
+    },
+    "per_node_fail": {},
+    "leaders_seen": {
+      "lnx203hp": 20
+    },
+    "latency": [
+      13.933181762695312,
+      14.435291290283203,
+      13.591289520263672,
+      16.091585159301758,
+      31.771421432495117,
+      24.862289428710938,
+      28.295278549194336,
+      27.04024314880371,
+      27.612924575805664,
+      21.803855895996094,
+      19.582509994506836,
+      10.094881057739258,
+      9.280920028686523,
+      10.265827178955078,
+      9.934663772583008,
+      19.681692123413086,
+      18.537044525146484,
+      13.547182083129883,
+      16.2966251373291,
+      15.300512313842773
+    ],
+    "unexpected_failures": [],
+    "slow_events": [],
+    "kill_events": [],
+    "submit_http_200": 20,
+    "submit_semantic_ok": 20,
+    "submit_hard_fail": 0,
+    "queue_requeues": 22,
+    "queue_max_depth": 16,
+    "success_rate": 100.0,
+    "latency_avg": 18.098,
+    "latency_min": 9.281,
+    "latency_p50": 16.194,
+    "latency_p95": 28.469,
+    "latency_p99": 31.111,
+    "latency_max": 31.771,
+    "results_csv": "chaos_out_20260525_140243/events.csv"
+  }
+}

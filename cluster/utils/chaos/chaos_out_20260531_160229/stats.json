@@ -1,0 +1,594 @@
+{
+  "test_config": {
+    "mode": "smoke",
+    "nodes": [
+      "http://100.100.1.200:7000",
+      "http://100.100.1.202:7000",
+      "http://100.100.1.203:7000"
+    ],
+    "events": 100,
+    "event_delay_range": [
+      0.1,
+      0.2
+    ],
+    "kill_probability": 0.0,
+    "death_time_range": [
+      1.5,
+      15.0
+    ],
+    "request_timeout": 5.0,
+    "max_retries": 3,
+    "sleep_only_node": null,
+    "slow_event_threshold_ms": 500.0,
+    "seed": null,
+    "run_id": "20260531_160229",
+    "stats_file": "/home/alftorres/projects/ClusterMayhem_backup/cluster/utils/chaos/chaos_out_20260531_160229/stats.json",
+    "events_csv": "/home/alftorres/projects/ClusterMayhem_backup/cluster/utils/chaos/chaos_out_20260531_160229/events.csv",
+    "send_workers": 2,
+    "retry_backoff_base": 0.5,
+    "retry_backoff_max": 3.0,
+    "drain_timeout": 15.0,
+    "stream": {
+      "tenant_id": "chaos",
+      "app_id": "chaos_v4",
+      "data_type": "event",
+      "schema_version": "0.1",
+      "stream_id": "chaos.chaos_v4.event.0.1"
+    }
+  },
+  "run_meta": {
+    "started_at_epoch": 1780236149.1161268,
+    "ended_at_epoch": 1780236166.2099779,
+    "started_at_iso": "2026-05-31T16:02:29.116127",
+    "ended_at_iso": "2026-05-31T16:02:46.210017",
+    "duration_seconds": 17.094
+  },
+  "stats": {
+    "events_total": 100,
+    "events_ok": 74,
+    "events_failed": 26,
+    "events_retried": 145,
+    "events_no_leader": 26,
+    "events_timeout": 0,
+    "events_connection_error": 0,
+    "events_forward_error": 0,
+    "events_unexpected_fail": 26,
+    "events_slow": 0,
+    "kills": 0,
+    "revives": 0,
+    "kill_attempts": 0,
+    "kill_failures": 0,
+    "revive_failures": 0,
+    "per_node_ok": {
+      "http://100.100.1.200:7000": 74
+    },
+    "per_node_fail": {},
+    "leaders_seen": {
+      "lnx200nas": 74
+    },
+    "latency": [
+      12.035369873046875,
+      18.828868865966797,
+      7.400035858154297,
+      5.702733993530273,
+      16.916513442993164,
+      7.903099060058594,
+      16.263961791992188,
+      5.3005218505859375,
+      4.919290542602539,
+      10.172605514526367,
+      3.8547515869140625,
+      17.778635025024414,
+      57.46150016784668,
+      49.04007911682129,
+      3.754854202270508,
+      4.166841506958008,
+      9.839057922363281,
+      7.7800750732421875,
+      7.044076919555664,
+      9.292364120483398,
+      10.514497756958008,
+      9.73200798034668,
+      9.639263153076172,
+      8.785724639892578,
+      7.7056884765625,
+      19.9277400970459,
+      14.652252197265625,
+      13.849258422851562,
+      6.4678192138671875,
+      8.778095245361328,
+      24.935483932495117,
+      5.900859832763672,
+      11.942386627197266,
+      5.27191162109375,
+      60.6992244720459,
+      16.667842864990234,
+      5.104541778564453,
+      4.4879913330078125,
+      25.472640991210938,
+      7.834434509277344,
+      4.851102828979492,
+      47.245025634765625,
+      3.5665035247802734,
+      46.796321868896484,
+      7.531166076660156,
+      19.40774917602539,
+      9.08803939819336,
+      17.412185668945312,
+      20.7059383392334,
+      25.298357009887695,
+      8.272886276245117,
+      8.665323257446289,
+      9.75179672241211,
+      7.555723190307617,
+      4.6215057373046875,
+      3.1516551971435547,
+      7.794618606567383,
+      3.3490657806396484,
+      4.94074821472168,
+      6.542682647705078,
+      8.611440658569336,
+      9.601354598999023,
+      6.832122802734375,
+      37.48512268066406,
+      7.598876953125,
+      9.018898010253906,
+      3.4668445587158203,
+      7.998228073120117,
+      9.523391723632812,
+      100.09264945983887,
+      8.206605911254883,
+      60.774803161621094,
+      5.6629180908203125,
+      5.300283432006836,
+      9.458065032958984,
+      57.83653259277344,
+      50.66561698913574,
+      35.77923774719238,
+      5.141258239746094,
+      4.585027694702148,
+      46.164751052856445,
+      8.952140808105469,
+      5.485773086547852,
+      5.895137786865234,
+      5.835771560668945,
+      13.847112655639648,
+      3.437519073486328,
+      5.059003829956055,
+      10.223865509033203,
+      10.751008987426758,
+      11.435270309448242,
+      9.160757064819336,
+      9.392976760864258,
+      7.30133056640625,
+      7.098913192749023,
+      4.931211471557617,
+      8.013486862182617,
+      5.027532577514648,
+      49.26037788391113,
+      74.65338706970215,
+      57.810306549072266,
+      53.83872985839844,
+      3.5333633422851562,
+      5.17582893371582,
+      5.974769592285156,
+      65.73486328125,
+      46.372413635253906,
+      8.931159973144531,
+      43.61081123352051,
+      47.07050323486328,
+      50.394535064697266,
+      8.068561553955078,
+      8.076906204223633,
+      10.28752326965332,
+      17.846345901489258,
+      11.111021041870117,
+      15.212774276733398,
+      9.160757064819336,
+      5.114316940307617,
+      4.2877197265625,
+      3.7009716033935547,
+      2.8486251831054688,
+      10.54239273071289,
+      10.087013244628906,
+      9.290933609008789,
+      8.975028991699219,
+      12.157917022705078,
+      8.304595947265625,
+      12.063026428222656,
+      10.960817337036133,
+      5.705595016479492,
+      3.1921863555908203,
+      28.067588806152344,
+      3.3333301544189453,
+      5.734682083129883,
+      95.23177146911621,
+      7.635593414306641,
+      7.370710372924805,
+      7.404804229736328,
+      49.78775978088379,
+      10.393142700195312,
+      14.139413833618164,
+      10.527372360229492,
+      12.202024459838867,
+      15.668153762817383,
+      7.516622543334961,
+      11.13581657409668,
+      6.647825241088867,
+      4.669666290283203,
+      26.32617950439453,
+      5.432367324829102,
+      5.031108856201172,
+      3.3822059631347656,
+      11.508464813232422,
+      3.9191246032714844,
+      3.088712692260742,
+      5.654096603393555,
+      4.239797592163086,
+      5.49626350402832,
+      8.62741470336914,
+      13.067007064819336,
+      12.152433395385742,
+      16.703128814697266,
+      8.379936218261719,
+      9.197711944580078,
+      15.415191650390625,
+      8.47172737121582,
+      6.618976593017578,
+      61.804771423339844,
+      54.36396598815918,
+      6.141424179077148,
+      54.912567138671875,
+      5.5942535400390625,
+      5.027055740356445,
+      6.354570388793945,
+      84.85627174377441,
+      5.417585372924805,
+      34.002065658569336,
+      40.788888931274414,
+      5.757570266723633,
+      19.20485496520996,
+      4.166126251220703,
+      6.805419921875,
+      3.5734176635742188,
+      14.068365097045898,
+      12.363910675048828,
+      12.222051620483398,
+      10.23554801940918,
+      17.728805541992188,
+      9.84334945678711,
+      7.078886032104492,
+      3.8814544677734375,
+      3.218412399291992,
+      5.932331085205078,
+      7.280826568603516,
+      4.736423492431641,
+      28.013944625854492,
+      36.94438934326172,
+      6.303071975708008,
+      5.002021789550781,
+      3.5915374755859375,
+      31.270980834960938,
+      20.198583602905273,
+      8.488893508911133,
+      54.517269134521484,
+      6.98089599609375,
+      64.41116333007812,
+      201.56478881835938,
+      63.55643272399902,
+      35.635948181152344,
+      6.203413009643555,
+      29.944896697998047,
+      4.473686218261719,
+      36.55385971069336,
+      18.065452575683594,
+      64.82958793640137,
+      2.922534942626953,
+      9.05752182006836,
+      38.40160369873047
+    ],
+    "unexpected_failures": [
+      {
+        "event_index": 7,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:31.640941"
+      },
+      {
+        "event_index": 18,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:33.159352"
+      },
+      {
+        "event_index": 19,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:33.361471"
+      },
+      {
+        "event_index": 23,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:33.864161"
+      },
+      {
+        "event_index": 26,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:34.345375"
+      },
+      {
+        "event_index": 29,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:34.848904"
+      },
+      {
+        "event_index": 32,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:35.294818"
+      },
+      {
+        "event_index": 34,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:35.591083"
+      },
+      {
+        "event_index": 44,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:37.301812"
+      },
+      {
+        "event_index": 45,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:37.312461"
+      },
+      {
+        "event_index": 46,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:37.525827"
+      },
+      {
+        "event_index": 48,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:37.786516"
+      },
+      {
+        "event_index": 49,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:37.794807"
+      },
+      {
+        "event_index": 52,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:38.303304"
+      },
+      {
+        "event_index": 57,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:39.033703"
+      },
+      {
+        "event_index": 58,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:39.254558"
+      },
+      {
+        "event_index": 59,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:39.315380"
+      },
+      {
+        "event_index": 60,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:39.534928"
+      },
+      {
+        "event_index": 62,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:39.745006"
+      },
+      {
+        "event_index": 61,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:39.749540"
+      },
+      {
+        "event_index": 66,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:40.480935"
+      },
+      {
+        "event_index": 67,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:40.584811"
+      },
+      {
+        "event_index": 77,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:42.198636"
+      },
+      {
+        "event_index": 83,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "node isolated"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:43.209165"
+      },
+      {
+        "event_index": 89,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:44.248123"
+      },
+      {
+        "event_index": 95,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": 200,
+        "payload": {
+          "error": "no leader"
+        },
+        "reason": "dropped_after_retries_retryable_response",
+        "timestamp": "2026-05-31T16:02:44.847999"
+      }
+    ],
+    "slow_events": [],
+    "kill_events": [],
+    "submit_http_200": 219,
+    "submit_semantic_ok": 74,
+    "submit_hard_fail": 0,
+    "queue_requeues": 119,
+    "queue_max_depth": 11,
+    "success_rate": 74.0,
+    "latency_avg": 17.789,
+    "latency_min": 2.849,
+    "latency_p50": 9.019,
+    "latency_p95": 60.707,
+    "latency_p99": 93.364,
+    "latency_max": 201.565,
+    "results_csv": "/home/alftorres/projects/ClusterMayhem_backup/cluster/utils/chaos/chaos_out_20260531_160229/events.csv"
+  }
+}

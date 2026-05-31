@@ -49,5 +49,3 @@ cluster/data/*.jsonl
 cluster/data/*.json
 data/*.jsonl
 log*.jsonl
-
-

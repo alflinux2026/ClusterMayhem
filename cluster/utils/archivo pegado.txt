@@ -1,0 +1,437 @@
+```python
+import time
+import json
+import random
+import requests
+import threading
+import uuid
+import argparse
+import queue
+import csv
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from collections import defaultdict
+from pathlib import Path
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from runtime.models import StreamKey
+
+
+DEFAULT_NODES = [
+    "http://100.100.1.200:7000",
+    "http://100.100.1.202:7000",
+    "http://100.100.1.203:7000",
+]
+
+DEFAULT_EVENTS = 100000
+
+DEFAULT_EVENT_DELAY_MIN = 0.1
+DEFAULT_EVENT_DELAY_MAX = 0.2
+
+DEFAULT_KILL_PROBABILITY = 0.05
+
+DEFAULT_DEATH_TIME_MIN = 1.5
+DEFAULT_DEATH_TIME_MAX = 15.0
+
+DEFAULT_REQUEST_TIMEOUT = 5.0
+
+DEFAULT_MAX_RETRIES = 25
+
+DEFAULT_SLOW_EVENT_THRESHOLD_MS = 500.0
+
+DEFAULT_SLEEP_ONLY_NODE = None
+
+DEFAULT_SEND_WORKERS = 4
+
+DEFAULT_RETRY_BACKOFF_BASE = 0.5
+DEFAULT_RETRY_BACKOFF_MAX = 3.0
+
+DEFAULT_TENANT_ID = "chaos"
+DEFAULT_APP_ID = "chaos_v4"
+DEFAULT_DATA_TYPE = "event"
+DEFAULT_SCHEMA_VERSION = "0.1"
+
+
+def parse_args():
+    p = argparse.ArgumentParser(
+        description="Universal chaos torture runner final v3"
+    )
+
+    p.add_argument(
+        "--mode",
+        choices=["smoke", "benchmark", "torture"],
+        default="benchmark"
+    )
+
+    p.add_argument(
+        "--nodes",
+        nargs="+",
+        default=DEFAULT_NODES
+    )
+
+    p.add_argument(
+        "--events",
+        type=int,
+        default=DEFAULT_EVENTS
+    )
+
+    p.add_argument(
+        "--delay-min",
+        type=float,
+        default=DEFAULT_EVENT_DELAY_MIN
+    )
+
+    p.add_argument(
+        "--delay-max",
+        type=float,
+        default=DEFAULT_EVENT_DELAY_MAX
+    )
+
+    p.add_argument(
+        "--kill-prob",
+        type=float,
+        default=DEFAULT_KILL_PROBABILITY
+    )
+
+    p.add_argument(
+        "--death-min",
+        type=float,
+        default=DEFAULT_DEATH_TIME_MIN
+    )
+
+    p.add_argument(
+        "--death-max",
+        type=float,
+        default=DEFAULT_DEATH_TIME_MAX
+    )
+
+    p.add_argument(
+        "--timeout",
+        type=float,
+        default=DEFAULT_REQUEST_TIMEOUT
+    )
+
+    p.add_argument(
+        "--retries",
+        type=int,
+        default=DEFAULT_MAX_RETRIES
+    )
+
+    p.add_argument(
+        "--sleep-only-node",
+        default=DEFAULT_SLEEP_ONLY_NODE
+    )
+
+    p.add_argument(
+        "--slow-ms",
+        type=float,
+        default=DEFAULT_SLOW_EVENT_THRESHOLD_MS
+    )
+
+    p.add_argument(
+        "--seed",
+        type=int,
+        default=None
+    )
+
+    p.add_argument(
+        "--output",
+        default=None
+    )
+
+    p.add_argument(
+        "--send-workers",
+        type=int,
+        default=DEFAULT_SEND_WORKERS
+    )
+
+    p.add_argument(
+        "--retry-backoff-base",
+        type=float,
+        default=DEFAULT_RETRY_BACKOFF_BASE
+    )
+
+    p.add_argument(
+        "--retry-backoff-max",
+        type=float,
+        default=DEFAULT_RETRY_BACKOFF_MAX
+    )
+
+    p.add_argument(
+        "--drain-timeout",
+        type=float,
+        default=60.0
+    )
+
+    p.add_argument(
+        "--tenant-id",
+        default=DEFAULT_TENANT_ID
+    )
+
+    p.add_argument(
+        "--app-id",
+        default=DEFAULT_APP_ID
+    )
+
+    p.add_argument(
+        "--data-type",
+        default=DEFAULT_DATA_TYPE
+    )
+
+    p.add_argument(
+        "--schema-version",
+        default=DEFAULT_SCHEMA_VERSION
+    )
+
+    return p.parse_args()
+
+
+ARGS = parse_args()
+
+if ARGS.seed is not None:
+    random.seed(ARGS.seed)
+
+
+MODE_PRESETS = {
+    "smoke": {
+        "events": 50,
+        "kill_prob": 0.0,
+        "delay_min": 0.0,
+        "delay_max": 0.02,
+        "retries": 3,
+        "send_workers": 2,
+        "drain_timeout": 15.0,
+    },
+
+    "benchmark": {
+        "events": 2000,
+        "kill_prob": 0.05,
+        "delay_min": 0.0,
+        "delay_max": 0.01,
+        "retries": 10,
+        "send_workers": 4,
+        "drain_timeout": 30.0,
+    },
+
+    "torture": {
+        "events": 10000,
+        "kill_prob": 0.05,
+        "delay_min": 0.1,
+        "delay_max": 0.2,
+        "retries": 25,
+        "send_workers": 4,
+        "drain_timeout": 60.0,
+    },
+}
+
+
+preset = MODE_PRESETS[ARGS.mode]
+
+NODES = ARGS.nodes
+
+EVENTS = (
+    ARGS.events
+    if ARGS.events != DEFAULT_EVENTS
+    else preset["events"]
+)
+
+EVENT_DELAY_RANGE = (
+    (ARGS.delay_min, ARGS.delay_max)
+    if (
+        ARGS.delay_min,
+        ARGS.delay_max
+    ) != (
+        DEFAULT_EVENT_DELAY_MIN,
+        DEFAULT_EVENT_DELAY_MAX
+    )
+    else (
+        preset["delay_min"],
+        preset["delay_max"]
+    )
+)
+
+KILL_PROBABILITY = (
+    ARGS.kill_prob
+    if ARGS.kill_prob != DEFAULT_KILL_PROBABILITY
+    else preset["kill_prob"]
+)
+
+DEATH_TIME_RANGE = (
+    ARGS.death_min,
+    ARGS.death_max
+)
+
+REQUEST_TIMEOUT = ARGS.timeout
+
+MAX_RETRIES = (
+    ARGS.retries
+    if ARGS.retries != DEFAULT_MAX_RETRIES
+    else preset["retries"]
+)
+
+SLEEP_ONLY_NODE = ARGS.sleep_only_node
+
+SLOW_EVENT_THRESHOLD_MS = ARGS.slow_ms
+
+SEND_WORKERS = (
+    ARGS.send_workers
+    if ARGS.send_workers != DEFAULT_SEND_WORKERS
+    else preset["send_workers"]
+)
+
+RETRY_BACKOFF_BASE = ARGS.retry_backoff_base
+RETRY_BACKOFF_MAX = ARGS.retry_backoff_max
+
+DRAIN_TIMEOUT = (
+    ARGS.drain_timeout
+    if ARGS.drain_timeout != 60.0
+    else preset["drain_timeout"]
+)
+
+STREAM_KEY = StreamKey(
+    tenant_id=ARGS.tenant_id,
+    app_id=ARGS.app_id,
+    data_type=ARGS.data_type,
+    schema_version=ARGS.schema_version,
+)
+
+
+TEST_STARTED_AT = time.time()
+
+RUN_ID = datetime.now().strftime(
+    "%Y%m%d_%H%M%S"
+)
+
+CHAOS_BASE_DIR = (
+    ROOT / "utils" / "chaos"
+)
+
+CHAOS_BASE_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+OUT_DIR = (
+    Path(ARGS.output)
+    if ARGS.output
+    else CHAOS_BASE_DIR / f"chaos_out_{RUN_ID}"
+)
+
+OUT_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+STATS_FILE = OUT_DIR / "stats.json"
+EVENTS_CSV = OUT_DIR / "events.csv"
+
+
+TEST_CONFIG = {
+    "mode": ARGS.mode,
+    "nodes": NODES,
+    "events": EVENTS,
+    "event_delay_range": EVENT_DELAY_RANGE,
+    "kill_probability": KILL_PROBABILITY,
+    "death_time_range": DEATH_TIME_RANGE,
+    "request_timeout": REQUEST_TIMEOUT,
+    "max_retries": MAX_RETRIES,
+    "sleep_only_node": SLEEP_ONLY_NODE,
+    "slow_event_threshold_ms": SLOW_EVENT_THRESHOLD_MS,
+    "seed": ARGS.seed,
+    "run_id": RUN_ID,
+    "stats_file": str(STATS_FILE),
+    "events_csv": str(EVENTS_CSV),
+    "send_workers": SEND_WORKERS,
+    "retry_backoff_base": RETRY_BACKOFF_BASE,
+    "retry_backoff_max": RETRY_BACKOFF_MAX,
+    "drain_timeout": DRAIN_TIMEOUT,
+    "stream": {
+        "tenant_id": STREAM_KEY.tenant_id,
+        "app_id": STREAM_KEY.app_id,
+        "data_type": STREAM_KEY.data_type,
+        "schema_version": STREAM_KEY.schema_version,
+        "stream_id": STREAM_KEY.stream_id(),
+    },
+}
+
+
+kill_threads = []
+
+dead_nodes = set()
+
+dead_lock = threading.Lock()
+stats_lock = threading.Lock()
+
+producer_done_lock = threading.Lock()
+enqueue_seq_lock = threading.Lock()
+
+pending_queue = queue.PriorityQueue()
+
+producer_done = False
+enqueue_seq = 0
+
+worker_sessions = {}
+worker_sessions_lock = threading.Lock()
+
+results_lock = threading.Lock()
+
+results = []
+
+
+stats = {
+    "events_total": 0,
+    "events_ok": 0,
+    "events_failed": 0,
+    "events_retried": 0,
+    "events_no_leader": 0,
+    "events_timeout": 0,
+    "events_connection_error": 0,
+    "events_forward_error": 0,
+    "events_unexpected_fail": 0,
+    "events_slow": 0,
+    "kills": 0,
+    "revives": 0,
+    "kill_attempts": 0,
+    "kill_failures": 0,
+    "revive_failures": 0,
+    "per_node_ok": defaultdict(int),
+    "per_node_fail": defaultdict(int),
+    "leaders_seen": defaultdict(int),
+    "latency": [],
+    "unexpected_failures": [],
+    "slow_events": [],
+    "kill_events": [],
+    "submit_http_200": 0,
+    "submit_semantic_ok": 0,
+    "submit_hard_fail": 0,
+    "queue_requeues": 0,
+    "queue_max_depth": 0,
+}
+
+
+@dataclass
+class PendingEvent:
+    event_index: int
+
+    event: dict
+
+    retries_done: int = 0
+
+    tried_nodes: set = field(default_factory=set)
+
+    last_node: str | None = None
+
+    last_failure_at: float | None = None
+
+    first_enqueued_at: float = field(
+        default_factory=time.time
+    )
+```

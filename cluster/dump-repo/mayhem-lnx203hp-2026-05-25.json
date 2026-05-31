@@ -1,0 +1,61 @@
+                  -`
+                 .o+`
+                `ooo/
+               `+oooo:
+              `+oooooo:
+              -+oooooo+:
+            `/:-:++oooo+:
+           `/++++/+++++++:
+          `/++++++++++++++:
+         `/+++ooooooooooooo/`
+        ./ooosssso++osssssso+`
+       .oossssso-````/ossssss+`
+      -osssssso.      :ssssssso.
+     :osssssss/        osssso+++.
+    /ossssssss/        +ssssooo/-
+  `/ossssso+/:-        -:/+osssso+-
+ `+sso+:-`                 `.-/+oso:
+`++:.                           `-/+/
+.`                                 `/[1G[18A[41Calftorres@lnx203hp
+[41C------------------
+[41COS: Arch Linux x86_64
+[41CHost: HP Laptop 15-bs0xx
+[41CKernel: Linux 7.0.5-zen1-1-zen
+[41CUptime: 2 days, 23 hours, 43 mins
+[41CPackages: 1229 (pacman)
+[41CShell: fish 4.7.1
+[41CDisplay (L24i-4A): 1920x1080 in 24", 100 Hz [External]
+[41CDisplay (CMN15DC): 1366x768 in 16", 60 Hz [Built-in] *
+[41CDE: KDE Plasma 6.6.5
+[41CWM: KWin (Wayland)
+[41CWM Theme: Breeze
+[41CTheme: Breeze (Light) [Qt]
+[41CIcons: Breeze [Qt]
+[41CFont: Noto Sans (10pt) [Qt]
+[41CCursor: Breeze (24px)
+[41CTerminal: sshd
+[41CCPU: Intel(R) Core(TM) i3-6006U (4) @ 2.00 GHz
+[41CGPU: Intel HD Graphics 520 @ 0.90 GHz [Integrated]
+[41CMemory: 5.33 GiB / 7.66 GiB (70%)
+[41CSwap: 4.72 GiB / 11.83 GiB (40%)
+[41CDisk (/): 156.98 GiB / 237.47 GiB (66%) - btrfs
+[41CLocal IP (eno1): 192.168.1.203/24
+[41CBattery (PABAS0241231): 49% [AC Connected]
+[41CLocale: es_ES.UTF-8
+[41C
+[41C[40m   [41m   [42m   [43m   [44m   [45m   [46m   [47m   [m
+[41C[100m   [101m   [102m   [103m   [104m   [105m   [106m   [107m   [m
+scrphone:
+scrphone
+ 
+scrcpy:
+adb devices
+adb connect 192.168.1.195:5555
+scrcpy -s 192.168.1.195 --max-size 1024 --mouse=uhid
+ 
+Ghostscript:
+gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -o salida.pdf entrada.pdf
+ 
+ssh alftorres@192.168.1.200
+ 
+ 

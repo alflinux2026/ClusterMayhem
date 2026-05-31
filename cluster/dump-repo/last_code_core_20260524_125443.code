@@ -1,0 +1,1664 @@
+
+
+
+===== ./runtime/__init__.py =====
+
+
+
+===== ./runtime/api_app.py =====
+   1: import os
+   2: import time
+   3: import logging
+   4: import requests
+   5: 
+   6: from fastapi import FastAPI, Request
+   7: from fastapi.responses import FileResponse, PlainTextResponse
+   8: from pydantic import BaseModel
+   9: 
+  10: from cluster.runtime.cluster_store import cluster_state
+  11: from cluster.runtime.leader import compute_leader
+  12: from cluster.runtime.registry import CLUSTER_REGISTRY
+  13: from cluster.runtime.event_log import (
+  14:     replay_events,
+  15:     get_local_log_path,
+  16:     get_replica_log_path,
+  17:     write_replica_log,
+  18: )
+  19: from cluster.runtime.ingest import ingest_event
+  20: from cluster.runtime.events.cluster_event import ClusterEvent
+  21: from cluster.runtime import context as ctx
+  22: from cluster.utils.log_print import log_state
+  23: from cluster.runtime.worker.event_worker import execute_event
+  24: from cluster.runtime.node_runtime import NodeState
+  25: from cluster.runtime.integrity import local_integrity_api, cluster_integrity_report
+  26: 
+  27: 
+  28: logging.getLogger("urllib3").setLevel(logging.ERROR)
+  29: logging.getLogger("requests").setLevel(logging.ERROR)
+  30: 
+  31: app = FastAPI()
+  32: 
+  33: 
+  34: class Heartbeat(BaseModel):
+  35:     node_id: str
+  36:     state: str
+  37:     priority: int
+  38:     log_meta: dict | None = None
+  39:     cluster_integrity: dict | None = None
+  40:     streams: dict | None = None
+  41: 
+  42: 
+  43: def _compact_node(node: dict) -> dict:
+  44:     return {
+  45:         "state": node.get("state"),
+  46:         "priority": node.get("priority"),
+  47:         "last_seen": node.get("last_seen"),
+  48:         "log_meta": node.get("log_meta", {}),
+  49:         "streams": node.get("streams", {}),
+  50:     }
+  51: 
+  52: 
+  53: @app.get("/debug/log")
+  54: def log_dump():
+  55:     path = get_local_log_path(getattr(ctx, "stream", None))
+  56:     if not os.path.exists(path):
+  57:         return PlainTextResponse("", status_code=200)
+  58:     return FileResponse(path, media_type="text/plain")
+  59: 
+  60: 
+  61: @app.get("/debug/log/local")
+  62: def log_dump_local():
+  63:     path = get_local_log_path(getattr(ctx, "stream", None))
+  64:     if not os.path.exists(path):
+  65:         return PlainTextResponse("", status_code=200)
+  66:     return FileResponse(path, media_type="text/plain")
+  67: 
+  68: 
+  69: @app.get("/debug/log/replica/{node_id}")
+  70: def log_dump_replica(node_id: str):
+  71:     path = get_replica_log_path(node_id)
+  72:     if not os.path.exists(path):
+  73:         return PlainTextResponse("", status_code=404)
+  74:     return FileResponse(path, media_type="text/plain")
+  75: 
+  76: 
+  77: @app.post("/debug/log/replica/{node_id}")
+  78: async def log_replica_write(node_id: str, request: Request):
+  79:     try:
+  80:         content = await request.body()
+  81:     except Exception as e:
+  82:         return {"ok": False, "node_id": node_id, "error": str(e)}
+  83:     text = content.decode("utf-8") if content else ""
+  84:     write_replica_log(node_id, text)
+  85:     return {"ok": True, "node_id": node_id, "path": get_replica_log_path(node_id), "bytes": len(content)}
+  86: 
+  87: 
+  88: @app.post("/execute")
+  89: def execute_endpoint(event: ClusterEvent):
+  90:     if ctx.node.state == NodeState.ISOLATED:
+  91:         return {"error": "node isolated"}
+  92:     return execute_event(event)
+  93: 
+  94: 
+  95: @app.post("/ack")
+  96: def ack(event: ClusterEvent):
+  97:     log_state("green", "[ACK]", f"{event.event_id} received", 3)
+  98:     return {"ok": True, "event_id": event.event_id}
+  99: 
+ 100: 
+ 101: @app.post("/replay")
+ 102: def replay():
+ 103:     def handler(event):
+ 104:         return None
+ 105:     replay_events(handler, getattr(ctx, "stream", None))
+ 106:     return {"ok": True}
+ 107: 
+ 108: 
+ 109: @app.post("/event")
+ 110: def handle_event(event: ClusterEvent):
+ 111:     if ctx.node.state == NodeState.ISOLATED:
+ 112:         return {"error": "node isolated"}
+ 113: 
+ 114:     leader = compute_leader()
+ 115:     if not leader:
+ 116:         log_state("red", "(NO LEADER)", event.event_id, 3)
+ 117:         return {"error": "no leader"}
+ 118: 
+ 119:     if leader != ctx.node_id:
+ 120:         msg = event.payload.get("msg", "<no-msg>")
+ 121:         log_state("cyan", "[EVENT FWD]", f"{msg:12} -> {leader}", 3)
+ 122:         node = CLUSTER_REGISTRY[leader]
+ 123:         url = f"http://{node['host']}:{node['port']}/event"
+ 124:         try:
+ 125:             resp = requests.post(url, json=event.model_dump(), timeout=2)
+ 126:             return resp.json()
+ 127:         except Exception as e:
+ 128:             return {"error": str(e)}
+ 129: 
+ 130:     result = ingest_event(event, ctx.node_id)
+ 131:     return {"status": "ok", "event_id": event.event_id, "result": result}
+ 132: 
+ 133: 
+ 134: @app.post("/sleep")
+ 135: def sleep():
+ 136:     log_state("red", "- SLEEP -", f"{ctx.node_id} -> SLEEP", 3)
+ 137:     ctx.node.transition(NodeState.ISOLATED)
+ 138:     return {"ok": True, "node": ctx.node_id, "state": ctx.node.state.value}
+ 139: 
+ 140: 
+ 141: @app.post("/revive")
+ 142: def revive():
+ 143:     log_state("red", "- WAKEUP -", f"{ctx.node_id} -> WAKEUP", 3)
+ 144:     ctx.node.transition(NodeState.STANDBY)
+ 145:     return {"ok": True, "node": ctx.node_id, "state": ctx.node.state.value}
+ 146: 
+ 147: 
+ 148: @app.get("/health")
+ 149: def health():
+ 150:     return {"status": "ok", "node": ctx.node_id, "sleeping": ctx.node.state == NodeState.ISOLATED}
+ 151: 
+ 152: 
+ 153: @app.get("/cluster")
+ 154: def get_cluster():
+ 155:     return {node_id: _compact_node(node) for node_id, node in cluster_state.items()}
+ 156: 
+ 157: 
+ 158: @app.get("/leader")
+ 159: def get_leader():
+ 160:     return {"leader": compute_leader()}
+ 161: 
+ 162: 
+ 163: @app.post("/heartbeat")
+ 164: def heartbeat(hb: Heartbeat):
+ 165:     if ctx.node.state == NodeState.ISOLATED:
+ 166:         return {"error": "node isolated"}
+ 167: 
+ 168:     existing = cluster_state.get(hb.node_id, {})
+ 169:     cluster_state[hb.node_id] = {
+ 170:         "state": hb.state,
+ 171:         "priority": hb.priority,
+ 172:         "last_seen": time.time(),
+ 173:         "log_meta": hb.log_meta or {},
+ 174:         "cluster_integrity": {"integrity_ok": bool((hb.cluster_integrity or {}).get("integrity_ok", True))},
+ 175:         "streams": hb.streams or existing.get("streams", {}),
+ 176:     }
+ 177: 
+ 178:     return {"ok": True}
+ 179: 
+ 180: 
+ 181: @app.get("/integrity")
+ 182: def integrity():
+ 183:     return local_integrity_api()
+ 184: 
+ 185: 
+ 186: @app.get("/integrity/cluster")
+ 187: def integrity_cluster():
+ 188:     return cluster_integrity_report()
+
+
+
+===== ./runtime/bootstrap.py =====
+   1: import json
+   2: import os
+   3: import socket
+   4: from pathlib import Path
+   5: 
+   6: 
+   7: def _write_json_atomic(path: str, data: dict) -> None:
+   8:     p = Path(path)
+   9:     p.parent.mkdir(parents=True, exist_ok=True)
+  10:     tmp = p.with_suffix(p.suffix + ".tmp")
+  11:     with open(tmp, "w", encoding="utf-8") as f:
+  12:         json.dump(data, f, ensure_ascii=False, indent=2)
+  13:         f.flush()
+  14:         os.fsync(f.fileno())
+  15:     os.replace(tmp, p)
+  16: 
+  17: 
+  18: def _node_get(node: dict, *keys, default=None):
+  19:     for key in keys:
+  20:         if key in node and node[key] is not None:
+  21:             return node[key]
+  22:     return default
+  23: 
+  24: 
+  25: def _find_self_node(nodes: list[dict]) -> dict:
+  26:     hostname = socket.gethostname()
+  27: 
+  28:     node_id_env = os.getenv("NODE_ID") or os.getenv("NODEID")
+  29:     host_env = os.getenv("NODE_HOST") or os.getenv("NODEHOST")
+  30:     ip_env = os.getenv("NODE_IP") or os.getenv("NODEIP")
+  31: 
+  32:     for node in nodes:
+  33:         node_id = _node_get(node, "node_id", "nodeid")
+  34:         host = _node_get(node, "host", "hostname", "ip")
+  35: 
+  36:         if node_id_env and node_id == node_id_env:
+  37:             return node
+  38:         if host_env and host == host_env:
+  39:             return node
+  40:         if ip_env and host == ip_env:
+  41:             return node
+  42:         if node_id == hostname:
+  43:             return node
+  44:         if host == hostname:
+  45:             return node
+  46: 
+  47:     raise RuntimeError(
+  48:         f"Cannot identify node for hostname={hostname!r} "
+  49:         f"env NODE_ID={node_id_env!r} NODE_HOST={host_env!r} NODE_IP={ip_env!r}"
+  50:     )
+  51: 
+  52: 
+  53: def load_or_bootstrap_config():
+  54:     nodes_path = Path(os.getenv("CLUSTER_NODES", "cluster/config/nodes.json"))
+  55:     config_path = Path(os.getenv("CLUSTER_CONFIG", "config/node.json"))
+  56: 
+  57:     if not nodes_path.exists():
+  58:         raise FileNotFoundError(f"Missing cluster nodes file: {nodes_path}")
+  59: 
+  60:     with open(nodes_path, "r", encoding="utf-8") as f:
+  61:         cluster_cfg = json.load(f)
+  62: 
+  63:     if not isinstance(cluster_cfg, dict):
+  64:         raise ValueError(f"Invalid cluster nodes file: {nodes_path}")
+  65: 
+  66:     nodes = cluster_cfg.get("nodes", [])
+  67:     if not isinstance(nodes, list) or not nodes:
+  68:         raise ValueError(f"Empty node list in: {nodes_path}")
+  69: 
+  70:     self_node = _find_self_node(nodes)
+  71: 
+  72:     self_node_id = _node_get(self_node, "node_id", "nodeid")
+  73:     self_priority = int(_node_get(self_node, "priority", default=100))
+  74:     self_host = _node_get(self_node, "host", "hostname", "ip", default=os.getenv("NODE_HOST", "0.0.0.0"))
+  75:     self_port = int(_node_get(self_node, "port", default=os.getenv("NODE_PORT", "8000")))
+  76:     self_bind_host = _node_get(self_node, "bind_host", default=self_host)
+  77:     self_bind_port = int(_node_get(self_node, "bind_port", default=self_port))
+  78: 
+  79:     peers = []
+  80:     for n in nodes:
+  81:         peer_node_id = _node_get(n, "node_id", "nodeid")
+  82:         if peer_node_id == self_node_id:
+  83:             continue
+  84:         peers.append({
+  85:             "node_id": peer_node_id,
+  86:             "host": _node_get(n, "host", "hostname", "ip"),
+  87:             "port": int(_node_get(n, "port")),
+  88:             "priority": int(_node_get(n, "priority", default=100)),
+  89:         })
+  90: 
+  91:     cfg = {
+  92:         "cluster_name": cluster_cfg.get("cluster_name", "mayhem-cluster"),
+  93:         "node_id": self_node_id,
+  94:         "priority": self_priority,
+  95:         "port": self_port,
+  96:         "host": self_host,
+  97:         "bind_host": self_bind_host,
+  98:         "bind_port": self_bind_port,
+  99:         "tenant_id": os.getenv("TENANT_ID", "default"),
+ 100:         "app_id": os.getenv("APP_ID", "mayhem"),
+ 101:         "data_type": os.getenv("DATA_TYPE", "event"),
+ 102:         "schema_version": os.getenv("SCHEMA_VERSION", "0.1"),
+ 103:         "peers": peers,
+ 104:     }
+ 105: 
+ 106:     if config_path.exists():
+ 107:         try:
+ 108:             with open(config_path, "r", encoding="utf-8") as f:
+ 109:                 existing = json.load(f)
+ 110:             if isinstance(existing, dict) and existing.get("node_id") == cfg["node_id"]:
+ 111:                 merged = {**existing, **cfg}
+ 112:                 merged["peers"] = cfg["peers"]
+ 113:                 return merged
+ 114:         except (json.JSONDecodeError, OSError):
+ 115:             pass
+ 116: 
+ 117:     _write_json_atomic(str(config_path), cfg)
+ 118:     return cfg
+
+
+
+===== ./runtime/cluster_store.py =====
+   1: import time
+   2: 
+   3: cluster_state = {}
+   4: 
+   5: 
+   6: def get_active_cluster():
+   7:     return cluster_state
+   8: 
+   9: 
+  10: def upsert_node(node_id: str, payload: dict):
+  11:     current = cluster_state.get(node_id, {})
+  12:     cluster_state[node_id] = {
+  13:         **current,
+  14:         **payload,
+  15:         "last_seen": time.time(),
+  16:     }
+  17:     return cluster_state[node_id]
+  18: 
+  19: 
+  20: def get_node(node_id: str) -> dict:
+  21:     return cluster_state.get(node_id, {})
+
+
+
+===== ./runtime/context.py =====
+   1: from typing import Any
+   2: 
+   3: node = None
+   4: node_id = None
+   5: nodeid = None
+   6: peers = []
+   7: stream = None
+   8: node_stream = None
+   9: 
+  10: 
+  11: def get_stream():
+  12:     return stream or node_stream
+
+
+
+===== ./runtime/dispatcher.py =====
+   1: import time
+   2: 
+   3: from cluster.runtime.event_log import get_created_events, get_completed_event_ids, append_event
+   4: from cluster.runtime.event_router import forward_event
+   5: from cluster.utils.log_print import log_state
+   6: from cluster.runtime.leader import compute_leader, compute_alive
+   7: from cluster.runtime import context as ctx
+   8: from cluster.runtime.events.event_state import EventStatus
+   9: 
+  10: DISPATCH_ALIVE_TIMEOUT = 1.5
+  11: 
+  12: 
+  13: def dispatch_tick(stream: str | None = None):
+  14:     if compute_leader() != ctx.node_id:
+  15:         return
+  16:     events = get_created_events()
+  17:     if not events:
+  18:         return
+  19:     log_state("magenta", "[DISPATCH]", f"{len(events):3}", 3)
+  20:     for event in events:
+  21:         dispatch_created_event(event, stream)
+  22: 
+  23: 
+  24: def dispatch_created_event(event, stream: str | None = None):
+  25:     completed = get_completed_event_ids()
+  26:     if event.event_id in completed:
+  27:         log_state("red", "[SKIP COMPLETED]", event.event_id, 3)
+  28:         return
+  29:     alive = compute_alive(timeout=DISPATCH_ALIVE_TIMEOUT, include_self=True)
+  30:     if not alive:
+  31:         log_state("red", "[NO ALIVE NODES]", event.event_id, 3)
+  32:         return
+  33:     target = min(alive.items(), key=lambda x: (x[1]["priority"], x[0]))[0]
+  34:     event.target_node = target
+  35:     event.route_hops.append(f"dispatcher->{target}")
+  36:     event.attempt = (event.attempt or 0) + 1
+  37:     event.mark_status(EventStatus.EXECUTING)
+  38:     msg = event.payload.get("msg", "")
+  39:     log_state("yellow", "(EVENT)", f"{msg:12} -> EXECUTING", 3)
+  40:     event.updated_at = time.time()
+  41:     append_event(event)
+  42:     forward_event(target, event, stream)
+
+
+
+===== ./runtime/event_log.py =====
+   1: 
+   2: import json
+   3: import os
+   4: from typing import Dict, List, Optional
+   5: 
+   6: from cluster.runtime.events.cluster_event import ClusterEvent
+   7: from cluster.runtime.events.event_state import EventStatus
+   8: 
+   9: BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+  10: DATA_DIR = os.path.join(BASE_DIR, "cluster", "data")
+  11: LOCAL_LOG_PATH = os.path.join(DATA_DIR, "event_log.local.jsonl")
+  12: STATE_PATH = os.path.join(DATA_DIR, "last_append.state.json")
+  13: 
+  14: 
+  15: def ensure_dir():
+  16:     os.makedirs(DATA_DIR, exist_ok=True)
+  17: 
+  18: 
+  19: def ensure_initial_files():
+  20:     ensure_dir()
+  21: 
+  22:     if not os.path.exists(STATE_PATH):
+  23:         write_state({
+  24:             "dirty": False,
+  25:             "last_append_event_id": None,
+  26:             "last_append_created_at": None,
+  27:         })
+  28: 
+  29:     if not os.path.exists(LOCAL_LOG_PATH):
+  30:         with open(LOCAL_LOG_PATH, "a", encoding="utf-8"):
+  31:             pass
+  32: 
+  33: 
+  34: def get_local_log_path(stream: str | None = None) -> str:
+  35:     return LOCAL_LOG_PATH
+  36: 
+  37: 
+  38: def get_state_path() -> str:
+  39:     return STATE_PATH
+  40: 
+  41: 
+  42: def get_replica_log_path(node_id: str) -> str:
+  43:     return os.path.join(DATA_DIR, f"event_log.{node_id}.jsonl")
+  44: 
+  45: 
+  46: def list_replica_log_paths() -> List[str]:
+  47:     if not os.path.exists(DATA_DIR):
+  48:         return []
+  49: 
+  50:     out: List[str] = []
+  51:     for name in sorted(os.listdir(DATA_DIR)):
+  52:         if not name.startswith("event_log."):
+  53:             continue
+  54:         if not name.endswith(".jsonl"):
+  55:             continue
+  56:         if name == "event_log.local.jsonl":
+  57:             continue
+  58:         out.append(os.path.join(DATA_DIR, name))
+  59:     return out
+  60: 
+  61: 
+  62: def load_events_from_path(path: str) -> List[dict]:
+  63:     if not os.path.exists(path):
+  64:         return []
+  65: 
+  66:     events = []
+  67:     with open(path, "r", encoding="utf-8") as f:
+  68:         for line in f:
+  69:             line = line.strip()
+  70:             if not line:
+  71:                 continue
+  72:             try:
+  73:                 events.append(json.loads(line))
+  74:             except json.JSONDecodeError:
+  75:                 continue
+  76:     return events
+  77: 
+  78: 
+  79: def write_text_atomic(path: str, content: str):
+  80:     ensure_dir()
+  81:     tmp_path = path + ".tmp"
+  82:     with open(tmp_path, "w", encoding="utf-8") as f:
+  83:         f.write(content)
+  84:         f.flush()
+  85:         os.fsync(f.fileno())
+  86:     os.replace(tmp_path, path)
+  87: 
+  88: 
+  89: def read_local_log_text() -> str:
+  90:     if not os.path.exists(LOCAL_LOG_PATH):
+  91:         return ""
+  92:     with open(LOCAL_LOG_PATH, "r", encoding="utf-8") as f:
+  93:         return f.read()
+  94: 
+  95: 
+  96: def write_replica_log(node_id: str, content: str):
+  97:     ensure_dir()
+  98:     write_text_atomic(get_replica_log_path(node_id), content)
+  99: 
+ 100: 
+ 101: def read_state() -> dict:
+ 102:     if not os.path.exists(STATE_PATH):
+ 103:         return {}
+ 104: 
+ 105:     try:
+ 106:         with open(STATE_PATH, "r", encoding="utf-8") as f:
+ 107:             data = json.load(f)
+ 108:             return data if isinstance(data, dict) else {}
+ 109:     except (OSError, json.JSONDecodeError):
+ 110:         return {}
+ 111: 
+ 112: 
+ 113: def get_last_append_meta() -> dict:
+ 114:     state = read_state()
+ 115:     return state if isinstance(state, dict) else {}
+ 116: 
+ 117: 
+ 118: def write_state(state: dict):
+ 119:     ensure_dir()
+ 120:     tmp_path = STATE_PATH + ".tmp"
+ 121:     with open(tmp_path, "w", encoding="utf-8") as f:
+ 122:         json.dump(state, f, ensure_ascii=False)
+ 123:         f.flush()
+ 124:         os.fsync(f.fileno())
+ 125:     os.replace(tmp_path, STATE_PATH)
+ 126: 
+ 127: 
+ 128: def clear_state():
+ 129:     write_state({
+ 130:         "dirty": False,
+ 131:         "last_append_event_id": None,
+ 132:         "last_append_created_at": None,
+ 133:     })
+ 134: 
+ 135: 
+ 136: def load_events() -> List[dict]:
+ 137:     return load_events_from_path(LOCAL_LOG_PATH)
+ 138: 
+ 139: 
+ 140: def load_local_events() -> List[dict]:
+ 141:     return load_events_from_path(LOCAL_LOG_PATH)
+ 142: 
+ 143: 
+ 144: def load_replica_events(node_id: str) -> List[dict]:
+ 145:     return load_events_from_path(get_replica_log_path(node_id))
+ 146: 
+ 147: 
+ 148: def load_all_replica_events() -> List[dict]:
+ 149:     events: List[dict] = []
+ 150:     for path in list_replica_log_paths():
+ 151:         events.extend(load_events_from_path(path))
+ 152:     return events
+ 153: 
+ 154: 
+ 155: def load_cluster_events() -> List[dict]:
+ 156:     return load_all_replica_events()
+ 157: 
+ 158: 
+ 159: def _normalize_event(e: dict) -> dict:
+ 160:     e = dict(e)
+ 161:     e["schema_version"] = str(e.get("schema_version", "0.1"))
+ 162:     e.setdefault("received_at", None)
+ 163:     e.setdefault("attempt", 0)
+ 164:     e.setdefault("route_hops", [])
+ 165:     e.setdefault("execution_key", None)
+ 166:     return e
+ 167: 
+ 168: 
+ 169: def _latest_map(events: List[dict]) -> Dict[str, dict]:
+ 170:     latest: Dict[str, dict] = {}
+ 171:     for e in events:
+ 172:         e = _normalize_event(e)
+ 173:         latest[e["event_id"]] = e
+ 174:     return latest
+ 175: 
+ 176: 
+ 177: def rebuild_event_state_index() -> Dict[str, dict]:
+ 178:     return _latest_map(load_events())
+ 179: 
+ 180: 
+ 181: def get_latest_event(event_id: str) -> Optional[dict]:
+ 182:     events = load_events()
+ 183:     for e in reversed(events):
+ 184:         if e["event_id"] == event_id:
+ 185:             return _normalize_event(e)
+ 186:     return None
+ 187: 
+ 188: 
+ 189: def get_created_events():
+ 190:     latest = rebuild_event_state_index()
+ 191:     domain_events = [ClusterEvent(**e) for e in latest.values()]
+ 192:     return [e for e in domain_events if e.status == EventStatus.CREATED]
+ 193: 
+ 194: 
+ 195: def get_completed_event_ids():
+ 196:     latest = rebuild_event_state_index()
+ 197:     domain_events = [ClusterEvent(**e) for e in latest.values()]
+ 198:     return {e.event_id for e in domain_events if e.status == EventStatus.COMPLETED}
+ 199: 
+ 200: 
+ 201: def append_event(event: ClusterEvent):
+ 202:     ensure_initial_files()
+ 203: 
+ 204:     record = {
+ 205:         "event_id": event.event_id,
+ 206:         "event_type": event.event_type,
+ 207:         "schema_version": str(event.schema_version),
+ 208:         "created_at": event.created_at,
+ 209:         "updated_at": getattr(event, "updated_at", None),
+ 210:         "received_at": getattr(event, "received_at", None),
+ 211:         "trace_id": event.trace_id,
+ 212:         "target_node": event.target_node,
+ 213:         "source_node": getattr(event, "source_node", None),
+ 214:         "route_hops": list(getattr(event, "route_hops", []) or []),
+ 215:         "status": event.status.value if hasattr(event.status, "value") else event.status,
+ 216:         "attempt": event.attempt,
+ 217:         "execution_key": getattr(event, "execution_key", None),
+ 218:         "payload": event.payload,
+ 219:     }
+ 220: 
+ 221:     if record["status"] == EventStatus.COMPLETED.value:
+ 222:         existing = load_events()
+ 223:         if any(
+ 224:             e.get("event_id") == event.event_id and e.get("status") == EventStatus.COMPLETED.value
+ 225:             for e in existing
+ 226:         ):
+ 227:             return
+ 228: 
+ 229:     with open(LOCAL_LOG_PATH, "a", encoding="utf-8") as f:
+ 230:         f.write(json.dumps(record) + "\n")
+ 231:         f.flush()
+ 232:         os.fsync(f.fileno())
+ 233: 
+ 234:     try:
+ 235:         write_state({
+ 236:             "dirty": True,
+ 237:             "last_append_event_id": event.event_id,
+ 238:             "last_append_created_at": event.created_at,
+ 239:         })
+ 240:     except Exception as e:
+ 241:         print(f"[STATE WRITE FAIL] {event.event_id} -> {e}")
+ 242: 
+ 243: 
+ 244: def replay_events(handler, stream: str | None = None):
+ 245:     events = load_events()
+ 246:     for raw in events:
+ 247:         event = ClusterEvent(**_normalize_event(raw))
+ 248:         handler(event)
+
+
+
+===== ./runtime/event_router.py =====
+   1: import requests
+   2: 
+   3: from cluster.runtime.registry import CLUSTER_REGISTRY
+   4: from cluster.utils.log_print import log_state
+   5: from cluster.runtime.events.cluster_event import ClusterEvent
+   6: from cluster.runtime.events.event_state import EventStatus
+   7: from cluster.runtime import context as ctx
+   8: from cluster.runtime.worker.event_worker import execute_event
+   9: 
+  10: 
+  11: def forward_to_leader(event: ClusterEvent):
+  12:     raise NotImplementedError("forward_to_leader is not used in the current flow")
+  13: 
+  14: 
+  15: def forward_event(node_id: str, event: ClusterEvent, stream: str | None = None):
+  16:     if node_id == getattr(ctx, "node_id", None):
+  17:         log_state("cyan", "[WORKER LOCAL]", f"{event.event_id} -> {node_id}", 3)
+  18:         return execute_event(event, stream)
+  19: 
+  20:     node = CLUSTER_REGISTRY.get(node_id)
+  21:     if not node:
+  22:         log_state("red", "[WORKER SEND FAIL]", f"{event.event_id} -> {node_id} missing registry", 3)
+  23:         return {"error": "worker_route_missing", "target": node_id, "stream": stream}
+  24: 
+  25:     url = f"http://{node['host']}:{node['port']}/execute"
+  26:     event.add_hop(f"worker:{node_id}")
+  27: 
+  28:     msg = event.payload.get("msg", "<no-msg>")
+  29: 
+  30:     log_state(
+  31:         "magenta",
+  32:         "[WORKER SEND]",
+  33:         f"{msg:12} -> {node_id}",
+  34:         3
+  35:     )
+  36: 
+  37:     try:
+  38:         resp = requests.post(
+  39:             url,
+  40:             json=event.model_dump(),
+  41:             timeout=2
+  42:         )
+  43:         worker_result = resp.json()
+  44:     except Exception as e:
+  45:         log_state(
+  46:             "red",
+  47:             "[WORKER SEND FAIL]",
+  48:             f"{msg:12} -> {node_id} | {e}",
+  49:             3
+  50:         )
+  51:         return {"error": "worker_send_failed", "target": node_id, "stream": stream}
+  52: 
+  53:     if worker_result.get("status") == "completed":
+  54:         from cluster.runtime.state_machine import transition_event
+  55: 
+  56:         transition_event(
+  57:             event.event_id,
+  58:             EventStatus.COMPLETED
+  59:         )
+  60: 
+  61:         log_state(
+  62:             "yellow",
+  63:             "(EVENT)",
+  64:             f"{msg:12} -> COMPLETED",
+  65:             3
+  66:         )
+  67: 
+  68:     return {
+  69:         "status": "forwarded",
+  70:         "event_id": event.event_id,
+  71:         "target": node_id,
+  72:         "stream": stream
+  73:     }
+
+
+
+===== ./runtime/events/cluster_event.py =====
+   1: from pydantic import BaseModel, Field
+   2: from typing import Optional
+   3: from uuid import uuid4
+   4: import time
+   5: 
+   6: from cluster.runtime.events.event_state import EventStatus
+   7: 
+   8: 
+   9: class ClusterEvent(BaseModel):
+  10:     event_id: str = Field(default_factory=lambda: str(uuid4()))
+  11:     trace_id: str = Field(default_factory=lambda: str(uuid4()))
+  12: 
+  13:     schema_version: str = "0.1"
+  14:     event_type: str
+  15: 
+  16:     payload: dict = Field(default_factory=dict)
+  17: 
+  18:     status: EventStatus = EventStatus.CREATED
+  19: 
+  20:     route_hops: list[str] = Field(default_factory=list)
+  21: 
+  22:     target_node: Optional[str] = None
+  23:     source_node: Optional[str] = None
+  24: 
+  25:     created_at: float = Field(default_factory=time.time)
+  26:     updated_at: float = Field(default_factory=time.time)
+  27: 
+  28:     received_at: Optional[float] = None
+  29: 
+  30:     attempt: int = 0
+  31:     execution_key: Optional[str] = None
+  32: 
+  33:     def add_hop(self, hop: str):
+  34:         self.route_hops.append(hop)
+  35:         self.updated_at = time.time()
+  36: 
+  37:     def mark_status(self, status: EventStatus):
+  38:         self.status = status
+  39:         self.updated_at = time.time()
+  40: 
+  41:     def mark_received(self):
+  42:         self.received_at = time.time()
+  43:         self.updated_at = self.received_at
+
+
+
+===== ./runtime/events/event_state.py =====
+   1: from enum import Enum
+   2: 
+   3: 
+   4: class EventStatus(str, Enum):
+   5:     CREATED = "created"
+   6:     EXECUTING = "executing"
+   7:     COMPLETED = "completed"
+   8:     FAILED = "failed"
+   9: 
+  10: 
+  11: VALID_TRANSITIONS = {
+  12:     EventStatus.CREATED: [
+  13:         EventStatus.EXECUTING,
+  14:     ],
+  15: 
+  16:     EventStatus.EXECUTING: [
+  17:         EventStatus.COMPLETED,
+  18:         EventStatus.FAILED,
+  19:         EventStatus.CREATED,  # retry
+  20:     ],
+  21: 
+  22:     EventStatus.COMPLETED: [],
+  23: 
+  24:     EventStatus.FAILED: [],
+  25: }
+  26: 
+  27: 
+  28: def validate_transition(old_status, new_status):
+  29: 
+  30:     if old_status == new_status:
+  31:         return  # IDEMPOTENTE NO-OP
+  32: 
+  33:     allowed = VALID_TRANSITIONS.get(old_status, [])
+  34: 
+  35:     if new_status not in allowed:
+  36:         raise ValueError(
+  37:             f"Invalid transition: {old_status} -> {new_status}"
+  38:         )
+
+
+
+===== ./runtime/ingest.py =====
+   1: from cluster.runtime.event_log import append_event
+   2: from cluster.utils.log_print import log_state
+   3: from cluster.runtime.events.event_state import EventStatus
+   4: 
+   5: 
+   6: def ingest_event(event, node_id):
+   7:     event.mark_status(EventStatus.CREATED)
+   8:     event.mark_received()
+   9:     append_event(event)
+  10: 
+  11:     msg = event.payload.get("msg", "<no-msg>")
+  12: 
+  13:     log_state("yellow", "(EVENT)", f"{msg:12} -> CREATED", 3)
+  14:     log_state("cyan", "[EVENT OK]", f"{msg:12}", 3)
+  15: 
+  16:     return {
+  17:         "event_id": event.event_id,
+  18:         "status": "accepted",
+  19:         "leader": node_id,
+  20:         "trace_id": event.trace_id
+  21:     }
+
+
+
+===== ./runtime/integrity.py =====
+   1: import os
+   2: import hashlib
+   3: from pathlib import Path
+   4: from typing import Any
+   5: 
+   6: from cluster.runtime import context as ctx
+   7: from cluster.runtime.cluster_store import cluster_state
+   8: from cluster.runtime.event_log import get_local_log_path, get_last_append_meta
+   9: from cluster.runtime.leader import compute_alive
+  10: 
+  11: IGNORED_NODE_KEYS = {"last_seen"}
+  12: INTEGRITY_KEYS = ("dirty", "last_append_event_id", "last_append_created_at", "log_size", "file_size", "file_hash")
+  13: 
+  14: 
+  15: def file_sha256(path: str | Path, block_size: int = 65536) -> str | None:
+  16:     path = str(path)
+  17:     if not os.path.exists(path):
+  18:         return None
+  19:     h = hashlib.sha256()
+  20:     with open(path, "rb") as f:
+  21:         while True:
+  22:             chunk = f.read(block_size)
+  23:             if not chunk:
+  24:                 break
+  25:             h.update(chunk)
+  26:     return h.hexdigest()
+  27: 
+  28: 
+  29: def canonicalize(obj: Any, ignored_keys: set[str] | None = None) -> Any:
+  30:     ignored_keys = ignored_keys or set()
+  31:     if isinstance(obj, dict):
+  32:         return {k: canonicalize(v, ignored_keys) for k, v in sorted(obj.items()) if k not in ignored_keys}
+  33:     if isinstance(obj, list):
+  34:         return [canonicalize(v, ignored_keys) for v in obj]
+  35:     return obj
+  36: 
+  37: 
+  38: def compare_views(a: dict, b: dict) -> bool:
+  39:     return canonicalize(a, IGNORED_NODE_KEYS) == canonicalize(b, IGNORED_NODE_KEYS)
+  40: 
+  41: 
+  42: def log_meta_ok(local_meta: dict, peer_meta: dict) -> bool:
+  43:     return all(local_meta.get(k) == peer_meta.get(k) for k in INTEGRITY_KEYS)
+  44: 
+  45: 
+  46: def _compact_view(view: dict) -> dict:
+  47:     if not isinstance(view, dict):
+  48:         return {}
+  49:     return {
+  50:         "state": view.get("state"),
+  51:         "priority": view.get("priority"),
+  52:         "log_meta": view.get("log_meta", {}),
+  53:         "streams": view.get("streams", {}),
+  54:     }
+  55: 
+  56: 
+  57: def local_integrity_api() -> dict:
+  58:     path = get_local_log_path()
+  59:     alive = compute_alive(include_self=True)
+  60:     local_meta = {
+  61:         "path": path,
+  62:         "size": os.path.getsize(path) if os.path.exists(path) else 0,
+  63:         "sha256": file_sha256(path),
+  64:     }
+  65:     peer_status = {}
+  66:     self_view = canonicalize(cluster_state.get(ctx.node_id, {}), IGNORED_NODE_KEYS)
+  67:     self_meta = self_view.get("log_meta", {}) if isinstance(self_view, dict) else {}
+  68: 
+  69:     for node_id, data in alive.items():
+  70:         view = canonicalize(data, IGNORED_NODE_KEYS)
+  71:         meta = view.get("log_meta", {}) if isinstance(view, dict) else {}
+  72:         peer_status[node_id] = {
+  73:             "view": _compact_view(view),
+  74:             "view_ok": view == canonicalize(cluster_state.get(node_id, {}), IGNORED_NODE_KEYS),
+  75:             "log_meta_ok": log_meta_ok(self_meta, meta) if node_id == ctx.node_id else True,
+  76:         }
+  77: 
+  78:     return {
+  79:         "node_id": ctx.node_id,
+  80:         "alive_nodes": sorted(alive.keys()),
+  81:         "self_view": _compact_view(self_view),
+  82:         "peer_status": peer_status,
+  83:         "local_log_meta": local_meta,
+  84:         "last_append_meta": get_last_append_meta(),
+  85:         "integrity_ok": all(v["view_ok"] and v["log_meta_ok"] for v in peer_status.values()),
+  86:     }
+  87: 
+  88: 
+  89: def cluster_integrity_report() -> dict:
+  90:     alive = compute_alive(include_self=True)
+  91:     reference = canonicalize(cluster_state, IGNORED_NODE_KEYS)
+  92:     per_peer = {}
+  93:     for node_id, data in alive.items():
+  94:         view = canonicalize(data, IGNORED_NODE_KEYS)
+  95:         meta = view.get("log_meta", {}) if isinstance(view, dict) else {}
+  96:         ref_view = reference.get(node_id, {})
+  97:         ref_meta = ref_view.get("log_meta", {}) if isinstance(ref_view, dict) else {}
+  98:         per_peer[node_id] = {
+  99:             "matches_reference": view == ref_view,
+ 100:             "matches_log_meta": meta == ref_meta,
+ 101:             "state": view.get("state"),
+ 102:             "priority": view.get("priority"),
+ 103:             "streams": view.get("streams", {}),
+ 104:         }
+ 105: 
+ 106:     return {
+ 107:         "node_id": ctx.node_id,
+ 108:         "alive_nodes": sorted(alive.keys()),
+ 109:         "reference": {k: _compact_view(v) for k, v in reference.items()} if isinstance(reference, dict) else {},
+ 110:         "per_peer": per_peer,
+ 111:         "integrity_ok": all(v["matches_reference"] and v["matches_log_meta"] for v in per_peer.values()),
+ 112:     }
+
+
+
+===== ./runtime/leader.py =====
+   1: import time
+   2: 
+   3: from cluster.runtime.cluster_store import cluster_state
+   4: from cluster.runtime import context as ctx
+   5: 
+   6: LEADER_ALIVE_TIMEOUT = 1.5
+   7: 
+   8: 
+   9: def refresh_self_alive_entry(now=None):
+  10:     now = now or time.time()
+  11:     if not getattr(ctx, "node", None):
+  12:         return
+  13:     cluster_state[ctx.node_id] = {
+  14:         "state": ctx.node.state.value,
+  15:         "priority": ctx.node.priority,
+  16:         "last_seen": now,
+  17:     }
+  18: 
+  19: 
+  20: def is_alive(data, timeout=LEADER_ALIVE_TIMEOUT, now=None):
+  21:     now = now or time.time()
+  22:     return (now - data.get("last_seen", 0)) < timeout
+  23: 
+  24: 
+  25: def compute_alive(timeout=LEADER_ALIVE_TIMEOUT, include_self=True):
+  26:     now = time.time()
+  27:     if include_self:
+  28:         refresh_self_alive_entry(now)
+  29:     active_nodes = {}
+  30:     for node_id, data in cluster_state.items():
+  31:         if is_alive(data, timeout=timeout, now=now):
+  32:             active_nodes[node_id] = data
+  33:     return active_nodes
+  34: 
+  35: 
+  36: def compute_leader(debug_node_id=None, timeout=LEADER_ALIVE_TIMEOUT):
+  37:     active_nodes = compute_alive(timeout=timeout, include_self=True)
+  38:     if not active_nodes:
+  39:         return None
+  40:     return min(active_nodes.items(), key=lambda x: (x[1].get("priority", 9999), x[0]))[0]
+
+
+
+===== ./runtime/log_replication.py =====
+   1: import logging
+   2: import time
+   3: 
+   4: import requests
+   5: 
+   6: from cluster.runtime import context as ctx
+   7: from cluster.runtime.cluster_store import cluster_state
+   8: from cluster.runtime.registry import CLUSTER_REGISTRY
+   9: from cluster.runtime.event_log import (
+  10:     read_local_log_text,
+  11:     write_replica_log,
+  12:     read_state,
+  13:     clear_state,
+  14: )
+  15: from cluster.utils.log_print import log_state
+  16: 
+  17: logging.getLogger("urllib3").setLevel(logging.ERROR)
+  18: logging.getLogger("requests").setLevel(logging.ERROR)
+  19: 
+  20: PEERALIVETTLSEC = 3.0
+  21: 
+  22: 
+  23: def canonical_replica_node_id() -> str:
+  24:     return ctx.node_id
+  25: 
+  26: 
+  27: def alive_peer_ids():
+  28:     out = []
+  29:     now = time.time()
+  30:     for node_id, data in cluster_state.items():
+  31:         if node_id == ctx.node_id:
+  32:             continue
+  33:         if now - data.get("last_seen", 0) > PEERALIVETTLSEC:
+  34:             continue
+  35:         out.append(node_id)
+  36:     return sorted(set(out))
+  37: 
+  38: 
+  39: def configured_peer_ids():
+  40:     out = []
+  41: 
+  42:     for peer in getattr(ctx, "peers", []) or []:
+  43:         peer_id = peer.get("node_id")
+  44:         if peer_id and peer_id != ctx.node_id:
+  45:             out.append(peer_id)
+  46: 
+  47:     for node_id in CLUSTER_REGISTRY.keys():
+  48:         if node_id != ctx.node_id:
+  49:             out.append(node_id)
+  50: 
+  51:     return sorted(set(out))
+  52: 
+  53: 
+  54: def target_peer_ids():
+  55:     alive = alive_peer_ids()
+  56:     configured = configured_peer_ids()
+  57:     return sorted(set(alive) | set(configured))
+  58: 
+  59: 
+  60: def replicate_local():
+  61:     node_id = canonical_replica_node_id()
+  62: 
+  63:     log_state("cyan", "REPL TICK", f"node={node_id}", 3)
+  64: 
+  65:     state = read_state()
+  66:     dirty = bool(state.get("dirty", False))
+  67:     log_state("cyan", "REPL FLAG", f"dirty={dirty} state_exists={bool(state)}", 3)
+  68:     if not dirty:
+  69:         return
+  70: 
+  71:     content = read_local_log_text()
+  72:     log_state("cyan", "REPL CONTENT", f"len={len(content)} empty={not content.strip()}", 3)
+  73:     if not content.strip():
+  74:         log_state("yellow", "REPL SKIP", "empty content", 3)
+  75:         return
+  76: 
+  77:     write_replica_log(node_id, content)
+  78:     log_state("cyan", "REPL SELF", f"{node_id} bytes={len(content)}", 3)
+  79: 
+  80:     peers = target_peer_ids()
+  81:     log_state("cyan", "REPL PEERS", f"peers={peers}", 3)
+  82: 
+  83:     success = True
+  84: 
+  85:     for peer_id in peers:
+  86:         node = CLUSTER_REGISTRY.get(peer_id)
+  87:         if not node:
+  88:             log_state("red", "LOG REPL FAIL", f"{peer_id} missing registry", 3)
+  89:             success = False
+  90:             continue
+  91: 
+  92:         url = f"http://{node['host']}:{node['port']}/debug/log/replica/{node_id}"
+  93:         log_state("cyan", "REPL POST", f"peer={peer_id} url={url}", 3)
+  94: 
+  95:         try:
+  96:             resp = requests.post(
+  97:                 url,
+  98:                 data=content.encode("utf-8"),
+  99:                 headers={"Content-Type": "text/plain; charset=utf-8"},
+ 100:                 timeout=2,
+ 101:             )
+ 102: 
+ 103:             if resp.ok:
+ 104:                 log_state("cyan", "LOG REPL", f"{node_id} -> {peer_id}", 3)
+ 105:             else:
+ 106:                 success = False
+ 107:                 log_state("red", "LOG REPL FAIL", f"{peer_id} status={resp.status_code}", 3)
+ 108: 
+ 109:         except Exception as e:
+ 110:             success = False
+ 111:             log_state("red", "LOG REPL FAIL", f"{peer_id} err={e}", 3)
+ 112: 
+ 113:     if success:
+ 114:         clear_state()
+ 115:         log_state("cyan", "REPL CLEAR", "dirty=false", 3)
+
+
+
+===== ./runtime/node_boot.py =====
+   1: import threading
+   2: import uvicorn
+   3: 
+   4: from cluster.runtime.node_worker import NodeWorker
+   5: from cluster.runtime.node_runtime import NodeRuntime
+   6: from cluster.runtime.bootstrap import load_or_bootstrap_config
+   7: from cluster.runtime.registry import register_node
+   8: from cluster.runtime.event_log import ensure_initial_files
+   9: from cluster.runtime import context as ctx
+  10: from cluster.runtime.api_app import app
+  11: from cluster.utils.log_print import log_state
+  12: 
+  13: 
+  14: def run_node(config):
+  15:     ensure_initial_files()
+  16: 
+  17:     ctx.node_id = config["node_id"]
+  18:     ctx.nodeid = config["node_id"]
+  19:     ctx.priority = config["priority"]
+  20:     ctx.peers = config.get("peers", [])
+  21: 
+  22:     node = NodeRuntime(
+  23:         node_id=config["node_id"],
+  24:         priority=config["priority"],
+  25:     )
+  26:     ctx.node = node
+  27: 
+  28:     register_node(
+  29:         node_id=config["node_id"],
+  30:         host=config["host"],
+  31:         port=config["port"],
+  32:         priority=config["priority"],
+  33:     )
+  34: 
+  35:     for peer in config.get("peers", []):
+  36:         register_node(
+  37:             node_id=peer["node_id"],
+  38:             host=peer["host"],
+  39:             port=peer["port"],
+  40:             priority=peer["priority"],
+  41:         )
+  42: 
+  43:     log_state(
+  44:         "cyan",
+  45:         "[BOOT]",
+  46:         (
+  47:             f"node={config['node_id']} "
+  48:             f"priority={config['priority']} "
+  49:             f"bind={config.get('bind_host', '0.0.0.0')}:{config.get('bind_port', 7000)} "
+  50:             f"peers={len(config.get('peers', []))}"
+  51:         ),
+  52:         3,
+  53:     )
+  54: 
+  55:     worker = NodeWorker(
+  56:         node=node,
+  57:         peers=config["peers"],
+  58:         interval=1.0,
+  59:     )
+  60: 
+  61:     threading.Thread(
+  62:         target=worker.start,
+  63:         daemon=True,
+  64:     ).start()
+  65: 
+  66:     log_state("green", "[WORKER]", f"background loop started for {config['node_id']}", 3)
+  67:     log_state(
+  68:         "green",
+  69:         "[HTTP]",
+  70:         f"serving app on {config.get('bind_host', '0.0.0.0')}:{config.get('bind_port', 7000)}",
+  71:         3,
+  72:     )
+  73: 
+  74:     uvicorn.run(
+  75:         app,
+  76:         host=config.get("bind_host", "0.0.0.0"),
+  77:         port=config.get("bind_port", 7000),
+  78:         log_level="warning",
+  79:         access_log=False,
+  80:     )
+  81: 
+  82: 
+  83: if __name__ == "__main__":
+  84:     config = load_or_bootstrap_config()
+  85:     run_node(config)
+
+
+
+===== ./runtime/node_runtime.py =====
+   1: import time
+   2: import requests
+   3: 
+   4: from cluster.runtime.state import NodeState
+   5: from cluster.runtime.leader import compute_leader
+   6: from cluster.utils.log_print import log_state
+   7: 
+   8: 
+   9: class NodeRuntime:
+  10:     def __init__(self, node_id, priority):
+  11:         self.node_id = node_id
+  12:         self.priority = priority
+  13:         self.state = NodeState.BOOT
+  14:         self.last_heartbeat = time.time()
+  15: 
+  16:     def transition(self, new_state):
+  17:         if self.state == new_state:
+  18:             return
+  19:         print(f"[{self.node_id}] {self.state} -> {new_state}")
+  20:         self.state = new_state
+  21: 
+  22:     def tick(self):
+  23:         if self.state == NodeState.BOOT:
+  24:             self.transition(NodeState.STANDBY)
+  25:             return
+  26: 
+  27:         leader = compute_leader()
+  28: 
+  29:         if leader == self.node_id:
+  30:             if self.state == NodeState.STANDBY:
+  31:                 log_state("yellow", "[CLUSTER]", f"[{self.node_id}] becoming ACTIVE", 3)
+  32:                 self.transition(NodeState.ACTIVE)
+  33:         else:
+  34:             if self.state == NodeState.ACTIVE:
+  35:                 log_state("yellow", "[CLUSTER]", f"[{self.node_id}] becoming STANDBY", 3)
+  36:                 self.transition(NodeState.STANDBY)
+  37: 
+  38:     def emit_heartbeat(self, peers):
+  39:         hb = {
+  40:             "node_id": self.node_id,
+  41:             "state": self.state.value,
+  42:             "priority": self.priority,
+  43:         }
+  44:         for peer in peers:
+  45:             url = f"http://{peer['host']}:{peer['port']}/heartbeat"
+  46:             try:
+  47:                 requests.post(url, json=hb, timeout=2)
+  48:             except requests.exceptions.RequestException:
+  49:                 pass
+
+
+
+===== ./runtime/node_worker.py =====
+   1: import os
+   2: import time
+   3: import threading
+   4: 
+   5: from cluster.runtime.dispatcher import dispatch_tick
+   6: from cluster.runtime.reconciler.reconciler_loop import reconcile_tick
+   7: from cluster.runtime.state import NodeState
+   8: from cluster.runtime import context as ctx
+   9: from cluster.utils.log_print import log_state
+  10: from cluster.runtime.event_log import rebuild_event_state_index, load_events
+  11: from cluster.runtime.events.event_state import EventStatus
+  12: from cluster.runtime.log_replication import replicate_local
+  13: 
+  14: EVENTSTATECHECKPERIODSEC = float(os.getenv("EVENTSTATECHECKPERIODSEC", 10))
+  15: 
+  16: lasteventstatecheckts = 0.0
+  17: 
+  18: 
+  19: def leadereventstatechecktick():
+  20:     global lasteventstatecheckts
+  21:     now = time.time()
+  22:     if now - lasteventstatecheckts < EVENTSTATECHECKPERIODSEC:
+  23:         return
+  24:     lasteventstatecheckts = now
+  25: 
+  26:     rawevents = load_events()
+  27:     stateindex = rebuild_event_state_index()
+  28: 
+  29:     rawcreated = 0
+  30:     rawexecuting = 0
+  31:     rawcompleted = 0
+  32:     for e in rawevents:
+  33:         status = e.get("status")
+  34:         if hasattr(status, "value"):
+  35:             status = status.value
+  36:         status = str(status).strip().lower()
+  37:         if status == EventStatus.CREATED.value:
+  38:             rawcreated += 1
+  39:         elif status == EventStatus.EXECUTING.value:
+  40:             rawexecuting += 1
+  41:         elif status == EventStatus.COMPLETED.value:
+  42:             rawcompleted += 1
+  43: 
+  44:     created = 0
+  45:     executing = 0
+  46:     completed = 0
+  47:     for event in stateindex.values():
+  48:         status = event.get("status") if isinstance(event, dict) else getattr(event, "status", None)
+  49:         if hasattr(status, "value"):
+  50:             status = status.value
+  51:         status = str(status).strip().lower()
+  52:         if status == EventStatus.CREATED.value:
+  53:             created += 1
+  54:         elif status == EventStatus.EXECUTING.value:
+  55:             executing += 1
+  56:         elif status == EventStatus.COMPLETED.value:
+  57:             completed += 1
+  58: 
+  59:     log_state(
+  60:         "cyan",
+  61:         "EVENT STATE",
+  62:         f"leader={ctx.node_id} latest(c={created},e={executing},d={completed}) raw(c={rawcreated},e={rawexecuting},d={rawcompleted}) raw_total={len(rawevents)} latest_total={len(stateindex)}",
+  63:         3,
+  64:     )
+  65: 
+  66: 
+  67: class NodeWorker:
+  68:     def __init__(self, node, peers, interval=1.0):
+  69:         self.node = node
+  70:         self.peers = peers
+  71:         self.interval = interval
+  72:         self.running = False
+  73: 
+  74:     def start(self):
+  75:         self.running = True
+  76:         t = threading.Thread(target=self.loop, daemon=True)
+  77:         t.start()
+  78: 
+  79:     def stop(self):
+  80:         self.running = False
+  81: 
+  82:     def tick_boot(self):
+  83:         pass
+  84: 
+  85:     def tick_discovering(self):
+  86:         pass
+  87: 
+  88:     def tick_standby(self):
+  89:         self.node.emit_heartbeat(self.peers)
+  90:         reconcile_tick(self.node)
+  91:         replicate_local()
+  92: 
+  93:     def tick_active(self):
+  94:         self.node.emit_heartbeat(self.peers)
+  95:         dispatch_tick()
+  96:         reconcile_tick(self.node)
+  97:         replicate_local()
+  98:         leadereventstatechecktick()
+  99: 
+ 100:     def tick_degraded(self):
+ 101:         self.node.emit_heartbeat(self.peers)
+ 102:         replicate_local()
+ 103:         leadereventstatechecktick()
+ 104: 
+ 105:     def tick_isolated(self):
+ 106:         pass
+ 107: 
+ 108:     def tick_offline(self):
+ 109:         pass
+ 110: 
+ 111:     def _tick_by_state(self):
+ 112:         state = self.node.state
+ 113:         if state == NodeState.BOOT:
+ 114:             self.tick_boot()
+ 115:         elif state == NodeState.DISCOVERING:
+ 116:             self.tick_discovering()
+ 117:         elif state == NodeState.STANDBY:
+ 118:             self.tick_standby()
+ 119:         elif state == NodeState.ACTIVE:
+ 120:             self.tick_active()
+ 121:         elif state == NodeState.DEGRADED:
+ 122:             self.tick_degraded()
+ 123:         elif state == NodeState.ISOLATED:
+ 124:             self.tick_isolated()
+ 125:         elif state == NodeState.OFFLINE:
+ 126:             self.tick_offline()
+ 127: 
+ 128:     def loop(self):
+ 129:         while self.running:
+ 130:             self.node.tick()
+ 131:             if self.node.state == NodeState.ISOLATED:
+ 132:                 time.sleep(self.interval)
+ 133:                 continue
+ 134:             self._tick_by_state()
+ 135:             time.sleep(self.interval)
+
+
+
+===== ./runtime/reconciler/reconciler_loop.py =====
+   1: 
+   2: import time
+   3: from collections import defaultdict
+   4: 
+   5: from cluster.runtime.event_log import load_events, append_event
+   6: from cluster.runtime.events.cluster_event import ClusterEvent
+   7: from cluster.runtime.events.event_state import EventStatus
+   8: 
+   9: 
+  10: EXECUTION_TIMEOUT = 10.0
+  11: 
+  12: 
+  13: def reconcile_tick(node_runtime):
+  14:     if node_runtime.state != node_runtime.state.__class__.ACTIVE:
+  15:         return
+  16: 
+  17:     events = load_events()
+  18:     now = time.time()
+  19: 
+  20:     by_id = defaultdict(list)
+  21:     for e in events:
+  22:         eid = e.get("event_id")
+  23:         if not eid:
+  24:             continue
+  25:         by_id[eid].append(e)
+  26: 
+  27:     incomplete = False
+  28:     for history in by_id.values():
+  29:         latest_status = history[-1].get("status")
+  30:         if latest_status not in (EventStatus.COMPLETED.value, EventStatus.FAILED.value):
+  31:             incomplete = True
+  32:             break
+  33: 
+  34:     if not incomplete:
+  35:         return
+  36: 
+  37:     print("\n\n================ RECONCILER DEBUG ================\n")
+  38: 
+  39:     for eid, history in by_id.items():
+  40:         history.sort(key=lambda x: (x.get("updated_at") or x.get("created_at") or 0))
+  41:         latest = history[-1]
+  42:         latest_status = latest.get("status")
+  43: 
+  44:         if latest_status in (EventStatus.COMPLETED.value, EventStatus.FAILED.value):
+  45:             continue
+  46: 
+  47:         print(f"\nEVENT_ID: {eid}")
+  48:         print("-" * 60)
+  49: 
+  50:         for i, h in enumerate(history):
+  51:             ts = h.get("updated_at") or h.get("created_at") or 0
+  52:             status = h.get("status")
+  53:             node = h.get("target_node")
+  54:             attempt = h.get("attempt")
+  55: 
+  56:             print(
+  57:                 f"[{i}] "
+  58:                 f"ts={ts:.3f} "
+  59:                 f"status={status:<10} "
+  60:                 f"node={node} "
+  61:                 f"attempt={attempt}"
+  62:             )
+  63: 
+  64:         print("\n→ LATEST:", latest_status)
+  65: 
+  66:         if latest_status == EventStatus.EXECUTING.value:
+  67:             last_update = latest.get("updated_at") or latest.get("created_at", 0)
+  68: 
+  69:             if now - last_update > EXECUTION_TIMEOUT:
+  70:                 print(f"⚠ RECOVERY: EXECUTING STUCK -> CREATED ({eid})")
+  71: 
+  72:                 recovered = dict(latest)
+  73:                 recovered["status"] = EventStatus.CREATED.value
+  74:                 recovered["updated_at"] = now
+  75:                 recovered["target_node"] = None
+  76:                 recovered["execution_key"] = None
+  77:                 recovered["attempt"] = 0
+  78:                 recovered["route_hops"] = []
+  79:                 recovered.pop("owner", None)
+  80: 
+  81:                 append_event(ClusterEvent(**recovered))
+  82: 
+  83:         print("-" * 60)
+  84: 
+  85:     print("\n==================================================\n")
+
+
+
+===== ./runtime/registry.py =====
+   1: CLUSTER_REGISTRY = {}
+   2: 
+   3: 
+   4: def register_node(node_id: str, host: str, port: int, priority: int = 100):
+   5:     CLUSTER_REGISTRY[node_id] = {
+   6:         "host": host,
+   7:         "port": port,
+   8:         "priority": priority,
+   9:     }
+  10:     return CLUSTER_REGISTRY[node_id]
+  11: 
+  12: 
+  13: def get_node(node_id: str):
+  14:     return CLUSTER_REGISTRY.get(node_id)
+
+
+
+===== ./runtime/state.py =====
+   1: # state.py
+   2: from enum import Enum
+   3: 
+   4: class NodeState(str, Enum):
+   5:     BOOT = "BOOT"
+   6:     DISCOVERING = "DISCOVERING"
+   7:     STANDBY = "STAND-BY"
+   8:     ACTIVE = "ACTIVE"
+   9:     DEGRADED = "DEGRADED"
+  10:     ISOLATED = "ISOLATED"
+  11:     OFFLINE = "OFFLINE"
+
+
+
+===== ./runtime/state_machine.py =====
+   1: from cluster.runtime.events.event_state import EventStatus, validate_transition
+   2: from cluster.runtime.event_log import load_events, append_event
+   3: from cluster.runtime.events.cluster_event import ClusterEvent
+   4: 
+   5: 
+   6: def transition_event(event_id: str, new_status):
+   7:     events = load_events()
+   8: 
+   9:     latest_raw = None
+  10:     for e in reversed(events):
+  11:         if e["event_id"] == event_id:
+  12:             latest_raw = e
+  13:             break
+  14: 
+  15:     if not latest_raw:
+  16:         return None
+  17: 
+  18:     latest = ClusterEvent(**latest_raw)
+  19:     old_status = latest.status
+  20: 
+  21:     validate_transition(old_status, new_status)
+  22: 
+  23:     latest.status = new_status
+  24:     append_event(latest)
+  25: 
+  26:     return latest
+
+
+
+===== ./runtime/worker/event_worker.py =====
+   1: from cluster.runtime.event_log import append_event
+   2: from cluster.runtime.events.event_state import EventStatus
+   3: from cluster.utils.log_print import log_state
+   4: 
+   5: executed_keys = set()
+   6: 
+   7: 
+   8: def run_business_logic(payload: dict):
+   9:     return {"ok": True, "payload": payload}
+  10: 
+  11: 
+  12: def execute_event(event, stream=None):
+  13:     event.execution_key = f"{event.event_id}:{event.attempt}"
+  14: 
+  15:     if event.execution_key in executed_keys:
+  16:         log_state("red", "[CACHE HIT]", event.execution_key, 3)
+  17:         return {
+  18:             "status": "completed",
+  19:             "cached": True,
+  20:             "event_id": event.event_id,
+  21:             "execution_key": event.execution_key,
+  22:         }
+  23: 
+  24:     result = run_business_logic(event.payload)
+  25:     executed_keys.add(event.execution_key)
+  26: 
+  27:     msg = event.payload.get("msg", "<no-msg>")
+  28:     log_state("green", "[EXECUTE]", f"{msg:12}", 3)
+  29: 
+  30:     event.mark_status(EventStatus.COMPLETED)
+  31:     append_event(event)
+  32: 
+  33:     return {
+  34:         "status": "completed",
+  35:         "event_id": event.event_id,
+  36:         "execution_key": event.execution_key,
+  37:         "result": result,
+  38:     }
+
+
+
+===== ./utils/log_print.py =====
+   1: 
+   2: from datetime import datetime
+   3: 
+   4: modeGhost = False
+   5: 
+   6: def log_state(color, typ, msg, decimals=0):
+   7: 
+   8:     if modeGhost:
+   9:         return
+  10: 
+  11:     colors = {
+  12:         "red": "\033[91m",
+  13:         "green": "\033[92m",
+  14:         "yellow": "\033[93m",
+  15:         "blue": "\033[94m",
+  16:         "magenta": "\033[95m",
+  17:         "cyan": "\033[96m",
+  18:         "white": "\033[97m",
+  19:         "reset": "\033[0m",
+  20:     }
+  21: 
+  22:     c = colors.get(color.lower(), colors["white"])
+  23:     reset = colors["reset"]
+  24: 
+  25:     decimals = max(0, min(6, int(decimals)))
+  26: 
+  27:     # -----------------------------------------
+  28:     # fixed-width timestamp
+  29:     # -----------------------------------------
+  30: 
+  31:     now = datetime.now()
+  32: 
+  33:     if decimals == 0:
+  34: 
+  35:         # reserva espacio para ".000"
+  36:         ts = now.strftime("%H:%M:%S") + "    "
+  37: 
+  38:     else:
+  39: 
+  40:         micros = f"{now.microsecond:06d}"[:decimals]
+  41:         ts = f"{now.strftime('%H:%M:%S')}.{micros}"
+  42: 
+  43:         # padding fijo hasta longitud 12
+  44:         ts = f"{ts:<12}"
+  45: 
+  46:     # -----------------------------------------
+  47:     # aligned tag
+  48:     # -----------------------------------------
+  49: 
+  50:     tag = f"{typ:>14}"
+  51: 
+  52:     # -----------------------------------------
+  53:     # print
+  54:     # -----------------------------------------
+  55: 
+  56:     print(f"[{ts}] {c}{tag}{reset} {msg}")
+  57: 
+  58: 

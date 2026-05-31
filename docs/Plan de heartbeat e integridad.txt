@@ -1,0 +1,126 @@
+# Plan de heartbeat e integridad
+
+## Objetivo
+
+Reducir el heartbeat a una señal compacta y comparable, sin meter en él detalle caro de logs ni hashes completos de fichero. La idea es separar claramente liveness, integridad resumida y detalle de réplica. [web:245][web:300]
+
+## Modelo de datos
+
+### Foto por heartbeat
+- `C_i`: hash de cluster recompuesto en el nodo `i` a partir de datos recibidos por heartbeat.
+- Ese hash no debe incluir detalles pesados ni hash completo del log.
+- Debe ser estable, barato y comparable entre nodos. [web:234][web:245]
+
+### Foto por réplica de log
+- `N_i_j`: hash local compuesto en el nodo `i` revisando copias remotas de logs recibidas del cluster.
+- Esta foto viene de las réplicas de log, no del heartbeat.
+- Sirve para validar convergencia de datos y detectar desalineación. [web:300][web:297]
+
+## Fórmula de hash reducida
+
+La fórmula final del compendio queda así:
+
+```python
+canonical = {
+    "log_size": log_size,
+    "file_size": file_size,
+    "last_append_event_id": last_append_event_id,
+    "last_append_created_at": last_append_created_at,
+}
+integrity_hash = sha256(json.dumps(canonical, sort_keys=True).encode())
+```
+
+### Razón de exclusión
+- `priority` fuera, porque no cambia y no aporta señal útil.
+- `state` fuera, porque puede cambiar y falsear el hash sin que haya cambio real de datos.
+- `file_hash` fuera, porque es caro calcular el log completo y no compensa aquí. [web:245][web:300]
+
+## Semántica exacta
+
+- `C_i` y `N_i_j` pueden compararse si derivan del mismo esquema canónico.
+- `C_i` representa la foto recompuesta por heartbeat.
+- `N_i_j` representa la foto local derivada de réplicas de log.
+- Si coinciden, hay convergencia de vista; si no, hay divergencia que requiere diagnóstico. [web:297][web:299]
+
+## Heartbeat actual vs propuesto
+
+### Actual
+- `node_id`.
+- `state`.
+- `priority`.
+- liveness y estado operativo mezclados en una sola emisión.
+- demasiado verboso para lo que quieres hacer ahora. [file:184][web:234]
+
+### Propuesto
+- `node_id`.
+- `last_seen`.
+- `integrity_hash` o `cluster_hash` resumido.
+- opcionalmente `epoch` o `version` si hace falta cortar sesiones. [web:245][web:299]
+
+## Qué queda fuera del heartbeat
+
+- Hash completo del fichero log.
+- Detalle de eventos.
+- Estado operativo que cambie demasiado y meta ruido.
+- Cualquier dato que ya puedas reconstruir mejor desde logs o réplica. [web:297][web:300]
+
+## Ficheros implicados
+
+- `cluster/runtime/event_log.py`.
+- `cluster/runtime/log_replication.py`.
+- `cluster/runtime/node_worker.py`.
+- `cluster/runtime/leader.py`.
+- `cluster/runtime/cluster_store.py`. [code_file:206][code_file:204][code_file:205][file:184][file:179]
+
+## Orden de cambio seguro
+
+1. Ajustar la fórmula del hash.
+2. Separar heartbeat de réplica.
+3. Mantener `event_log.py` como fuente local y `last_append.state.json` como estado de append.
+4. Dejar `log_replication.py` como el punto que decide difundir o no.
+5. Validar que `node_worker.py` solo dispara lo necesario.
+6. Revisar `leader.py` y `cluster_store.py` solo si hace falta limpiar liveness. [code_file:206][code_file:204][code_file:205][file:184][file:179]
+
+## Tareas por fichero
+
+### `cluster/runtime/event_log.py`
+- Mantener `append_event()` como única escritura de `event_log.local.jsonl`.
+- Mantener `last_append.state.json` como estado persistente de último append.
+- No meter hash completo del log aquí.
+- Asegurar que `dirty=True` se marca solo al append real.
+- Mantener lectura y normalización separadas de la lógica de réplica. [code_file:206]
+
+### `cluster/runtime/log_replication.py`
+- Seguir usando `dirty` como disparador de réplica.
+- Replicar solo en `ACTIVE`, `STANDBY` y `DEGRADED`.
+- No replicar contenido vacío.
+- No limpiar `dirty` si la difusión a peers falla.
+- Preparar el punto donde luego se calcule o compare el hash resumido. [code_file:204]
+
+### `cluster/runtime/node_worker.py`
+- Mantener `replicate_local()` en los ticks de trabajo correctos.
+- No mezclar aquí cálculos pesados de hash.
+- Evitar que la replicación se dispare fuera de los estados previstos.
+- Dejar `dispatch_tick()` y `reconcile_tick()` separados de la parte de integridad.
+- Mantener el bucle principal simple y predecible. [code_file:205]
+
+### `cluster/runtime/leader.py`
+- Mantener `last_seen` y liveness ligeros.
+- No meter integridad del log dentro de la lógica de líder.
+- No inflar `cluster_state` con detalles que solo sirven para réplica.
+- Usar esta capa solo para foto viva del cluster.
+- Evitar que el estado operativo falsee el hash de integridad. [file:184]
+
+### `cluster/runtime/cluster_store.py`
+- Seguir limpiando nodos por TTL.
+- No usar esta capa para calcular integridad de log.
+- Mantener la vista activa del cluster como fuente de liveness.
+- No mezclar limpieza de nodos con réplica de datos.
+- Dejar esta capa pequeña y predecible. [file:179][file:184]
+
+## Regla de oro
+
+- Heartbeat = señal compacta.
+- Logs = verdad de detalle.
+- Hash = compendio de integridad, no auditoría completa.
+- Si algo puede reconstruirse fuera del heartbeat, no lo metas ahí. [web:234][web:245][web:297]
