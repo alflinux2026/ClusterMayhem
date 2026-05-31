@@ -1,0 +1,295 @@
+{
+  "test_config": {
+    "mode": "smoke",
+    "nodes": [
+      "http://100.100.1.200:7000",
+      "http://100.100.1.202:7000",
+      "http://100.100.1.203:7000"
+    ],
+    "events": 100,
+    "event_delay_range": [
+      0.1,
+      0.2
+    ],
+    "kill_probability": 0.0,
+    "death_time_range": [
+      1.5,
+      15.0
+    ],
+    "request_timeout": 5.0,
+    "max_retries": 3,
+    "sleep_only_node": null,
+    "slow_event_threshold_ms": 500.0,
+    "seed": null,
+    "run_id": "20260531_162208",
+    "stats_file": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_162208/stats.json",
+    "events_csv": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_162208/events.csv",
+    "send_workers": 2,
+    "retry_backoff_base": 0.5,
+    "retry_backoff_max": 3.0,
+    "drain_timeout": 15.0,
+    "stream": {
+      "tenant_id": "chaos",
+      "app_id": "chaos_v4",
+      "data_type": "event",
+      "schema_version": "0.1",
+      "stream_id": "chaos.chaos_v4.event.0.1"
+    }
+  },
+  "run_meta": {
+    "started_at_epoch": 1780237328.8041506,
+    "ended_at_epoch": 1780237347.040841,
+    "started_at_iso": "2026-05-31T16:22:08.804151",
+    "ended_at_iso": "2026-05-31T16:22:27.040869",
+    "duration_seconds": 18.237
+  },
+  "stats": {
+    "events_total": 100,
+    "events_ok": 100,
+    "events_failed": 0,
+    "events_retried": 7,
+    "events_no_leader": 0,
+    "events_timeout": 0,
+    "events_connection_error": 0,
+    "events_forward_error": 0,
+    "events_unexpected_fail": 0,
+    "events_slow": 8,
+    "kills": 0,
+    "revives": 0,
+    "kill_attempts": 0,
+    "kill_failures": 0,
+    "revive_failures": 0,
+    "per_node_ok": {
+      "http://100.100.1.200:7000": 24,
+      "http://100.100.1.203:7000": 43,
+      "http://100.100.1.202:7000": 33
+    },
+    "per_node_fail": {},
+    "leaders_seen": {
+      "lnx200nas": 45,
+      "lnx202pc": 37,
+      "lnx203hp": 18
+    },
+    "latency": [
+      13.198375701904297,
+      33.0967903137207,
+      25.752544403076172,
+      91.32933616638184,
+      96.8327522277832,
+      148.73647689819336,
+      17.007827758789062,
+      13.362884521484375,
+      11.873006820678711,
+      8.000373840332031,
+      23.840904235839844,
+      11.808156967163086,
+      45.17364501953125,
+      51.23782157897949,
+      73.43864440917969,
+      106.74619674682617,
+      94.7103500366211,
+      49.69358444213867,
+      108.15811157226562,
+      9.472370147705078,
+      121.16646766662598,
+      75.06799697875977,
+      2018.7780857086182,
+      120.21279335021973,
+      1970.1597690582275,
+      18.541336059570312,
+      16.489744186401367,
+      136.40928268432617,
+      123.43955039978027,
+      198.71759414672852,
+      207.3051929473877,
+      17.617225646972656,
+      162.66250610351562,
+      20.537853240966797,
+      215.39926528930664,
+      31.264066696166992,
+      139.94908332824707,
+      22.371292114257812,
+      196.10905647277832,
+      130.56206703186035,
+      97.62835502624512,
+      20.473003387451172,
+      20.75028419494629,
+      160.32791137695312,
+      220.77488899230957,
+      2058.311700820923,
+      69.94867324829102,
+      2015.0537490844727,
+      236.4675998687744,
+      268.3072090148926,
+      133.78477096557617,
+      191.12181663513184,
+      2011.0008716583252,
+      2068.7146186828613,
+      37.3539924621582,
+      55.84716796875,
+      40.36283493041992,
+      30.78293800354004,
+      25.925874710083008,
+      33.4172248840332,
+      18.677949905395508,
+      43.617963790893555,
+      20.255088806152344,
+      44.50201988220215,
+      59.23199653625488,
+      83.99510383605957,
+      69.86498832702637,
+      26.662826538085938,
+      90.43574333190918,
+      30.821561813354492,
+      20.873546600341797,
+      21.3775634765625,
+      29.205322265625,
+      134.7367763519287,
+      22.13430404663086,
+      54.82816696166992,
+      172.37091064453125,
+      168.69664192199707,
+      168.11299324035645,
+      87.43119239807129,
+      81.74848556518555,
+      96.84300422668457,
+      46.44966125488281,
+      22.795915603637695,
+      113.08407783508301,
+      110.78834533691406,
+      40.18449783325195,
+      17.20595359802246,
+      72.96895980834961,
+      27.14371681213379,
+      19.26589012145996,
+      21.433353424072266,
+      128.15141677856445,
+      74.4330883026123,
+      20.834922790527344,
+      40.93313217163086,
+      23.646116256713867,
+      17.08841323852539,
+      88.79590034484863,
+      65.97757339477539,
+      93.10483932495117,
+      41.35251045227051,
+      2045.515537261963,
+      2022.3488807678223,
+      140.01965522766113,
+      25.19845962524414,
+      76.60555839538574
+    ],
+    "unexpected_failures": [],
+    "slow_events": [
+      {
+        "event_index": 22,
+        "attempt": 1,
+        "node": "http://100.100.1.200:7000",
+        "latency_ms": 2018.778,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:22:14.335414"
+      },
+      {
+        "event_index": 23,
+        "attempt": 1,
+        "node": "http://100.100.1.200:7000",
+        "latency_ms": 1970.16,
+        "leader": "lnx202pc",
+        "payload": {
+          "status": "ok",
+          "event_id": "139fccd0-01f5-4c58-9c0e-2180fba865a2",
+          "result": {
+            "event_id": "139fccd0-01f5-4c58-9c0e-2180fba865a2",
+            "status": "accepted",
+            "leader": "lnx202pc",
+            "trace_id": "cf166139-a2d3-427a-ad77-2e599760598e"
+          }
+        },
+        "timestamp": "2026-05-31T16:22:14.471369"
+      },
+      {
+        "event_index": 44,
+        "attempt": 1,
+        "node": "http://100.100.1.200:7000",
+        "latency_ms": 2058.312,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:22:17.721866"
+      },
+      {
+        "event_index": 45,
+        "attempt": 1,
+        "node": "http://100.100.1.202:7000",
+        "latency_ms": 2015.054,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:22:17.821595"
+      },
+      {
+        "event_index": 52,
+        "attempt": 1,
+        "node": "http://100.100.1.202:7000",
+        "latency_ms": 2011.001,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:22:20.260775"
+      },
+      {
+        "event_index": 51,
+        "attempt": 1,
+        "node": "http://100.100.1.203:7000",
+        "latency_ms": 2068.715,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:22:20.263240"
+      },
+      {
+        "event_index": 97,
+        "attempt": 1,
+        "node": "http://100.100.1.203:7000",
+        "latency_ms": 2045.516,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:22:25.677346"
+      },
+      {
+        "event_index": 98,
+        "attempt": 1,
+        "node": "http://100.100.1.202:7000",
+        "latency_ms": 2022.349,
+        "leader": null,
+        "payload": {
+          "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Read timed out. (read timeout=2)"
+        },
+        "timestamp": "2026-05-31T16:22:25.811195"
+      }
+    ],
+    "kill_events": [],
+    "submit_http_200": 107,
+    "submit_semantic_ok": 100,
+    "submit_hard_fail": 0,
+    "queue_requeues": 7,
+    "queue_max_depth": 24,
+    "success_rate": 100.0,
+    "latency_avg": 221.629,
+    "latency_min": 8.0,
+    "latency_p50": 69.865,
+    "latency_p95": 2013.838,
+    "latency_p99": 2057.544,
+    "latency_max": 2068.715,
+    "results_csv": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_162208/events.csv"
+  }
+}
