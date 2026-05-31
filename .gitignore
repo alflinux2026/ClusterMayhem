@@ -24,4 +24,30 @@ Thumbs.db
 *.local.json
 *.local.jsonl
 
+# Generated cluster/runtime artifacts
+cluster/chaos_out_*/
+cluster/snapshots/cluster_live_snapshot_*
+cluster/cluster_codigo_*.log
+cluster/codigo_completo.log
+cluster/chaos_stats_*.json
+
+# Generated report/snapshot files with timestamps
+cluster/core_files*.txt
+cluster/core_summary*.md
+cluster/header_last_code_*.code
+cluster/last_code_*.code
+cluster/no_core_files_*.txt
+cluster/core-files-lite.txt
+cluster/last_core_files-lite.txt
+cluster/core_files-lite*.txt
+cluster/core_summary-lite*.md
+cluster/header_last_code_core-lite*.code
+cluster/last_code_core-lite*.code
+
+# Replicated/generated JSONL
+cluster/data/*.jsonl
+cluster/data/*.json
+data/*.jsonl
+log*.jsonl
+
 
