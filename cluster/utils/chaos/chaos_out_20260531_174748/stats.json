@@ -1,0 +1,1584 @@
+{
+  "test_config": {
+    "mode": "smoke",
+    "nodes": [
+      "http://100.100.1.200:7000",
+      "http://100.100.1.202:7000",
+      "http://100.100.1.203:7000"
+    ],
+    "events": 100,
+    "event_delay_range": [
+      0.1,
+      0.2
+    ],
+    "kill_probability": 0.0,
+    "death_time_range": [
+      1.5,
+      15.0
+    ],
+    "request_timeout": 5.0,
+    "max_retries": 3,
+    "sleep_only_node": null,
+    "slow_event_threshold_ms": 500.0,
+    "seed": null,
+    "run_id": "20260531_174748",
+    "stats_file": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_174748/stats.json",
+    "events_csv": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_174748/events.csv",
+    "send_workers": 2,
+    "retry_backoff_base": 0.5,
+    "retry_backoff_max": 3.0,
+    "drain_timeout": 15.0,
+    "stream": {
+      "tenant_id": "chaos",
+      "app_id": "chaos_v4",
+      "data_type": "event",
+      "schema_version": "0.1",
+      "stream_id": "chaos.chaos_v4.event.0.1"
+    }
+  },
+  "run_meta": {
+    "started_at_epoch": 1780242468.151686,
+    "ended_at_epoch": 1780242485.5340207,
+    "started_at_iso": "2026-05-31T17:47:48.151686",
+    "ended_at_iso": "2026-05-31T17:48:05.534037",
+    "duration_seconds": 17.382
+  },
+  "stats": {
+    "events_total": 100,
+    "events_ok": 0,
+    "events_failed": 100,
+    "events_retried": 300,
+    "events_no_leader": 0,
+    "events_timeout": 0,
+    "events_connection_error": 300,
+    "events_forward_error": 0,
+    "events_unexpected_fail": 100,
+    "events_slow": 0,
+    "kills": 0,
+    "revives": 0,
+    "kill_attempts": 0,
+    "kill_failures": 0,
+    "revive_failures": 0,
+    "per_node_ok": {},
+    "per_node_fail": {},
+    "leaders_seen": {},
+    "latency": [],
+    "unexpected_failures": [
+      {
+        "event_index": 0,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:49.675184"
+      },
+      {
+        "event_index": 1,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:49.887919"
+      },
+      {
+        "event_index": 2,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:50.099225"
+      },
+      {
+        "event_index": 3,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:50.175383"
+      },
+      {
+        "event_index": 4,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:50.390281"
+      },
+      {
+        "event_index": 5,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:50.394410"
+      },
+      {
+        "event_index": 6,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:50.612817"
+      },
+      {
+        "event_index": 7,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:50.683166"
+      },
+      {
+        "event_index": 8,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:50.893271"
+      },
+      {
+        "event_index": 9,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:50.902902"
+      },
+      {
+        "event_index": 10,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:51.110811"
+      },
+      {
+        "event_index": 11,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:51.395485"
+      },
+      {
+        "event_index": 12,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:51.396724"
+      },
+      {
+        "event_index": 13,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:51.618187"
+      },
+      {
+        "event_index": 14,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:51.888038"
+      },
+      {
+        "event_index": 15,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:51.917536"
+      },
+      {
+        "event_index": 16,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:52.108032"
+      },
+      {
+        "event_index": 18,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:52.391259"
+      },
+      {
+        "event_index": 17,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:52.405972"
+      },
+      {
+        "event_index": 19,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:52.616557"
+      },
+      {
+        "event_index": 20,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:52.619380"
+      },
+      {
+        "event_index": 21,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:52.823948"
+      },
+      {
+        "event_index": 22,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:52.898436"
+      },
+      {
+        "event_index": 23,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:53.125938"
+      },
+      {
+        "event_index": 24,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:53.335089"
+      },
+      {
+        "event_index": 25,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:53.398636"
+      },
+      {
+        "event_index": 26,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:53.607402"
+      },
+      {
+        "event_index": 27,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:53.826742"
+      },
+      {
+        "event_index": 28,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:53.838757"
+      },
+      {
+        "event_index": 29,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:54.111358"
+      },
+      {
+        "event_index": 30,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:54.333417"
+      },
+      {
+        "event_index": 31,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:54.338963"
+      },
+      {
+        "event_index": 32,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:54.621385"
+      },
+      {
+        "event_index": 33,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:54.621478"
+      },
+      {
+        "event_index": 34,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:54.836363"
+      },
+      {
+        "event_index": 35,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:54.913994"
+      },
+      {
+        "event_index": 36,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:55.124926"
+      },
+      {
+        "event_index": 37,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:55.336820"
+      },
+      {
+        "event_index": 38,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:55.356446"
+      },
+      {
+        "event_index": 39,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:55.627433"
+      },
+      {
+        "event_index": 40,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:55.845559"
+      },
+      {
+        "event_index": 41,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:55.868339"
+      },
+      {
+        "event_index": 42,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:56.078094"
+      },
+      {
+        "event_index": 43,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:56.342043"
+      },
+      {
+        "event_index": 44,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:56.347710"
+      },
+      {
+        "event_index": 45,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:56.583400"
+      },
+      {
+        "event_index": 46,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:56.656279"
+      },
+      {
+        "event_index": 47,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:56.860333"
+      },
+      {
+        "event_index": 48,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:57.072966"
+      },
+      {
+        "event_index": 49,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:57.149438"
+      },
+      {
+        "event_index": 50,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:57.358905"
+      },
+      {
+        "event_index": 51,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:57.574834"
+      },
+      {
+        "event_index": 52,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:57.674807"
+      },
+      {
+        "event_index": 53,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:57.875568"
+      },
+      {
+        "event_index": 55,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:58.091868"
+      },
+      {
+        "event_index": 54,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:58.176348"
+      },
+      {
+        "event_index": 56,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:58.359830"
+      },
+      {
+        "event_index": 57,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:58.431601"
+      },
+      {
+        "event_index": 58,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:58.591377"
+      },
+      {
+        "event_index": 59,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:58.688857"
+      },
+      {
+        "event_index": 60,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:58.895632"
+      },
+      {
+        "event_index": 61,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:59.105416"
+      },
+      {
+        "event_index": 62,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:59.398703"
+      },
+      {
+        "event_index": 63,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:59.601761"
+      },
+      {
+        "event_index": 64,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:59.611046"
+      },
+      {
+        "event_index": 65,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:59.702415"
+      },
+      {
+        "event_index": 66,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:59.877141"
+      },
+      {
+        "event_index": 67,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:47:59.941059"
+      },
+      {
+        "event_index": 68,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:00.109269"
+      },
+      {
+        "event_index": 69,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:00.214209"
+      },
+      {
+        "event_index": 70,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:00.405704"
+      },
+      {
+        "event_index": 71,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:00.636669"
+      },
+      {
+        "event_index": 72,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:00.720244"
+      },
+      {
+        "event_index": 73,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:00.891751"
+      },
+      {
+        "event_index": 74,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:00.906070"
+      },
+      {
+        "event_index": 75,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:01.115404"
+      },
+      {
+        "event_index": 76,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:01.210129"
+      },
+      {
+        "event_index": 77,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:01.400817"
+      },
+      {
+        "event_index": 79,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:01.647056"
+      },
+      {
+        "event_index": 78,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:01.647461"
+      },
+      {
+        "event_index": 80,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:01.891487"
+      },
+      {
+        "event_index": 81,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:02.130711"
+      },
+      {
+        "event_index": 82,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:02.141699"
+      },
+      {
+        "event_index": 83,
+        "attempt": 3,
+        "node": "http://100.100.1.202:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:02.400801"
+      },
+      {
+        "event_index": 84,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:02.406458"
+      },
+      {
+        "event_index": 85,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:02.617410"
+      },
+      {
+        "event_index": 86,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:02.723593"
+      },
+      {
+        "event_index": 87,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:02.898543"
+      },
+      {
+        "event_index": 88,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:03.122693"
+      },
+      {
+        "event_index": 89,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:03.123126"
+      },
+      {
+        "event_index": 90,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:03.228145"
+      },
+      {
+        "event_index": 92,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:03.609976"
+      },
+      {
+        "event_index": 91,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:03.613216"
+      },
+      {
+        "event_index": 93,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:03.910572"
+      },
+      {
+        "event_index": 94,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:04.106230"
+      },
+      {
+        "event_index": 95,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:04.108857"
+      },
+      {
+        "event_index": 96,
+        "attempt": 3,
+        "node": "http://100.100.1.200:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:04.240747"
+      },
+      {
+        "event_index": 97,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:04.415045"
+      },
+      {
+        "event_index": 98,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:04.609739"
+      },
+      {
+        "event_index": 99,
+        "attempt": 3,
+        "node": "http://100.100.1.203:7000",
+        "status_code": null,
+        "payload": {
+          "tried_nodes": [
+            "http://100.100.1.203:7000",
+            "http://100.100.1.200:7000",
+            "http://100.100.1.202:7000"
+          ]
+        },
+        "reason": "dropped_after_retries_exception",
+        "timestamp": "2026-05-31T17:48:04.928955"
+      }
+    ],
+    "slow_events": [],
+    "kill_events": [],
+    "submit_http_200": 0,
+    "submit_semantic_ok": 0,
+    "submit_hard_fail": 0,
+    "queue_requeues": 200,
+    "queue_max_depth": 13,
+    "success_rate": 0.0,
+    "latency_avg": 0,
+    "latency_min": 0,
+    "latency_p50": 0.0,
+    "latency_p95": 0.0,
+    "latency_p99": 0.0,
+    "latency_max": 0,
+    "results_csv": "/home/alftorres/projects/ClusterMayhem/cluster/utils/chaos/chaos_out_20260531_174748/events.csv"
+  }
+}

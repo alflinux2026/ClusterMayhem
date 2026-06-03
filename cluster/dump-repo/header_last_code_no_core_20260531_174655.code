@@ -1,105 +1,26 @@
 === FILES ===
 4:===== ./__init__.py =====
-8:===== ./_lease/__init__.py =====
-12:===== ./_lease/lease.py =====
-35:===== ./_lease/lease_manager.py =====
-115:===== ./api/__init__.py =====
-119:===== ./api/routes_cluster.py =====
-123:===== ./api/routes_health.py =====
-127:===== ./cluster_live.py =====
-1307:===== ./config/__init__.py =====
-1311:===== ./config/loader.py =====
-1322:===== ./core/node.py =====
-1340:===== ./core/transitions.py =====
-1378:===== ./datasets/__init__.py =====
-1382:===== ./datasets/dataset_manager.py =====
-1386:===== ./datasets/revisioning.py =====
-1390:===== ./dump-repo-lite/cluster_live.py =====
-2223:===== ./dump-repo/cluster_live.py =====
-3056:===== ./dump-repo/recopila-logs.py =====
-3278:===== ./dump-repo/recopila-logs_0.py =====
-3457:===== ./dump-repo/run_node.py =====
-3511:===== ./election/__init__.py =====
-3515:===== ./election/election_engine.py =====
-3533:===== ./election/leader.py =====
-3540:===== ./election/lease_validation.py =====
-3544:===== ./logging/cluster_logger.py =====
-3548:===== ./models/__init__.py =====
-3552:===== ./models/dataset.py =====
-3556:===== ./models/host.py =====
-3560:===== ./models/lease.py =====
-3564:===== ./network/__init__.py =====
-3568:===== ./network/http_client.py =====
-3572:===== ./node/__init__.py =====
-3576:===== ./node/node_runtime.py =====
-3677:===== ./persistence/__init__.py =====
-3681:===== ./replication/__init__.py =====
-3685:===== ./replication/pull_sync.py =====
-3689:===== ./replication/replication_engine.py =====
-3693:===== ./run_node.py =====
-3747:===== ./runtime/cluster_view.py =====
-3757:===== ./runtime/dispatcher.py =====
-3890:===== ./runtime/event_router.py =====
-4018:===== ./runtime/ingest.py =====
-4055:===== ./runtime/locks.py =====
-4059:===== ./runtime/models.py =====
-4194:===== ./runtime/reconciler/reconciler_loop.py =====
-4309:===== ./runtime/state_machine.py =====
-4343:===== ./runtime/worker/event_worker.py =====
-4430:===== ./storage/__init__.py =====
-4434:===== ./storage/backend.py =====
-4438:===== ./storage/json_backend.py =====
-4442:===== ./transport/client.py =====
-4477:===== ./utils/__init__.py =====
-4481:===== ./utils/chaos/cluster_live.py =====
-5314:===== ./utils/chaos_runner_final.py =====
-5972:===== ./utils/chaos_runner_final_v2.py =====
-6563:===== ./utils/chaos_runner_final_v5.py =====
-7409:===== ./utils/chaos_v2.py =====
-8168:===== ./utils/chaos_v3.py =====
-9112:===== ./utils/chaos_v4.py =====
-9830:===== ./watchdog/__init__.py =====
-9834:===== ./watchdog/healthcheck.py =====
-9838:===== ./watchdog/watchdog.py =====
-9842:===== ./workers/__init__.py =====
-9846:===== ./workers/cluster_worker.py =====
-9898:===== ./workers/heartbeat_worker.py =====
-9981:===== ./workers/lease_worker.py =====
-9985:===== ./workers/replication_worker.py =====
-9989:===== ./workers/watchdog_worker.py =====
+8:===== ./cluster_live.py =====
+1188:===== ./config/__init__.py =====
+1192:===== ./config/loader.py =====
+1203:===== ./dump-repo-lite/cluster_live.py =====
+2036:===== ./dump-repo/cluster_live.py =====
+2869:===== ./dump-repo/recopila-logs.py =====
+3091:===== ./dump-repo/recopila-logs_0.py =====
+3270:===== ./dump-repo/run_node.py =====
+3324:===== ./runtime/models.py =====
+3459:===== ./utils/__init__.py =====
+3463:===== ./utils/chaos/cluster_live.py =====
+4296:===== ./utils/chaos_runner_final.py =====
+4954:===== ./utils/chaos_runner_final_v2.py =====
+5545:===== ./utils/chaos_runner_final_v5.py =====
+6391:===== ./utils/chaos_v2.py =====
+7150:===== ./utils/chaos_v3.py =====
+8094:===== ./utils/chaos_v4.py =====
 
 === FILES/IMPORTS/DEFS ===
 
 ===== ./__init__.py =====
-
-===== ./_lease/__init__.py =====
-
-===== ./_lease/lease.py =====
-   1: from dataclasses import dataclass
-   2: import time
-   6: class Lease:
-  11:     def expires_at(self) -> float:
-  14:     def is_valid(self, now: float | None = None) -> bool:
-  18:     def renew(self):
-
-===== ./_lease/lease_manager.py =====
-   1: import time
-   4: class Lease:
-   6:     def __init__(self, owner, ttl):
-  12:     def is_valid(self):
-  17: class LeaseManager:
-  19:     def __init__(self):
-  25:     def grant(self, node_id, ttl):
-  31:     def is_valid(self, node_id):
-  39:     def expire(self):
-  54:     def active_leader(self):
-  66:     def get_active_nodes(self):
-
-===== ./api/__init__.py =====
-
-===== ./api/routes_cluster.py =====
-
-===== ./api/routes_health.py =====
 
 ===== ./cluster_live.py =====
   29: import csv
@@ -159,23 +80,6 @@
 ===== ./config/loader.py =====
    1: import json
    3: def load_peers():
-
-===== ./core/node.py =====
-   1: from cluster.core.state import NodeState
-   2: from cluster.core.transitions import can_transition
-   4: class ClusterNode:
-   6:     def __init__(self, node_id: str):
-  10:     def set_state(self, new_state: NodeState):
-
-===== ./core/transitions.py =====
-   1: from cluster.core.state import NodeState
-  33: def can_transition(from_state: NodeState, to_state: NodeState) -> bool:
-
-===== ./datasets/__init__.py =====
-
-===== ./datasets/dataset_manager.py =====
-
-===== ./datasets/revisioning.py =====
 
 ===== ./dump-repo-lite/cluster_live.py =====
    1: import csv
@@ -311,110 +215,6 @@
   18: def build_peers(config, self_id):
   26: def main(node_id, priority):
 
-===== ./election/__init__.py =====
-
-===== ./election/election_engine.py =====
-   1: from cluster.runtime.cluster_store import get_active_cluster
-   3: class ElectionEngine:
-   6:     def can_become_leader(node_id, priority):
-
-===== ./election/leader.py =====
-   1: def choose_leader(candidates):
-
-===== ./election/lease_validation.py =====
-
-===== ./logging/cluster_logger.py =====
-
-===== ./models/__init__.py =====
-
-===== ./models/dataset.py =====
-
-===== ./models/host.py =====
-
-===== ./models/lease.py =====
-
-===== ./network/__init__.py =====
-
-===== ./network/http_client.py =====
-
-===== ./node/__init__.py =====
-
-===== ./node/node_runtime.py =====
-   1: import time
-   3: from cluster.runtime.state import NodeState
-   4: from cluster.runtime.leader import compute_leader
-   5: from cluster.runtime.cluster_store import cluster_state
-   7: import requests
-   9: from cluster.utils.log_print import log_state
-  12: class NodeRuntime:
-  14:     def __init__(self, node_id, priority):
-  25:     def transition(self, new_state):
-  37:     def tick(self):
-  82:     def emit_heartbeat(self, peers):
-
-===== ./persistence/__init__.py =====
-
-===== ./replication/__init__.py =====
-
-===== ./replication/pull_sync.py =====
-
-===== ./replication/replication_engine.py =====
-
-===== ./run_node.py =====
-   1: import json
-   3: from cluster.node.node_runtime import NodeRuntime
-   5: from cluster.runtime.state import NodeState
-   6: from cluster.workers.cluster_worker import ClusterWorker
-   7: from cluster.transport.server import register_local_node
-  12: def load_config():
-  18: def build_peers(config, self_id):
-  26: def main(node_id, priority):
-
-===== ./runtime/cluster_view.py =====
-   1: class ClusterView:
-   3:     def __init__(self):
-
-===== ./runtime/dispatcher.py =====
-   2: import time
-   4: from cluster.runtime.event_log import (
-  10: from cluster.runtime.cluster_store import cluster_state
-  11: from cluster.runtime.event_router import forward_event
-  13: from cluster.utils.log_print import log_state
-  14: from cluster.runtime.leader import compute_leader
-  16: from cluster.runtime import context as ctx
-  18: from cluster.runtime.events.event_state import EventStatus
-  25: def dispatch_tick():
-  51: def dispatch_created_event(event):
-
-===== ./runtime/event_router.py =====
-   1: import time
-   2: import requests
-   4: from cluster.runtime.cluster_store import cluster_state
-   5: from cluster.runtime.registry import CLUSTER_REGISTRY
-   6: from cluster.runtime.leader import compute_leader
-   7: from cluster.utils.log_print import log_state
-   9: from cluster.runtime.events.cluster_event import ClusterEvent
-  10: from cluster.runtime.event_log import (
-  15: from cluster.runtime.events.event_state import EventStatus
-  22: def forward_to_leader(event: ClusterEvent):
-  50: import requests
-  52: from cluster.runtime.registry import CLUSTER_REGISTRY
-  53: from cluster.runtime.leader import compute_leader
-  54: from cluster.utils.log_print import log_state
-  55: from cluster.runtime.events.cluster_event import ClusterEvent
-  58: def forward_event(node_id: str, event: ClusterEvent):
-
-===== ./runtime/ingest.py =====
-   1: from cluster.runtime.event_log import append_event
-   2: from cluster.runtime.leader import compute_leader
-   3: from cluster.runtime.registry import CLUSTER_REGISTRY
-   4: from cluster.utils.log_print import log_state
-   5: from cluster.runtime.events.event_state import EventStatus
-   8: import requests
-  10: def ingest_event(event, node_id):
-
-===== ./runtime/locks.py =====
-
 ===== ./runtime/models.py =====
    1: from __future__ import annotations
    3: from dataclasses import dataclass, field
@@ -437,39 +237,6 @@
  108:     def touch(self) -> None:
  113: class HeartbeatState:
  122:     def to_record(self) -> dict[str, Any]:
-
-===== ./runtime/reconciler/reconciler_loop.py =====
-   1: import time
-   2: from collections import defaultdict
-   4: from cluster.runtime.event_log import load_events, append_event
-   5: from cluster.runtime.events.cluster_event import ClusterEvent
-   6: from cluster.runtime.events.event_state import EventStatus
-  12: def reconcile_tick(node_runtime):
-
-===== ./runtime/state_machine.py =====
-   3: from cluster.runtime.events.event_state import EventStatus, validate_transition
-   4: from cluster.runtime.event_log import load_events, append_event
-   6: from cluster.runtime.events.cluster_event import ClusterEvent
-   8: def transition_event(event_id: str, new_status):
-
-===== ./runtime/worker/event_worker.py =====
-   5: import time
-   6: from cluster.runtime.event_log import append_event
-   7: from cluster.runtime.events.event_state import EventStatus
-   8: from cluster.utils.log_print import log_state
-  21: def run_business_logic(payload: dict):
-  29: def execute_event(event):
-
-===== ./storage/__init__.py =====
-
-===== ./storage/backend.py =====
-
-===== ./storage/json_backend.py =====
-
-===== ./transport/client.py =====
-   1: import requests
-   4: def send_heartbeat(peer_host, peer_port, payload, timeout=1.0):
-  23: def broadcast_heartbeat(peers, payload):
 
 ===== ./utils/__init__.py =====
 
@@ -802,37 +569,3 @@
  563: def wait_queue_drain():
  574: def print_stats():
  684: def main():
-
-===== ./watchdog/__init__.py =====
-
-===== ./watchdog/healthcheck.py =====
-
-===== ./watchdog/watchdog.py =====
-
-===== ./workers/__init__.py =====
-
-===== ./workers/cluster_worker.py =====
-   1: import time
-   3: from cluster.transport.server import register_local_node
-   5: class ClusterWorker:
-   7:     def __init__(self, node, peers, interval=1.0):
-  16:     def start(self):
-  30:     def stop(self):
-  36:     def tick(self):
-
-===== ./workers/heartbeat_worker.py =====
-   1: import time
-   2: from cluster.runtime.state import NodeState
-   5: class HeartbeatWorker:
-   7:     def __init__(self, nodes, lease_manager, interval=1.0):
-  15:     def start(self, ticks=5):
-  29:     def tick(self):
-  37:     def send_heartbeats(self):
-  52:     def expire_leases(self):
-  62:     def update_nodes(self):
-
-===== ./workers/lease_worker.py =====
-
-===== ./workers/replication_worker.py =====
-
-===== ./workers/watchdog_worker.py =====

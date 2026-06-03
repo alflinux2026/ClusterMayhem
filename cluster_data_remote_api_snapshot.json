@@ -1,0 +1,1385 @@
+{
+  "lnx200nas": {
+    "node": "lnx200nas",
+    "host": "100.100.1.200",
+    "health": {
+      "status": "ok",
+      "node": "lnx200nas",
+      "state": "ACTIVE",
+      "state_since": 1780506808.3573372,
+      "state_age_s": 14802.883,
+      "last_seen": 1780521611.2318482,
+      "seen_age_s": 0.008,
+      "last_watchdog": 1780521611.1868608,
+      "watchdog_age_s": 0.053,
+      "watchdog_busy": true,
+      "presence_age_s": 0.008,
+      "sleeping": false
+    },
+    "dashboard": {
+      "cluster": {
+        "node_id": "lnx200nas",
+        "leader": "lnx200nas",
+        "generated_at": 1780521611.218737,
+        "integrity_ok": true,
+        "local_state": "ACTIVE",
+        "local_state_since": 1780506808.3573372,
+        "local_state_age_s": 14802.9
+      },
+      "local": {
+        "events_summary": {
+          "node_id": "lnx200nas",
+          "scope": "local",
+          "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+          "total_events": 496,
+          "counts": {
+            "created": 496,
+            "executing": 0,
+            "completed": 0,
+            "unknown": 0
+          },
+          "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea"
+        },
+        "integrity": {
+          "node_id": "lnx200nas",
+          "alive_nodes": [
+            "lnx200nas",
+            "lnx202pc",
+            "lnx203hp"
+          ],
+          "self_view": {
+            "state": "ACTIVE",
+            "state_since": 1780506808.3573372,
+            "prev_state": "STAND-BY",
+            "state_reason": "leader_selected",
+            "priority": 1,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 438,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                "total_events": 438
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 496,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                "total_events": 496
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 496,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                "total_events": 496
+              }
+            }
+          },
+          "peer_status": {
+            "lnx200nas": {
+              "view": {
+                "state": "ACTIVE",
+                "state_since": 1780506808.3573372,
+                "prev_state": "STAND-BY",
+                "state_reason": "leader_selected",
+                "priority": 1,
+                "log_meta": {},
+                "streams": {
+                  "events_summary_completed": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 438,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                    "total_events": 438
+                  },
+                  "events_summary_created": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 496,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                    "total_events": 496
+                  },
+                  "events_summary_executing": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 0,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": null,
+                    "total_events": 0
+                  },
+                  "events_summary_local": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 496,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                    "total_events": 496
+                  }
+                }
+              },
+              "view_ok": true
+            },
+            "lnx203hp": {
+              "view": {
+                "state": "STAND-BY",
+                "state_since": 1780507009.2773142,
+                "prev_state": "ACTIVE",
+                "state_reason": "leader_lost",
+                "priority": 3,
+                "log_meta": {},
+                "streams": {}
+              },
+              "view_ok": true
+            },
+            "lnx202pc": {
+              "view": {
+                "state": "STAND-BY",
+                "state_since": 1780516827.1841674,
+                "prev_state": "ACTIVE",
+                "state_reason": "leader_lost",
+                "priority": 2,
+                "log_meta": {},
+                "streams": {}
+              },
+              "view_ok": true
+            }
+          },
+          "integrity_canonical": {
+            "log_size": 389078,
+            "file_size": 389078,
+            "last_append_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+            "last_append_created_at": 1780507005.5230196
+          },
+          "integrity_hash": "dc41acfceecf712d6ec21cf2540737c649700bf2358879e1f4ee206ec8cfae87",
+          "integrity_ok": true
+        },
+        "progress": {
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      },
+      "nodes": [
+        {
+          "node_id": "lnx200nas",
+          "state": "ACTIVE",
+          "state_since": 1780506808.3573372,
+          "state_age_s": 14802.9,
+          "prev_state": "STAND-BY",
+          "state_reason": "leader_selected",
+          "priority": 1,
+          "last_seen": 1780521611.2318482,
+          "seen_age_s": 0.0,
+          "last_watchdog": 1780521611.1868608,
+          "watchdog_age_s": 0.0,
+          "watchdog_busy": true,
+          "presence_age_s": 0.0,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 496,
+          "created": 496,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx202pc",
+          "state": "STAND-BY",
+          "state_since": 1780516827.1841674,
+          "state_age_s": 4784.0,
+          "prev_state": "ACTIVE",
+          "state_reason": "leader_lost",
+          "priority": 2,
+          "last_seen": 1780521610.594012,
+          "seen_age_s": 0.6,
+          "last_watchdog": 1780521610.60504,
+          "watchdog_age_s": 0.6,
+          "watchdog_busy": true,
+          "presence_age_s": 0.6,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx203hp",
+          "state": "STAND-BY",
+          "state_since": 1780507009.2773142,
+          "state_age_s": 14601.9,
+          "prev_state": "ACTIVE",
+          "state_reason": "leader_lost",
+          "priority": 3,
+          "last_seen": 1780521611.13725,
+          "seen_age_s": 0.1,
+          "last_watchdog": 1780521611.1457732,
+          "watchdog_age_s": 0.1,
+          "watchdog_busy": true,
+          "presence_age_s": 0.1,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      ]
+    },
+    "integrity": {
+      "node_id": "lnx200nas",
+      "alive_nodes": [
+        "lnx200nas",
+        "lnx202pc",
+        "lnx203hp"
+      ],
+      "self_view": {
+        "state": "ACTIVE",
+        "state_since": 1780506808.3573372,
+        "prev_state": "STAND-BY",
+        "state_reason": "leader_selected",
+        "priority": 1,
+        "log_meta": {},
+        "streams": {
+          "events_summary_completed": {
+            "counts": {
+              "completed": 0,
+              "created": 438,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+            "total_events": 438
+          },
+          "events_summary_created": {
+            "counts": {
+              "completed": 0,
+              "created": 496,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+            "total_events": 496
+          },
+          "events_summary_executing": {
+            "counts": {
+              "completed": 0,
+              "created": 0,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": null,
+            "total_events": 0
+          },
+          "events_summary_local": {
+            "counts": {
+              "completed": 0,
+              "created": 496,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+            "total_events": 496
+          }
+        }
+      },
+      "peer_status": {
+        "lnx200nas": {
+          "view": {
+            "state": "ACTIVE",
+            "state_since": 1780506808.3573372,
+            "prev_state": "STAND-BY",
+            "state_reason": "leader_selected",
+            "priority": 1,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 438,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                "total_events": 438
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 496,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                "total_events": 496
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 496,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+                "total_events": 496
+              }
+            }
+          },
+          "view_ok": true
+        },
+        "lnx203hp": {
+          "view": {
+            "state": "STAND-BY",
+            "state_since": 1780507009.2773142,
+            "prev_state": "ACTIVE",
+            "state_reason": "leader_lost",
+            "priority": 3,
+            "log_meta": {},
+            "streams": {}
+          },
+          "view_ok": true
+        },
+        "lnx202pc": {
+          "view": {
+            "state": "STAND-BY",
+            "state_since": 1780516827.1841674,
+            "prev_state": "ACTIVE",
+            "state_reason": "leader_lost",
+            "priority": 2,
+            "log_meta": {},
+            "streams": {}
+          },
+          "view_ok": true
+        }
+      },
+      "integrity_canonical": {
+        "log_size": 389078,
+        "file_size": 389078,
+        "last_append_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
+        "last_append_created_at": 1780507005.5230196
+      },
+      "integrity_hash": "dc41acfceecf712d6ec21cf2540737c649700bf2358879e1f4ee206ec8cfae87",
+      "integrity_ok": true
+    },
+    "events_summary_local": {
+      "node_id": "lnx200nas",
+      "scope": "local",
+      "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+      "total_events": 496,
+      "counts": {
+        "created": 496,
+        "executing": 0,
+        "completed": 0,
+        "unknown": 0
+      },
+      "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea"
+    }
+  },
+  "lnx202pc": {
+    "node": "lnx202pc",
+    "host": "100.100.1.202",
+    "health": {
+      "status": "ok",
+      "node": "lnx202pc",
+      "state": "STAND-BY",
+      "state_since": 1780516827.1841674,
+      "state_age_s": 4784.525,
+      "last_seen": 1780521611.7013917,
+      "seen_age_s": 0.008,
+      "last_watchdog": 1780521611.6491368,
+      "watchdog_age_s": 0.06,
+      "watchdog_busy": true,
+      "presence_age_s": 0.008,
+      "sleeping": false
+    },
+    "dashboard": {
+      "cluster": {
+        "node_id": "lnx202pc",
+        "leader": "lnx200nas",
+        "generated_at": 1780521611.570453,
+        "integrity_ok": true,
+        "local_state": "STAND-BY",
+        "local_state_since": 1780516827.1841674,
+        "local_state_age_s": 4784.4
+      },
+      "local": {
+        "events_summary": {
+          "node_id": "lnx202pc",
+          "scope": "local",
+          "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+          "total_events": 2216,
+          "counts": {
+            "created": 2216,
+            "executing": 0,
+            "completed": 0,
+            "unknown": 0
+          },
+          "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574"
+        },
+        "integrity": {
+          "node_id": "lnx202pc",
+          "alive_nodes": [
+            "lnx200nas",
+            "lnx202pc",
+            "lnx203hp"
+          ],
+          "self_view": {
+            "state": "STAND-BY",
+            "state_since": 1780516827.1841674,
+            "prev_state": "ACTIVE",
+            "state_reason": "leader_lost",
+            "priority": 2,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2153,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                "total_events": 2153
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2216,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                "total_events": 2216
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2216,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                "total_events": 2216
+              }
+            }
+          },
+          "peer_status": {
+            "lnx202pc": {
+              "view": {
+                "state": "STAND-BY",
+                "state_since": 1780516827.1841674,
+                "prev_state": "ACTIVE",
+                "state_reason": "leader_lost",
+                "priority": 2,
+                "log_meta": {},
+                "streams": {
+                  "events_summary_completed": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 2153,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                    "total_events": 2153
+                  },
+                  "events_summary_created": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 2216,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                    "total_events": 2216
+                  },
+                  "events_summary_executing": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 0,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": null,
+                    "total_events": 0
+                  },
+                  "events_summary_local": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 2216,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                    "total_events": 2216
+                  }
+                }
+              },
+              "view_ok": true
+            },
+            "lnx200nas": {
+              "view": {
+                "state": "ACTIVE",
+                "state_since": 1780506808.3573372,
+                "prev_state": "STAND-BY",
+                "state_reason": "leader_selected",
+                "priority": 1,
+                "log_meta": {},
+                "streams": {}
+              },
+              "view_ok": true
+            },
+            "lnx203hp": {
+              "view": {
+                "state": "STAND-BY",
+                "state_since": 1780507009.2773142,
+                "prev_state": "ACTIVE",
+                "state_reason": "leader_lost",
+                "priority": 3,
+                "log_meta": {},
+                "streams": {}
+              },
+              "view_ok": true
+            }
+          },
+          "integrity_canonical": {
+            "log_size": 1752866,
+            "file_size": 1752866,
+            "last_append_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+            "last_append_created_at": 1780507006.1237574
+          },
+          "integrity_hash": "4fec34cc379754ce8c6ff7ad64948c874c243b7911117189253cf4d64d2d3530",
+          "integrity_ok": true
+        },
+        "progress": {
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      },
+      "nodes": [
+        {
+          "node_id": "lnx200nas",
+          "state": "ACTIVE",
+          "state_since": 1780506808.3573372,
+          "state_age_s": 14803.2,
+          "prev_state": "STAND-BY",
+          "state_reason": "leader_selected",
+          "priority": 1,
+          "last_seen": 1780521611.1703763,
+          "seen_age_s": 0.4,
+          "last_watchdog": 1780521611.1868608,
+          "watchdog_age_s": 0.4,
+          "watchdog_busy": true,
+          "presence_age_s": 0.4,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx202pc",
+          "state": "STAND-BY",
+          "state_since": 1780516827.1841674,
+          "state_age_s": 4784.4,
+          "prev_state": "ACTIVE",
+          "state_reason": "leader_lost",
+          "priority": 2,
+          "last_seen": 1780521611.7013917,
+          "seen_age_s": 0.0,
+          "last_watchdog": 1780521611.6491368,
+          "watchdog_age_s": 0.0,
+          "watchdog_busy": true,
+          "presence_age_s": 0.0,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 2216,
+          "created": 2216,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx203hp",
+          "state": "STAND-BY",
+          "state_since": 1780507009.2773142,
+          "state_age_s": 14602.3,
+          "prev_state": "ACTIVE",
+          "state_reason": "leader_lost",
+          "priority": 3,
+          "last_seen": 1780521611.1462796,
+          "seen_age_s": 0.4,
+          "last_watchdog": 1780521611.1457732,
+          "watchdog_age_s": 0.4,
+          "watchdog_busy": true,
+          "presence_age_s": 0.4,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      ]
+    },
+    "integrity": {
+      "node_id": "lnx202pc",
+      "alive_nodes": [
+        "lnx200nas",
+        "lnx202pc",
+        "lnx203hp"
+      ],
+      "self_view": {
+        "state": "STAND-BY",
+        "state_since": 1780516827.1841674,
+        "prev_state": "ACTIVE",
+        "state_reason": "leader_lost",
+        "priority": 2,
+        "log_meta": {},
+        "streams": {
+          "events_summary_completed": {
+            "counts": {
+              "completed": 0,
+              "created": 2153,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+            "total_events": 2153
+          },
+          "events_summary_created": {
+            "counts": {
+              "completed": 0,
+              "created": 2216,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+            "total_events": 2216
+          },
+          "events_summary_executing": {
+            "counts": {
+              "completed": 0,
+              "created": 0,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": null,
+            "total_events": 0
+          },
+          "events_summary_local": {
+            "counts": {
+              "completed": 0,
+              "created": 2216,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+            "total_events": 2216
+          }
+        }
+      },
+      "peer_status": {
+        "lnx202pc": {
+          "view": {
+            "state": "STAND-BY",
+            "state_since": 1780516827.1841674,
+            "prev_state": "ACTIVE",
+            "state_reason": "leader_lost",
+            "priority": 2,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2153,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                "total_events": 2153
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2216,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                "total_events": 2216
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2216,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+                "total_events": 2216
+              }
+            }
+          },
+          "view_ok": true
+        },
+        "lnx200nas": {
+          "view": {
+            "state": "ACTIVE",
+            "state_since": 1780506808.3573372,
+            "prev_state": "STAND-BY",
+            "state_reason": "leader_selected",
+            "priority": 1,
+            "log_meta": {},
+            "streams": {}
+          },
+          "view_ok": true
+        },
+        "lnx203hp": {
+          "view": {
+            "state": "STAND-BY",
+            "state_since": 1780507009.2773142,
+            "prev_state": "ACTIVE",
+            "state_reason": "leader_lost",
+            "priority": 3,
+            "log_meta": {},
+            "streams": {}
+          },
+          "view_ok": true
+        }
+      },
+      "integrity_canonical": {
+        "log_size": 1752866,
+        "file_size": 1752866,
+        "last_append_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
+        "last_append_created_at": 1780507006.1237574
+      },
+      "integrity_hash": "4fec34cc379754ce8c6ff7ad64948c874c243b7911117189253cf4d64d2d3530",
+      "integrity_ok": true
+    },
+    "events_summary_local": {
+      "node_id": "lnx202pc",
+      "scope": "local",
+      "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+      "total_events": 2216,
+      "counts": {
+        "created": 2216,
+        "executing": 0,
+        "completed": 0,
+        "unknown": 0
+      },
+      "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574"
+    }
+  },
+  "lnx203hp": {
+    "node": "lnx203hp",
+    "host": "100.100.1.203",
+    "health": {
+      "status": "ok",
+      "node": "lnx203hp",
+      "state": "STAND-BY",
+      "state_since": 1780507009.2773142,
+      "state_age_s": 14602.9,
+      "last_seen": 1780521612.1743605,
+      "seen_age_s": 0.003,
+      "last_watchdog": 1780521611.1457732,
+      "watchdog_age_s": 1.031,
+      "watchdog_busy": true,
+      "presence_age_s": 0.003,
+      "sleeping": false
+    },
+    "dashboard": {
+      "cluster": {
+        "node_id": "lnx203hp",
+        "leader": "lnx200nas",
+        "generated_at": 1780521612.141352,
+        "integrity_ok": true,
+        "local_state": "STAND-BY",
+        "local_state_since": 1780507009.2773142,
+        "local_state_age_s": 14602.9
+      },
+      "local": {
+        "events_summary": {
+          "node_id": "lnx203hp",
+          "scope": "local",
+          "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+          "total_events": 1014,
+          "counts": {
+            "created": 1014,
+            "executing": 0,
+            "completed": 0,
+            "unknown": 0
+          },
+          "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861"
+        },
+        "integrity": {
+          "node_id": "lnx203hp",
+          "alive_nodes": [
+            "lnx200nas",
+            "lnx202pc",
+            "lnx203hp"
+          ],
+          "self_view": {
+            "state": "STAND-BY",
+            "state_since": 1780507009.2773142,
+            "prev_state": "ACTIVE",
+            "state_reason": "leader_lost",
+            "priority": 3,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 1007,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                "total_events": 1007
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 1014,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                "total_events": 1014
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 1014,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                "total_events": 1014
+              }
+            }
+          },
+          "peer_status": {
+            "lnx203hp": {
+              "view": {
+                "state": "STAND-BY",
+                "state_since": 1780507009.2773142,
+                "prev_state": "ACTIVE",
+                "state_reason": "leader_lost",
+                "priority": 3,
+                "log_meta": {},
+                "streams": {
+                  "events_summary_completed": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 1007,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                    "total_events": 1007
+                  },
+                  "events_summary_created": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 1014,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                    "total_events": 1014
+                  },
+                  "events_summary_executing": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 0,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": null,
+                    "total_events": 0
+                  },
+                  "events_summary_local": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 1014,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                    "total_events": 1014
+                  }
+                }
+              },
+              "view_ok": true
+            },
+            "lnx200nas": {
+              "view": {
+                "state": "ACTIVE",
+                "state_since": 1780506808.3573372,
+                "prev_state": "STAND-BY",
+                "state_reason": "leader_selected",
+                "priority": 1,
+                "log_meta": {},
+                "streams": {}
+              },
+              "view_ok": true
+            },
+            "lnx202pc": {
+              "view": {
+                "state": "STAND-BY",
+                "state_since": 1780516827.1841674,
+                "prev_state": "ACTIVE",
+                "state_reason": "leader_lost",
+                "priority": 2,
+                "log_meta": {},
+                "streams": {}
+              },
+              "view_ok": true
+            }
+          },
+          "integrity_canonical": {
+            "log_size": 800418,
+            "file_size": 800418,
+            "last_append_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+            "last_append_created_at": 1780507003.6719484
+          },
+          "integrity_hash": "71aded5cfb34c3cc2d538476b2b9527a97cc221cde6e9390f23aff43f3037e7d",
+          "integrity_ok": true
+        },
+        "progress": {
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      },
+      "nodes": [
+        {
+          "node_id": "lnx200nas",
+          "state": "ACTIVE",
+          "state_since": 1780506808.3573372,
+          "state_age_s": 14803.8,
+          "prev_state": "STAND-BY",
+          "state_reason": "leader_selected",
+          "priority": 1,
+          "last_seen": 1780521611.1830726,
+          "seen_age_s": 1.0,
+          "last_watchdog": 1780521611.1868608,
+          "watchdog_age_s": 1.0,
+          "watchdog_busy": true,
+          "presence_age_s": 1.0,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx202pc",
+          "state": "STAND-BY",
+          "state_since": 1780516827.1841674,
+          "state_age_s": 4785.0,
+          "prev_state": "ACTIVE",
+          "state_reason": "leader_lost",
+          "priority": 2,
+          "last_seen": 1780521611.6431417,
+          "seen_age_s": 0.5,
+          "last_watchdog": 1780521611.6491368,
+          "watchdog_age_s": 0.5,
+          "watchdog_busy": true,
+          "presence_age_s": 0.5,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx203hp",
+          "state": "STAND-BY",
+          "state_since": 1780507009.2773142,
+          "state_age_s": 14602.9,
+          "prev_state": "ACTIVE",
+          "state_reason": "leader_lost",
+          "priority": 3,
+          "last_seen": 1780521612.1713562,
+          "seen_age_s": 0.0,
+          "last_watchdog": 1780521611.1457732,
+          "watchdog_age_s": 1.0,
+          "watchdog_busy": true,
+          "presence_age_s": 0.0,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 1014,
+          "created": 1014,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      ]
+    },
+    "integrity": {
+      "node_id": "lnx203hp",
+      "alive_nodes": [
+        "lnx200nas",
+        "lnx202pc",
+        "lnx203hp"
+      ],
+      "self_view": {
+        "state": "STAND-BY",
+        "state_since": 1780507009.2773142,
+        "prev_state": "ACTIVE",
+        "state_reason": "leader_lost",
+        "priority": 3,
+        "log_meta": {},
+        "streams": {
+          "events_summary_completed": {
+            "counts": {
+              "completed": 0,
+              "created": 1007,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+            "total_events": 1007
+          },
+          "events_summary_created": {
+            "counts": {
+              "completed": 0,
+              "created": 1014,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+            "total_events": 1014
+          },
+          "events_summary_executing": {
+            "counts": {
+              "completed": 0,
+              "created": 0,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": null,
+            "total_events": 0
+          },
+          "events_summary_local": {
+            "counts": {
+              "completed": 0,
+              "created": 1014,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+            "total_events": 1014
+          }
+        }
+      },
+      "peer_status": {
+        "lnx203hp": {
+          "view": {
+            "state": "STAND-BY",
+            "state_since": 1780507009.2773142,
+            "prev_state": "ACTIVE",
+            "state_reason": "leader_lost",
+            "priority": 3,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 1007,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                "total_events": 1007
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 1014,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                "total_events": 1014
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 1014,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+                "total_events": 1014
+              }
+            }
+          },
+          "view_ok": true
+        },
+        "lnx200nas": {
+          "view": {
+            "state": "ACTIVE",
+            "state_since": 1780506808.3573372,
+            "prev_state": "STAND-BY",
+            "state_reason": "leader_selected",
+            "priority": 1,
+            "log_meta": {},
+            "streams": {}
+          },
+          "view_ok": true
+        },
+        "lnx202pc": {
+          "view": {
+            "state": "STAND-BY",
+            "state_since": 1780516827.1841674,
+            "prev_state": "ACTIVE",
+            "state_reason": "leader_lost",
+            "priority": 2,
+            "log_meta": {},
+            "streams": {}
+          },
+          "view_ok": true
+        }
+      },
+      "integrity_canonical": {
+        "log_size": 800418,
+        "file_size": 800418,
+        "last_append_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
+        "last_append_created_at": 1780507003.6719484
+      },
+      "integrity_hash": "71aded5cfb34c3cc2d538476b2b9527a97cc221cde6e9390f23aff43f3037e7d",
+      "integrity_ok": true
+    },
+    "events_summary_local": {
+      "node_id": "lnx203hp",
+      "scope": "local",
+      "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+      "total_events": 1014,
+      "counts": {
+        "created": 1014,
+        "executing": 0,
+        "completed": 0,
+        "unknown": 0
+      },
+      "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861"
+    }
+  }
+}

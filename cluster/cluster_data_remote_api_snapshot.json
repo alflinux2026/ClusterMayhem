@@ -3,40 +3,818 @@
     "node": "lnx200nas",
     "host": "100.100.1.200",
     "health": {
-      "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Max retries exceeded with url: /health (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.200', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-      "url": "http://100.100.1.200:7000/health"
+      "status": "ok",
+      "node": "lnx200nas",
+      "state": "ACTIVE",
+      "state_since": 1780399672.9236243,
+      "state_age_s": 8785.251,
+      "last_seen": 1780408458.1567945,
+      "seen_age_s": 0.018,
+      "last_watchdog": 1780408456.8702781,
+      "watchdog_age_s": 1.304,
+      "watchdog_busy": true,
+      "presence_age_s": 0.018,
+      "sleeping": false
     },
     "dashboard": {
-      "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Max retries exceeded with url: /dashboard/compact (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.200', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-      "url": "http://100.100.1.200:7000/dashboard/compact"
+      "cluster": {
+        "node_id": "lnx200nas",
+        "leader": "lnx200nas",
+        "generated_at": 1780408458.0993557,
+        "integrity_ok": true,
+        "local_state": "ACTIVE",
+        "local_state_since": 1780399672.9236243,
+        "local_state_age_s": 8785.2
+      },
+      "local": {
+        "events_summary": {
+          "node_id": "lnx200nas",
+          "scope": "local",
+          "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+          "total_events": 2038,
+          "counts": {
+            "created": 2038,
+            "executing": 0,
+            "completed": 0,
+            "unknown": 0
+          },
+          "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393"
+        },
+        "integrity": {
+          "node_id": "lnx200nas",
+          "alive_nodes": [
+            "lnx200nas"
+          ],
+          "self_view": {
+            "state": "ACTIVE",
+            "state_since": 1780399672.9236243,
+            "prev_state": "STAND-BY",
+            "state_reason": "leader_selected",
+            "priority": 1,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 1764,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "3b0fb1c1-ef5c-443f-9c70-4d0ab876715f",
+                "total_events": 1764
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2038,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+                "total_events": 2038
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2038,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+                "total_events": 2038
+              }
+            }
+          },
+          "peer_status": {
+            "lnx200nas": {
+              "view": {
+                "state": "ACTIVE",
+                "state_since": 1780399672.9236243,
+                "prev_state": "STAND-BY",
+                "state_reason": "leader_selected",
+                "priority": 1,
+                "log_meta": {},
+                "streams": {
+                  "events_summary_completed": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 1764,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "3b0fb1c1-ef5c-443f-9c70-4d0ab876715f",
+                    "total_events": 1764
+                  },
+                  "events_summary_created": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 2038,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+                    "total_events": 2038
+                  },
+                  "events_summary_executing": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 0,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": null,
+                    "total_events": 0
+                  },
+                  "events_summary_local": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 2038,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+                    "total_events": 2038
+                  }
+                }
+              },
+              "view_ok": true
+            }
+          },
+          "integrity_canonical": {
+            "log_size": 1582200,
+            "file_size": 1582200,
+            "last_append_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+            "last_append_created_at": 1780403446.2034283
+          },
+          "integrity_hash": "b0e4aeabf03adaa6cb30ca81c8a8a225f10aa92f985799a2df84b4cc68e809ea",
+          "integrity_ok": true
+        },
+        "progress": {
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      },
+      "nodes": [
+        {
+          "node_id": "lnx200nas",
+          "state": "ACTIVE",
+          "state_since": 1780399672.9236243,
+          "state_age_s": 8785.2,
+          "prev_state": "STAND-BY",
+          "state_reason": "leader_selected",
+          "priority": 1,
+          "last_seen": 1780408458.1567945,
+          "seen_age_s": 0.0,
+          "last_watchdog": 1780408456.8702781,
+          "watchdog_age_s": 1.2,
+          "watchdog_busy": true,
+          "presence_age_s": 0.0,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 2038,
+          "created": 2038,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx202pc",
+          "state": "ACTIVE",
+          "state_since": 1780408443.009207,
+          "state_age_s": 15.1,
+          "prev_state": "STAND-BY",
+          "state_reason": "leader_selected",
+          "priority": 2,
+          "last_seen": 1780408456.3536804,
+          "seen_age_s": 1.7,
+          "last_watchdog": 1780408456.3488057,
+          "watchdog_age_s": 1.8,
+          "watchdog_busy": true,
+          "presence_age_s": 1.7,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx203hp",
+          "state": "STAND-BY",
+          "state_since": 1780400204.9352412,
+          "state_age_s": 8253.2,
+          "prev_state": "ACTIVE",
+          "state_reason": "leader_lost",
+          "priority": 3,
+          "last_seen": 1780400204.945628,
+          "seen_age_s": 8253.2,
+          "last_watchdog": 1780400205.04773,
+          "watchdog_age_s": 8253.1,
+          "watchdog_busy": true,
+          "presence_age_s": 8253.1,
+          "health": "stale",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      ]
     },
     "integrity": {
-      "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Max retries exceeded with url: /integrity (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.200', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-      "url": "http://100.100.1.200:7000/integrity"
+      "node_id": "lnx200nas",
+      "alive_nodes": [
+        "lnx200nas"
+      ],
+      "self_view": {
+        "state": "ACTIVE",
+        "state_since": 1780399672.9236243,
+        "prev_state": "STAND-BY",
+        "state_reason": "leader_selected",
+        "priority": 1,
+        "log_meta": {},
+        "streams": {
+          "events_summary_completed": {
+            "counts": {
+              "completed": 0,
+              "created": 1764,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "3b0fb1c1-ef5c-443f-9c70-4d0ab876715f",
+            "total_events": 1764
+          },
+          "events_summary_created": {
+            "counts": {
+              "completed": 0,
+              "created": 2038,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+            "total_events": 2038
+          },
+          "events_summary_executing": {
+            "counts": {
+              "completed": 0,
+              "created": 0,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": null,
+            "total_events": 0
+          },
+          "events_summary_local": {
+            "counts": {
+              "completed": 0,
+              "created": 2038,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+            "total_events": 2038
+          }
+        }
+      },
+      "peer_status": {
+        "lnx200nas": {
+          "view": {
+            "state": "ACTIVE",
+            "state_since": 1780399672.9236243,
+            "prev_state": "STAND-BY",
+            "state_reason": "leader_selected",
+            "priority": 1,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 1764,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "3b0fb1c1-ef5c-443f-9c70-4d0ab876715f",
+                "total_events": 1764
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2038,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+                "total_events": 2038
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2038,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+                "total_events": 2038
+              }
+            }
+          },
+          "view_ok": true
+        }
+      },
+      "integrity_canonical": {
+        "log_size": 1582200,
+        "file_size": 1582200,
+        "last_append_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393",
+        "last_append_created_at": 1780403446.2034283
+      },
+      "integrity_hash": "b0e4aeabf03adaa6cb30ca81c8a8a225f10aa92f985799a2df84b4cc68e809ea",
+      "integrity_ok": true
     },
     "events_summary_local": {
-      "error": "HTTPConnectionPool(host='100.100.1.200', port=7000): Max retries exceeded with url: /debug/events/summary (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.200', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-      "url": "http://100.100.1.200:7000/debug/events/summary"
+      "node_id": "lnx200nas",
+      "scope": "local",
+      "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+      "total_events": 2038,
+      "counts": {
+        "created": 2038,
+        "executing": 0,
+        "completed": 0,
+        "unknown": 0
+      },
+      "last_event_id": "b08298c1-1935-419f-8ef7-3f55ec554393"
     }
   },
   "lnx202pc": {
     "node": "lnx202pc",
     "host": "100.100.1.202",
     "health": {
-      "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Max retries exceeded with url: /health (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.202', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-      "url": "http://100.100.1.202:7000/health"
+      "status": "ok",
+      "node": "lnx202pc",
+      "state": "ACTIVE",
+      "state_since": 1780408443.009207,
+      "state_age_s": 15.679,
+      "last_seen": 1780408458.678928,
+      "seen_age_s": 0.009,
+      "last_watchdog": 1780408458.52835,
+      "watchdog_age_s": 0.16,
+      "watchdog_busy": true,
+      "presence_age_s": 0.01,
+      "sleeping": false
     },
     "dashboard": {
-      "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Max retries exceeded with url: /dashboard/compact (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.202', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-      "url": "http://100.100.1.202:7000/dashboard/compact"
+      "cluster": {
+        "node_id": "lnx202pc",
+        "leader": "lnx202pc",
+        "generated_at": 1780408458.5926383,
+        "integrity_ok": true,
+        "local_state": "ACTIVE",
+        "local_state_since": 1780408443.009207,
+        "local_state_age_s": 15.6
+      },
+      "local": {
+        "events_summary": {
+          "node_id": "lnx202pc",
+          "scope": "local",
+          "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+          "total_events": 2477,
+          "counts": {
+            "created": 2477,
+            "executing": 0,
+            "completed": 0,
+            "unknown": 0
+          },
+          "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367"
+        },
+        "integrity": {
+          "node_id": "lnx202pc",
+          "alive_nodes": [
+            "lnx202pc"
+          ],
+          "self_view": {
+            "state": "ACTIVE",
+            "state_since": 1780408443.009207,
+            "prev_state": "STAND-BY",
+            "state_reason": "leader_selected",
+            "priority": 2,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2380,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                "total_events": 2380
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2477,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                "total_events": 2477
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2477,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                "total_events": 2477
+              }
+            }
+          },
+          "peer_status": {
+            "lnx202pc": {
+              "view": {
+                "state": "ACTIVE",
+                "state_since": 1780408443.009207,
+                "prev_state": "STAND-BY",
+                "state_reason": "leader_selected",
+                "priority": 2,
+                "log_meta": {},
+                "streams": {
+                  "events_summary_completed": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 2380,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                    "total_events": 2380
+                  },
+                  "events_summary_created": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 2477,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                    "total_events": 2477
+                  },
+                  "events_summary_executing": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 0,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": null,
+                    "total_events": 0
+                  },
+                  "events_summary_local": {
+                    "counts": {
+                      "completed": 0,
+                      "created": 2477,
+                      "executing": 0,
+                      "unknown": 0
+                    },
+                    "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                    "total_events": 2477
+                  }
+                }
+              },
+              "view_ok": true
+            }
+          },
+          "integrity_canonical": {
+            "log_size": 1948146,
+            "file_size": 1948146,
+            "last_append_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+            "last_append_created_at": 1780402264.4291656
+          },
+          "integrity_hash": "b610667d0871ea162c10e84ddaef41bed0b4617c2e4cc5e00759a4605c822440",
+          "integrity_ok": true
+        },
+        "progress": {
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      },
+      "nodes": [
+        {
+          "node_id": "lnx200nas",
+          "state": "ACTIVE",
+          "state_since": 1780399672.9236243,
+          "state_age_s": 8785.7,
+          "prev_state": "STAND-BY",
+          "state_reason": "leader_selected",
+          "priority": 1,
+          "last_seen": 1780408456.829043,
+          "seen_age_s": 1.8,
+          "last_watchdog": 1780408456.8702781,
+          "watchdog_age_s": 1.7,
+          "watchdog_busy": true,
+          "presence_age_s": 1.7,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx202pc",
+          "state": "ACTIVE",
+          "state_since": 1780408443.009207,
+          "state_age_s": 15.6,
+          "prev_state": "STAND-BY",
+          "state_reason": "leader_selected",
+          "priority": 2,
+          "last_seen": 1780408458.678928,
+          "seen_age_s": 0.0,
+          "last_watchdog": 1780408458.52835,
+          "watchdog_age_s": 0.1,
+          "watchdog_busy": true,
+          "presence_age_s": 0.0,
+          "health": "ok",
+          "local_size": 0,
+          "local_events": 2477,
+          "created": 2477,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        },
+        {
+          "node_id": "lnx203hp",
+          "state": "STAND-BY",
+          "state_since": 1780400204.9352412,
+          "state_age_s": 8253.7,
+          "prev_state": "ACTIVE",
+          "state_reason": "leader_lost",
+          "priority": 3,
+          "last_seen": 1780400205.041433,
+          "seen_age_s": 8253.6,
+          "last_watchdog": 1780400205.04773,
+          "watchdog_age_s": 8253.5,
+          "watchdog_busy": true,
+          "presence_age_s": 8253.5,
+          "health": "stale",
+          "local_size": 0,
+          "local_events": 0,
+          "created": 0,
+          "executing": 0,
+          "completed": 0,
+          "dirty": null,
+          "progress_active": false,
+          "progress_stage": null,
+          "progress_started_at": null,
+          "progress_touched_at": null,
+          "progress_age_s": null,
+          "progress_duration_s": null,
+          "progress_current": null,
+          "progress_total": null,
+          "progress_pct": null,
+          "progress_stalled": false,
+          "progress_meta": {}
+        }
+      ]
     },
     "integrity": {
-      "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Max retries exceeded with url: /integrity (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.202', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-      "url": "http://100.100.1.202:7000/integrity"
+      "node_id": "lnx202pc",
+      "alive_nodes": [
+        "lnx202pc"
+      ],
+      "self_view": {
+        "state": "ACTIVE",
+        "state_since": 1780408443.009207,
+        "prev_state": "STAND-BY",
+        "state_reason": "leader_selected",
+        "priority": 2,
+        "log_meta": {},
+        "streams": {
+          "events_summary_completed": {
+            "counts": {
+              "completed": 0,
+              "created": 2380,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+            "total_events": 2380
+          },
+          "events_summary_created": {
+            "counts": {
+              "completed": 0,
+              "created": 2477,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+            "total_events": 2477
+          },
+          "events_summary_executing": {
+            "counts": {
+              "completed": 0,
+              "created": 0,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": null,
+            "total_events": 0
+          },
+          "events_summary_local": {
+            "counts": {
+              "completed": 0,
+              "created": 2477,
+              "executing": 0,
+              "unknown": 0
+            },
+            "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+            "total_events": 2477
+          }
+        }
+      },
+      "peer_status": {
+        "lnx202pc": {
+          "view": {
+            "state": "ACTIVE",
+            "state_since": 1780408443.009207,
+            "prev_state": "STAND-BY",
+            "state_reason": "leader_selected",
+            "priority": 2,
+            "log_meta": {},
+            "streams": {
+              "events_summary_completed": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2380,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                "total_events": 2380
+              },
+              "events_summary_created": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2477,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                "total_events": 2477
+              },
+              "events_summary_executing": {
+                "counts": {
+                  "completed": 0,
+                  "created": 0,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": null,
+                "total_events": 0
+              },
+              "events_summary_local": {
+                "counts": {
+                  "completed": 0,
+                  "created": 2477,
+                  "executing": 0,
+                  "unknown": 0
+                },
+                "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+                "total_events": 2477
+              }
+            }
+          },
+          "view_ok": true
+        }
+      },
+      "integrity_canonical": {
+        "log_size": 1948146,
+        "file_size": 1948146,
+        "last_append_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367",
+        "last_append_created_at": 1780402264.4291656
+      },
+      "integrity_hash": "b610667d0871ea162c10e84ddaef41bed0b4617c2e4cc5e00759a4605c822440",
+      "integrity_ok": true
     },
     "events_summary_local": {
-      "error": "HTTPConnectionPool(host='100.100.1.202', port=7000): Max retries exceeded with url: /debug/events/summary (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.202', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-      "url": "http://100.100.1.202:7000/debug/events/summary"
+      "node_id": "lnx202pc",
+      "scope": "local",
+      "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
+      "total_events": 2477,
+      "counts": {
+        "created": 2477,
+        "executing": 0,
+        "completed": 0,
+        "unknown": 0
+      },
+      "last_event_id": "99ffe3bc-9956-4e4d-9350-3b1a3e5bc367"
     }
   },
   "lnx203hp": {
