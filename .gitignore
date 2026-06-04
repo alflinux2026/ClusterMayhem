@@ -11,6 +11,7 @@ state/runtime/
 state/cache/
 state/tmp/
 logs/
+cluster_data_remote*.*
 
 # Editors
 .vscode/
