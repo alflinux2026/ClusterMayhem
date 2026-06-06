@@ -50,3 +50,6 @@ cluster/data/*.jsonl
 cluster/data/*.json
 data/*.jsonl
 log*.jsonl
+
+
+cluster_data_remote_*.*
