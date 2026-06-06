@@ -1,0 +1,815 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# SOURCE_FILE      : py-last_code_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 006/006
+# PART_NUMBER      : 006
+# TOTAL_PARTS      : 006
+#
+# PREVIOUS_PART    : 005
+# NEXT_PART        : NONE
+#
+# CONTENT_LINES    : 780
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+   460	        - Si total_events > MAX_SEGMENT_COUNT, transiciona a DRAINING
+   461	        """
+   462	        self.node.emit_heartbeat(self.peers)
+   463	        emit_watchdog_if_due(self.peers, busy=True)
+   464	
+   465	        leader = compute_leader()
+   466	
+   467	        replicate_eventlog()
+   468	        replicate_events()
+   469	        leader_event_state_check_tick()
+   470	        if _should_enter_DRAINING(self.node):
+   471	            self.node.transition(NodeState.DRAINING, reason="segment_max_count")
+   472	
+   473	    def tick_active(self):
+   474	        """
+   475	        Tick del estado ACTIVE (líder).
+   476	
+   477	        Igual que tick_standby() pero el nodo es el líder.
+   478	        """
+   479	        self.node.emit_heartbeat(self.peers)
+   480	        emit_watchdog_if_due(self.peers, busy=True)
+   481	        replicate_eventlog()
+   482	        replicate_events()
+   483	        leader_event_state_check_tick()
+   484	        if _should_enter_DRAINING(self.node):
+   485	            self.node.transition(NodeState.DRAINING, reason="segment_max_count")
+   486	
+   487	    def tick_segmentation(self):
+   488	        """
+   489	        Tick del estado SEGMENTATION.
+   490	
+   491	        - Si no se puede segmentar, retorna sin hacer nada
+   492	        - Rota archivos de segmento (.local.000.jsonl -> .{node_id}.001.jsonl)
+   493	        - Elimina archivos rotados
+   494	        - Reconstruye cache de eventos
+   495	        - Transiciona a STANDBY
+   496	        """
+   497	        self.node.emit_heartbeat(self.peers)
+   498	        emit_watchdog_if_due(self.peers, busy=True)
+   499	
+   500	        can_seg = _can_segment(self.node)
+   501	        should_seg = _should_enter_segmentation(self.node)
+   502	
+   503	        if not should_seg:
+   504	            return False
+   505	
+   506	        result = rotate_segment_files(self.node.node_id, segment="000", files=["events", "event_log"], force=False)
+   507	        log_state("magenta", "SEGMENTATION", f"{self.node.node_id} rotate ok={bool(result)}", 3)
+   508	
+   509	        cleanup_local_segment_files(self.node.node_id, segment="000", files=["events", "event_log"])
+   510	        rebuild_node_event_cache(self.node.node_id)
+   511	        self.node.transition(NodeState.STANDBY, reason="segment_closed")
+   512	
+   513	        return True
+   514	
+   515	    def tick_DRAINING(self):
+   516	        """
+   517	        Tick del estado DRAINING (preparando segmentación).
+   518	
+   519	        - Emite heartbeat y watchdog
+   520	        - Replica logs
+   521	        - Reconstruye cache de eventos
+   522	        - Check de estado de eventos
+   523	        - Si _should_enter_segmentation(), transiciona a SEGMENTATION
+   524	        """
+   525	        self.node.emit_heartbeat(self.peers)
+   526	        emit_watchdog_if_due(self.peers, busy=True)
+   527	        replicate_eventlog()
+   528	        replicate_events()
+   529	        rebuild_node_event_cache(self.node.node_id)
+   530	        leader_event_state_check_tick()
+   531	        if _should_enter_segmentation(self.node):
+   532	            self.node.transition(NodeState.SEGMENTATION, reason="segment_ready")
+   533	
+   534	    def tick_isolated(self):
+   535	        """Tick del estado ISOLATED (sleep/pausa, no hace nada)."""
+   536	        pass
+   537	
+   538	    def tick_offline(self):
+   539	        """Tick del estado OFFLINE (desconectado, no hace nada)."""
+   540	        pass
+   541	
+   542	    def _tick_by_state(self):
+   543	        """
+   544	        Despacha el tick según el estado actual del nodo.
+   545	
+   546	        Llama a tick_boot(), tick_standby(), tick_active(), etc. según node.state.
+   547	        """
+   548	        state = self.node.state
+   549	        if state == NodeState.BOOT:
+   550	            self.tick_boot()
+   551	        elif state == NodeState.DISCOVERING:
+   552	            self.tick_discovering()
+   553	        elif state == NodeState.STANDBY:
+   554	            self.tick_standby()
+   555	        elif state == NodeState.ACTIVE:
+   556	            self.tick_active()
+   557	        elif state == NodeState.SEGMENTATION:
+   558	            self.tick_segmentation()
+   559	        elif state == NodeState.DRAINING:
+   560	            self.tick_DRAINING()
+   561	        elif state == NodeState.ISOLATED:
+   562	            self.tick_isolated()
+   563	        elif state == NodeState.OFFLINE:
+   564	            self.tick_offline()
+   565	
+   566	    def loop(self):
+   567	        """
+   568	        Loop infinito del worker.
+   569	
+   570	        Ejecuta:
+   571	            1. node.tick() (actualiza estado según quién es el líder)
+   572	            2. log_state_runtime_debug() (log cada 30s)
+   573	            3. Si estado es ISOLATED, skip el resto y sleep
+   574	            4. _tick_by_state() (tick según estado)
+   575	            5. Sleep hasta el próximo intervalo
+   576	        """
+   577	        while self.running:
+   578	            self.node.tick()
+   579	            log_state_runtime_debug(self.node)
+   580	            if self.node.state == NodeState.ISOLATED:
+   581	                continue
+   582	            self._tick_by_state()
+   583	            time.sleep(self.interval)
+
+
+===== ./cluster/runtime/registry.py =====
+     1	# File: ./cluster/runtime/registry.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:11:35+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/registry.py 0.0.0 2026-05-28T17:11:35+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Registro centralizado de nodos del cluster.
+    12	#   Mantiene un diccionario global con la información de todos los nodos
+    13	#   (host, port, priority) para permitir el enrutado de eventos y la
+    14	#   comunicación entre nodos.
+    15	# Notes:
+    16	#   - Este registro se inicializa durante el bootstrap con los nodos configurados
+    17	#   - Se usa en event_router.py para enrutar eventos al líder
+    18	#   - En un cluster dinámico, podría ampliarse con registro/descubrimiento automático
+    19	#   - No hay limpieza de nodos caídos (se asume estático o gestionado externamente)
+    20	#
+    21	# FRV-ID: 534531c72532d0c5
+    22	# Header_End
+    23	
+    24	# =============================================================================
+    25	# Registro global de nodos del cluster
+    26	# =============================================================================
+    27	
+    28	#: Diccionario global que mapea node_id -> información del nodo
+    29	#: Cada entry contiene: host, port, priority
+    30	#: Tipo: dict[str, dict[str, str | int]]
+    31	CLUSTER_REGISTRY = {}
+    32	
+    33	
+    34	def register_node(node_id: str, host: str, port: int, priority: int = 100):
+    35	    """
+    36	    Registra un nodo en el cluster.
+    37	
+    38	    Añade o actualiza un nodo en el registry con su información de conexión.
+    39	
+    40	    Args:
+    41	        node_id: ID único del nodo (string).
+    42	        host: Hostname o IP del nodo (ej: "100.100.1.200", "localhost").
+    43	        port: Puerto del nodo (ej: 8000, 7000).
+    44	        priority: Prioridad del nodo para leader election (menor = más prioridad).
+    45	                  Por defecto: 100.
+    46	
+    47	    Returns:
+    48	        dict: El entry del nodo recién registrado/actualizado.
+    49	
+    50	    Example:
+    51	        >>> register_node("lnx203hp", "100.100.1.200", 8000, priority=10)
+    52	        {'host': '100.100.1.200', 'port': 8000, 'priority': 10}
+    53	
+    54	        >>> register_node("lnx200nas", "100.100.1.201", 8000)
+    55	        {'host': '100.100.1.201', 'port': 8000, 'priority': 100}
+    56	
+    57	    Note:
+    58	        - Si el node_id ya existe, se sobrescribe la información
+    59	        - El priority se usa en compute_leader() para seleccionar el líder
+    60	    """
+    61	    CLUSTER_REGISTRY[node_id] = {
+    62	        "host": host,
+    63	        "port": port,
+    64	        "priority": priority,
+    65	    }
+    66	    return CLUSTER_REGISTRY[node_id]
+    67	
+    68	
+    69	def get_node(node_id: str):
+    70	    """
+    71	    Obtiene la información de un nodo del registry.
+    72	
+    73	    Args:
+    74	        node_id: ID del nodo a buscar.
+    75	
+    76	    Returns:
+    77	        dict | None: El dict del nodo si existe, None si no está registrado.
+    78	
+    79	    Example:
+    80	        >>> get_node("lnx203hp")
+    81	        {'host': '100.100.1.200', 'port': 8000, 'priority': 10}
+    82	
+    83	        >>> get_node("nodonotexist")
+    84	        None
+    85	
+    86	    Note:
+    87	        - Se usa en event_router.py para obtener host/port del líder
+    88	        - Retorna None si el nodo no está en el registry (no levanta exception)
+    89	    """
+    90	    return CLUSTER_REGISTRY.get(node_id)
+
+
+===== ./cluster/runtime/state.py =====
+     1	# File: ./cluster/runtime/state.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:11:50+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/state.py 0.0.0 2026-05-28T17:11:50+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Definición de estados del nodo y transiciones de estado.
+    12	#   Define la máquina de estados finitos (FSM) que controla el ciclo de vida
+    13	#   de un nodo en el cluster: BOOT -> DISCOVERING -> STANDBY -> ACTIVE, etc.
+    14	#   También proporciona funciones para transicionar entre estados y calcular
+    15	#   la antigüedad del estado actual.
+    16	# Notes:
+    17	#   - Estados principales: BOOT -> DISCOVERING -> STANDBY -> ACTIVE
+    18	#   - Estados especiales: SEGMENTATION (rotación de logs), DRAINING (preparando segmentación),
+    19	#                        ISOLATED (sleep/pausa), OFFLINE (desconectado)
+    20	#   - Cada estado tiene: state_since (timestamp), prev_state, state_reason
+    21	#   - Se usa en node_runtime.py y node_worker.py para controlar el ciclo de vida
+    22	#   - No hay validación estricta de transiciones válidas (se permite cualquier transición)
+    23	#
+    24	# FRV-ID: 606b01b5d3a56e66
+    25	# Header_End
+    26	
+    27	# state.py
+    28	import time
+    29	from enum import Enum
+    30	
+    31	
+    32	class NodeState(str, Enum):
+    33	    """
+    34	    Estados del nodo en el cluster.
+    35	
+    36	    Ciclo de vida típico:
+    37	        BOOT -> DISCOVERING -> STANDBY -> ACTIVE
+    38	
+    39	    Estados especiales:
+    40	        - SEGMENTATION: rotando archivos de log (segmentación)
+    41	        - DRAINING: esperando a que no haya eventos pendientes antes de segmentar
+    42	        - ISOLATED: nodo pausado/sleep (no procesa eventos)
+    43	        - OFFLINE: nodo desconectado (no responde)
+    44	
+    45	    Example:
+    46	        >>> NodeState.ACTIVE
+    47	        <NodeState.ACTIVE: 'ACTIVE'>
+    48	
+    49	        >>> NodeState.ACTIVE.value
+    50	        'ACTIVE'
+    51	
+    52	        >>> str(NodeState.STANDBY)
+    53	        'STAND-BY'
+    54	
+    55	    Note:
+    56	        - Hereda de str para poder comparar directamente con strings
+    57	        - value es el nombre del estado en mayúsculas (excepto STANDBY -> "STAND-BY")
+    58	    """
+    59	    BOOT = "BOOT"
+    60	    DISCOVERING = "DISCOVERING"
+    61	    STANDBY = "STAND-BY"
+    62	    ACTIVE = "ACTIVE"
+    63	    SEGMENTATION = "SEGMENTATION"
+    64	    DRAINING = "DRAINING"
+    65	    ISOLATED = "ISOLATED"
+    66	    OFFLINE = "OFFLINE"
+    67	
+    68	
+    69	def _state_value(value):
+    70	    """
+    71	    Extrae el valor string de un estado.
+    72	
+    73	    Convierte un NodeState (enum) a su valor string, o deja el string tal cual
+    74	    si ya es string.
+    75	
+    76	    Args:
+    77	        value: NodeState enum o string.
+    78	
+    79	    Returns:
+    80	        str: El valor string del estado.
+    81	
+    82	    Example:
+    83	        >>> _state_value(NodeState.ACTIVE)
+    84	        'ACTIVE'
+    85	
+    86	        >>> _state_value("ACTIVE")
+    87	        'ACTIVE'
+    88	    """
+    89	    return value.value if isinstance(value, Enum) else str(value)
+    90	
+    91	
+    92	def ensure_state_meta(node, now=None):
+    93	    """
+    94	    Asegura que el nodo tiene los metadatos de estado iniciales.
+    95	
+    96	    Añade los atributos si no existen:
+    97	        - state_since: timestamp cuando se entró al estado actual
+    98	        - prev_state: estado anterior (None si es el primero)
+    99	        - state_reason: razón de la última transición
+   100	
+   101	    Args:
+   102	        node: Objeto nodo (tiene atributo state).
+   103	        now: Timestamp opcional. Si no se proporciona, usa time.time().
+   104	
+   105	    Returns:
+   106	        Node: El mismo nodo con los metadatos asegurados.
+   107	
+   108	    Example:
+   109	        >>> class Node:
+   110	        ...     state = NodeState.ACTIVE
+   111	        >>> node = Node()
+   112	        >>> ensure_state_meta(node)
+   113	        >>> node.state_since
+   114	        1779956226.123
+   115	        >>> node.prev_state
+   116	        None
+   117	        >>> node.state_reason
+   118	        None
+   119	
+   120	    Note:
+   121	        - Solo añade los atributos si no existen (no sobrescribe)
+   122	        - Se llama antes de calcular state_age o transicionar
+   123	    """
+   124	    now = now or time.time()
+   125	
+   126	    if not hasattr(node, "state_since") or node.state_since is None:
+   127	        node.state_since = now
+   128	
+   129	    if not hasattr(node, "prev_state"):
+   130	        node.prev_state = None
+   131	
+   132	    if not hasattr(node, "state_reason"):
+   133	        node.state_reason = None
+   134	
+   135	    return node
+   136	
+   137	
+   138	def transition_node_state(node, new_state, reason=None, now=None):
+   139	    """
+   140	    Transiciona un nodo a un nuevo estado.
+   141	
+   142	    Actualiza los metadatos de estado (prev_state, state_since, state_reason)
+   143	    solo si el estado cambia. Si el estado es el mismo pero hay reason,
+   144	    actualiza solo el reason.
+   145	
+   146	    Args:
+   147	        node: Objeto nodo con atributo state.
+   148	        new_state: Nuevo estado (NodeState enum o string).
+   149	        reason: Razón de la transición (ej: "leader_selected", "sleep_command").
+   150	        now: Timestamp opcional. Si no se proporciona, usa time.time().
+   151	
+   152	    Returns:
+   153	        dict: Información sobre la transición:
+   154	            - changed: bool, si el estado cambió
+   155	            - old_state: str, estado anterior
+   156	            - new_state: str, nuevo estado
+   157	            - state_since: float, timestamp del estado
+   158	            - state_reason: str | None, razón de la transición
+   159	
+   160	    Example:
+   161	        >>> class Node:
+   162	        ...     state = NodeState.STANDBY
+   163	        >>> node = Node()
+   164	        >>> transition_node_state(node, NodeState.ACTIVE, reason="leader_selected")
+   165	        {'changed': True, 'old_state': 'STAND-BY', 'new_state': 'ACTIVE',
+   166	         'state_since': 1779956226.123, 'state_reason': 'leader_selected'}
+   167	
+   168	        >>> transition_node_state(node, NodeState.ACTIVE, reason="still_leader")
+   169	        {'changed': False, 'old_state': 'ACTIVE', 'new_state': 'ACTIVE',
+   170	         'state_since': 1779956226.123, 'state_reason': 'still_leader'}
+   171	
+   172	    Note:
+   173	        - Si el estado no cambia pero hay reason, se actualiza solo el reason
+   174	        - Si el nodo no tiene state_since, se inicializa al primer call
+   175	        - Se usa en NodeRuntime.transition() y NodeWorker.tick_*()
+   176	    """
+   177	    now = now or time.time()
+   178	    ensure_state_meta(node, now=now)
+   179	
+   180	    old_state = _state_value(node.state)
+   181	    new_state_value = _state_value(new_state)
+   182	
+   183	    changed = old_state != new_state_value
+   184	
+   185	    if changed:
+   186	        node.prev_state = old_state
+   187	        node.state = new_state if isinstance(new_state, Enum) else NodeState(new_state_value)
+   188	        node.state_since = now
+   189	        node.state_reason = reason
+   190	    else:
+   191	        if reason is not None:
+   192	            node.state_reason = reason
+   193	
+   194	    return {
+   195	        "changed": changed,
+   196	        "old_state": old_state,
+   197	        "new_state": _state_value(node.state),
+   198	        "state_since": node.state_since,
+   199	        "state_reason": node.state_reason,
+   200	    }
+   201	
+   202	
+   203	def get_state_age_s(node, now=None):
+   204	    """
+   205	    Calcula la antigüedad del estado actual del nodo en segundos.
+   206	
+   207	    Args:
+   208	        node: Objeto nodo con atributo state_since.
+   209	        now: Timestamp opcional. Si no se proporciona, usa time.time().
+   210	
+   211	    Returns:
+   212	        float: Segundos desde que se entró al estado actual (mínimo 0.0).
+   213	
+   214	    Example:
+   215	        >>> class Node:
+   216	        ...     state_since = 1779956226.0
+   217	        >>> node = Node()
+   218	        >>> get_state_age_s(node, now=1779956256.0)
+   219	        30.0
+   220	
+   221	        >>> get_state_age_s(node, now=1779956226.0)
+   222	        0.0
+   223	
+   224	    Note:
+   225	        - Asegura metadatos antes de calcular (llama a ensure_state_meta)
+   226	        - Retorna máximo 0.0 (nunca negativo)
+   227	        - Se usa en logs para mostrar "age=35.9s" del estado
+   228	    """
+   229	    now = now or time.time()
+   230	    ensure_state_meta(node, now=now)
+   231	    return max(0.0, now - float(node.state_since))
+
+
+===== ./cluster/runtime/watchdog.py =====
+     1	# File: ./cluster/runtime/watchdog.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:12:10+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/watchdog.py 0.0.0 2026-05-28T17:12:10+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Mecanismo de watchdog para detectar nodos bloqueados.
+    12	#   Envía señales periódicas (watchdog) a todos los peers indicando si el nodo
+    13	#   está ocupado (busy) o libre. Si un nodo no envía watchdog en WATCHDOG_TIMEOUTSEC,
+    14	#   se considera bloqueado y los otros nodos pueden tomar acción.
+    15	# Notes:
+    16	#   - Se ejecuta en cada tick del worker (~1s) vía emit_watchdog_if_due()
+    17	#   - Throttle automático: no más de un watchdog cada WATCHDOG_PERIODSEC (0.5s por defecto)
+    18	#   - busy=True cuando el nodo está procesando eventos, busy=False cuando está libre
+    19	#   - Si un nodo está busy > timeout, se considera stuck y puede ser ignorado en election
+    20	#   - WATCHDOG_DEBUG=(1|true|yes|on) habilita logs detallados
+    21	#
+    22	# FRV-ID: 4aa43744dbd78882
+    23	# Header_End
+    24	
+    25	
+    26	import os
+    27	import time
+    28	import logging
+    29	import requests
+    30	
+    31	from cluster.runtime import context as ctx
+    32	from cluster.runtime.cluster_store import cluster_state
+    33	from cluster.utils.log_print import log_state
+    34	
+    35	logging.getLogger("urllib3").setLevel(logging.ERROR)
+    36	logging.getLogger("requests").setLevel(logging.ERROR)
+    37	
+    38	# =============================================================================
+    39	# Configuración de watchdog (mediante env vars)
+    40	# =============================================================================
+    41	
+    42	#: Frecuencia mínima entre watchdogs en segundos (default: 0.5s)
+    43	#: Evita enviar watchdogs demasiado seguido
+    44	WATCHDOG_PERIODSEC = float(os.getenv("WATCHDOG_PERIODSEC", 0.5))
+    45	
+    46	#: Timeout para considerar un nodo como stuck en segundos (default: 1.0s)
+    47	#: Si un nodo no envía watchdog en este tiempo, se considera bloqueado
+    48	WATCHDOG_TIMEOUTSEC = float(os.getenv("WATCHDOG_TIMEOUTSEC", 1.0))
+    49	
+    50	#: Habilita logs detallados de watchdog (default: False)
+    51	#: Activar con WATCHDOG_DEBUG=1 o WATCHDOG_DEBUG=true
+    52	WATCHDOG_DEBUG = str(os.getenv("WATCHDOG_DEBUG", "0")).strip().lower() in ("1", "true", "yes", "on")
+    53	
+    54	#: Sesión HTTP reutilizable para requests (connection pooling)
+    55	HTTP = requests.Session()
+    56	
+    57	#: Timestamp del último watchdog emitido (para throttle)
+    58	_last_watchdog_emit_ts = 0.0
+    59	
+    60	
+    61	def _iter_targets(peers):
+    62	    """
+    63	    Itera sobre los peers,YIELD node_id y dict del nodo.
+    64	
+    65	    Soporta tanto dict (node_id -> node) como list (lista de nodes).
+    66	
+    67	    Args:
+    68	        peers: Dict o list con info de peers.
+    69	
+    70	    Yields:
+    71	        tuple[str, dict]: (node_id, node_dict) para cada peer.
+    72	
+    73	    Example:
+    74	        >>> peers = {"lnx203hp": {"host": "10.0.0.1", "port": 8000}}
+    75	        >>> list(_iter_targets(peers))
+    76	        [("lnx203hp", {"host": "10.0.0.1", "port": 8000})]
+    77	
+    78	        >>> peers = [{"node_id": "lnx203hp", "host": "10.0.0.1", "port": 8000}]
+    79	        >>> list(_iter_targets(peers))
+    80	        [("lnx203hp", {"node_id": "lnx203hp", "host": "10.0.0.1", "port": 8000})]
+    81	    """
+    82	    if isinstance(peers, dict):
+    83	        for peer_id, node in peers.items():
+    84	            if isinstance(node, dict):
+    85	                yield peer_id, node
+    86	        return
+    87	
+    88	    if isinstance(peers, list):
+    89	        for node in peers:
+    90	            if not isinstance(node, dict):
+    91	                continue
+    92	            peer_id = node.get("node_id") or node.get("name") or node.get("host")
+    93	            if peer_id:
+    94	                yield peer_id, node
+    95	        return
+    96	
+    97	
+    98	def _mark_local_watchdog(emitted_at: float, busy: bool):
+    99	    """
+   100	    Actualiza el watchdog del nodo local en cluster_state.
+   101	
+   102	    Marca el nodo local como busy/free y actualiza last_watchdog y last_seen.
+   103	
+   104	    Args:
+   105	        emitted_at: Timestamp cuando se emitió el watchdog.
+   106	        busy: True si el nodo está ocupado, False si está libre.
+   107	
+   108	    Note:
+   109	        - Actualiza tanto cluster_state como ctx.node (si existe)
+   110	        - Se llama antes de enviar watchdogs a peers
+   111	    """
+   112	    node_id = getattr(ctx, "node_id", None)
+   113	    if not node_id:
+   114	        return
+   115	
+   116	    current = cluster_state.get(node_id, {})
+   117	    cluster_state[node_id] = {
+   118	        **current,
+   119	        "last_watchdog": emitted_at,
+   120	        "last_seen": emitted_at,
+   121	        "watchdog_busy": bool(busy),
+   122	    }
+   123	
+   124	    try:
+   125	        ctx.node.last_watchdog = emitted_at
+   126	        ctx.node.watchdog_busy = bool(busy)
+   127	    except Exception:
+   128	        pass
+   129	
+   130	
+   131	def emit_watchdog(peers, force=False, busy=True):
+   132	    """
+   133	    Emite un watchdog a todos los peers.
+   134	
+   135	    Envía POST /watchdog a cada peer indicando si el nodo está busy.
+   136	    Tiene throttle automático para no enviar demasiado seguido.
+   137	
+   138	    Args:
+   139	        peers: Lista o dict de peers con host y port.
+   140	        force: Si True, ignora el throttle y envía siempre.
+   141	        busy: True si el nodo está ocupado procesando, False si está libre.
+   142	
+   143	    Returns:
+   144	        bool: True si se emitió el watchdog, False si se throttleó.
+   145	
+   146	    Example:
+   147	        >>> peers = [{"host": "10.0.0.1", "port": 8000}]
+   148	        >>> emit_watchdog(peers, busy=True)
+   149	        True
+   150	
+   151	        >>> emit_watchdog(peers, busy=False)  # 0.1s después del anterior
+   152	        False  # Throttleado (menos de WATCHDOG_PERIODSEC)
+   153	
+   154	    Note:
+   155	        - Throttle: no más de un watchdog cada WATCHDOG_PERIODSEC (0.5s por defecto)
+   156	        - force=True ignora el throttle (útil para eventos críticos)
+   157	        - busy=True cuando se está procesando eventos, busy=False cuando está idle
+   158	        - Actualiza cluster_state local antes de enviar
+   159	        - Logea detalles si WATCHDOG_DEBUG=True
+   160	    """
+   161	    global _last_watchdog_emit_ts
+   162	
+   163	    if not getattr(ctx, "node_id", None):
+   164	        return False
+   165	
+   166	    now = time.time()
+   167	    if not force and (now - _last_watchdog_emit_ts) < WATCHDOG_PERIODSEC:
+   168	        return False
+   169	
+   170	    emitted_at = now
+   171	    _mark_local_watchdog(emitted_at, busy)
+   172	
+   173	    payload = {
+   174	        "node_id": ctx.node_id,
+   175	        "busy": bool(busy),
+   176	        "emitted_at": emitted_at,
+   177	    }
+   178	
+   179	    sent = 0
+   180	    attempted = 0
+   181	
+   182	    for peer_id, node in _iter_targets(peers):
+   183	        host = node.get("host")
+   184	        port = node.get("port")
+   185	        if not host or not port:
+   186	            continue
+   187	
+   188	        attempted += 1
+   189	        url = f"http://{host}:{port}/watchdog"
+   190	        try:
+   191	            resp = requests.post(url, json=payload, timeout=WATCHDOG_TIMEOUTSEC)
+   192	            if resp.ok:
+   193	                sent += 1
+   194	            elif WATCHDOG_DEBUG:
+   195	                log_state("yellow", "WATCHDOG", f"peer={peer_id} status={resp.status_code}", 3)
+   196	        except Exception as e:
+   197	            if WATCHDOG_DEBUG:
+   198	                log_state("red", "WATCHDOG", f"peer={peer_id} err={e}", 3)
+   199	
+   200	    _last_watchdog_emit_ts = emitted_at
+   201	
+   202	    if WATCHDOG_DEBUG:
+   203	        log_state(
+   204	            "cyan",
+   205	            "WATCHDOG",
+   206	            f"node={ctx.node_id} sent={sent}/{attempted} busy={bool(busy)} ts={emitted_at:.3f}",
+   207	            3,
+   208	        )
+   209	
+   210	    return True
+   211	
+   212	
+   213	def emit_watchdog_if_due(peers, busy=True):
+   214	    """
+   215	    Emite watchdog si ha pasado suficiente tiempo (throttle respetado).
+   216	
+   217	    Wrapper de emit_watchdog() con force=False.
+   218	
+   219	    Args:
+   220	        peers: Lista o dict de peers.
+   221	        busy: True si el nodo está ocupado, False si está libre.
+   222	
+   223	    Returns:
+   224	        bool: True si se emitió, False si se throttleó.
+   225	
+   226	    Example:
+   227	        >>> emit_watchdog_if_due(peers, busy=True)
+   228	        # Se llama en cada tick del worker (~1s)
+   229	    """
+   230	    return emit_watchdog(peers=peers, force=False, busy=busy)
+   231	
+   232	
+   233	def emit_watchdog_now(peers, busy=True):
+   234	    """
+   235	    Emite watchdog inmediatamente, ignorando el throttle.
+   236	
+   237	    Wrapper de emit_watchdog() con force=True.
+   238	
+   239	    Args:
+   240	        peers: Lista o dict de peers.
+   241	        busy: True si el nodo está ocupado, False si está libre.
+   242	
+   243	    Returns:
+   244	        bool: Siempre True (si hay node_id).
+   245	
+   246	    Example:
+   247	        >>> emit_watchdog_now(peers, busy=True)
+   248	        # Se envía inmediatamente, sin esperar WATCHDOG_PERIODSEC
+   249	    """
+   250	    return emit_watchdog(peers=peers, force=True, busy=busy)
+
+
+===== ./cluster/utils/log_print.py =====
+     1	# File: ./cluster/utils/log_print.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:13:00+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/utils/log_print.py 0.0.0 2026-05-28T17:13:00+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	# Notes:
+    12	#
+    13	# FRV-ID: 973196933f255262
+    14	# Header_End
+    15	
+    16	
+    17	from datetime import datetime
+    18	
+    19	modeGhost = False
+    20	
+    21	def log_state(color, typ, msg, decimals=0):
+    22	
+    23	    if modeGhost:
+    24	        return
+    25	
+    26	    colors = {
+    27	        "red": "\033[91m",
+    28	        "green": "\033[92m",
+    29	        "yellow": "\033[93m",
+    30	        "blue": "\033[94m",
+    31	        "magenta": "\033[95m",
+    32	        "cyan": "\033[96m",
+    33	        "white": "\033[97m",
+    34	        "reset": "\033[0m",
+    35	    }
+    36	
+    37	    c = colors.get(color.lower(), colors["white"])
+    38	    reset = colors["reset"]
+    39	
+    40	    decimals = max(0, min(6, int(decimals)))
+    41	
+    42	    # -----------------------------------------
+    43	    # fixed-width timestamp
+    44	    # -----------------------------------------
+    45	
+    46	    now = datetime.now()
+    47	
+    48	    if decimals == 0:
+    49	
+    50	        # reserva espacio para ".000"
+    51	        ts = now.strftime("%H:%M:%S") + "    "
+    52	
+    53	    else:
+    54	
+    55	        micros = f"{now.microsecond:06d}"[:decimals]
+    56	        ts = f"{now.strftime('%H:%M:%S')}.{micros}"
+    57	
+    58	        # padding fijo hasta longitud 12
+    59	        ts = f"{ts:<12}"
+    60	
+    61	    # -----------------------------------------
+    62	    # aligned tag
+    63	    # -----------------------------------------
+    64	
+    65	    tag = f"{typ:>14}"
+    66	
+    67	    # -----------------------------------------
+    68	    # print
+    69	    # -----------------------------------------
+    70	
+    71	    print(f"[{ts}] {c}{tag}{reset} {msg}")
+    72	
+    73	
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# REASSEMBLY_ORDER : 006/006
+#
+########################################################################

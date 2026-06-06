@@ -1,0 +1,817 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# SOURCE_FILE      : py-last_code_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 005/006
+# PART_NUMBER      : 005
+# TOTAL_PARTS      : 006
+#
+# PREVIOUS_PART    : 004
+# NEXT_PART        : 006
+#
+# CONTENT_LINES    : 782
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+    39	    Arranca un nodo del cluster.
+    40	
+    41	    Secuencia de inicialización:
+    42	        1. Crea archivos iniciales de event log (si no existen)
+    43	        2. Inicializa contexto global (ctx.node_id, ctx.node, ctx.peers, ...)
+    44	        3. Crea NodeRuntime (nodo local, estado BOOT)
+    45	        4. Registra nodo local y peers en CLUSTER_REGISTRY
+    46	        5. Arranca NodeWorker en hilo background
+    47	        6. Arranca uvicorn (servidor HTTP)
+    48	
+    49	    Args:
+    50	        config (dict): Configuración del nodo con:
+    51	            - node_id (str): ID único del nodo
+    52	            - priority (int): Prioridad para leader election
+    53	            - host (str): Hostname/IP del nodo
+    54	            - port (int): Puerto del nodo
+    55	            - bind_host (str): Host para bind del servidor HTTP (default: 0.0.0.0)
+    56	            - bind_port (int): Puerto para bind del servidor HTTP (default: 7000)
+    57	            - peers (list[dict]): Lista de peers con node_id, host, port, priority
+    58	
+    59	    Example:
+    60	        >>> config = {
+    61	        ...     "node_id": "lnx203hp",
+    62	        ...     "priority": 10,
+    63	        ...     "host": "100.100.1.200",
+    64	        ...     "port": 8000,
+    65	        ...     "bind_host": "0.0.0.0",
+    66	        ...     "bind_port": 7000,
+    67	        ...     "peers": [
+    68	        ...         {"node_id": "lnx200nas", "host": "100.100.1.201", "port": 8000, "priority": 100}
+    69	        ...     ]
+    70	        ... }
+    71	        >>> run_node(config)
+    72	        # Arranca el nodo lnx203hp con peer lnx200nas
+    73	    """
+    74	    ensure_initial_files()
+    75	
+    76	    ctx.node_id = config["node_id"]
+    77	    ctx.nodeid = config["node_id"]
+    78	    ctx.priority = config["priority"]
+    79	    ctx.peers = config.get("peers", [])
+    80	
+    81	    node = NodeRuntime(
+    82	        node_id=config["node_id"],
+    83	        priority=config["priority"],
+    84	    )
+    85	    ctx.node = node
+    86	
+    87	    register_node(
+    88	        node_id=config["node_id"],
+    89	        host=config["host"],
+    90	        port=config["port"],
+    91	        priority=config["priority"],
+    92	    )
+    93	
+    94	    for peer in config.get("peers", []):
+    95	        register_node(
+    96	            node_id=peer["node_id"],
+    97	            host=peer["host"],
+    98	            port=peer["port"],
+    99	            priority=peer["priority"],
+   100	        )
+   101	
+   102	    log_state(
+   103	        "cyan",
+   104	        "[BOOT]",
+   105	        (
+   106	            f"node={config['node_id']} "
+   107	            f"priority={config['priority']} "
+   108	            f"bind={config.get('bind_host', '0.0.0.0')}:{config.get('bind_port', 7000)} "
+   109	            f"peers={len(config.get('peers', []))} "
+   110	            f"state={node.state.value} "
+   111	            f"state_since={getattr(node, 'state_since', None)} "
+   112	            f"reason={getattr(node, 'state_reason', None)}"
+   113	        ),
+   114	        3,
+   115	    )
+   116	
+   117	    worker = NodeWorker(
+   118	        node=node,
+   119	        peers=config["peers"],
+   120	        interval=1.0,
+   121	    )
+   122	    worker.start()
+   123	
+   124	    log_state("green", "[WORKER]", f"background loop started for {config['node_id']}", 3)
+   125	    log_state(
+   126	        "green",
+   127	        "[HTTP]",
+   128	        f"serving app on {config.get('bind_host', '0.0.0.0')}:{config.get('bind_port', 7000)}",
+   129	        3,
+   130	    )
+   131	
+   132	    uvicorn.run(
+   133	        app,
+   134	        host=config.get("bind_host", "0.0.0.0"),
+   135	        port=config.get("bind_port", 7000),
+   136	        log_level="warning",
+   137	        access_log=False,
+   138	    )
+   139	
+   140	
+   141	if __name__ == "__main__":
+   142	    """
+   143	    Entry point cuando se ejecuta el script directamente.
+   144	
+   145	    Carga la configuración (de config.json o env vars) y arranca el nodo.
+   146	
+   147	    Example:
+   148	        # Ejecutar como script
+   149	        $ python cluster/runtime/node_boot.py
+   150	
+   151	        # Ejecutar como módulo
+   152	        $ python -m cluster.runtime.node_boot
+   153	    """
+   154	    config = load_or_bootstrap_config()
+   155	    run_node(config)
+
+
+===== ./cluster/runtime/node_runtime.py =====
+     1	# File: ./cluster/runtime/node_runtime.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:11:02+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/node_runtime.py 0.0.0 2026-05-28T17:11:02+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Objeto principal que representa un nodo en el cluster.
+    12	#   NodeRuntime encapsula el estado, la identidad (node_id, priority) y el
+    13	#   comportamiento de un nodo: transiciones de estado, detección de líder,
+    14	#   y emisión de heartbeats a peers.
+    15	# Notes:
+    16	#   - Se instancia una vez por proceso (el nodo local)
+    17	#   - El estado se sincroniza con cluster_state mediante heartbeats
+    18	#   - ticker.tick() se llama en cada tick del worker (~1s) para detectar cambios de líder
+    19	#   - La transición STANDBY <-> ACTIVE es automática según quién sea el líder
+    20	#   - No hay persistencia de estado (se reinicia al arrancar)
+    21	#
+    22	# FRV-ID: 380b2fdaa1d41be7
+    23	# Header_End
+    24	
+    25	
+    26	import time
+    27	import requests
+    28	
+    29	from cluster.runtime.state import NodeState, ensure_state_meta, transition_node_state
+    30	from cluster.runtime.leader import compute_leader
+    31	from cluster.utils.log_print import log_state
+    32	
+    33	
+    34	class NodeRuntime:
+    35	    """
+    36	    Representa un nodo en el cluster.
+    37	
+    38	    Gestiona el estado del nodo, la detección automática de líder, y la
+    39	    emisión de heartbeats a otros nodos.
+    40	
+    41	    Ciclo de vida típico:
+    42	        1. BOOT (inicialización)
+    43	        2. DISCOVERING (opcional, descubriendo peers)
+    44	        3. STANDBY (esperando a ser líder)
+    45	        4. ACTIVE (es el líder, procesa eventos)
+    46	
+    47	    Si pierde el líder, vuelve a STANDBY. Si el nodo se vuelve líder,
+    48	    pasa a ACTIVE.
+    49	
+    50	    Attributes:
+    51	        node_id (str): ID único del nodo.
+    52	        priority (int): Prioridad para leader election (menor = más prioritario).
+    53	        state (NodeState): Estado actual del nodo.
+    54	        last_heartbeat (float): Timestamp del último heartbeat enviado.
+    55	        state_since (float): Timestamp cuando se entró al estado actual.
+    56	        prev_state (str | None): Estado anterior.
+    57	        state_reason (str | None): Razón de la última transición.
+    58	
+    59	    Example:
+    60	        >>> node = NodeRuntime("lnx203hp", priority=10)
+    61	        >>> node.node_id
+    62	        'lnx203hp'
+    63	        >>> node.priority
+    64	        10
+    65	        >>> node.state
+    66	        <NodeState.BOOT: 'BOOT'>
+    67	
+    68	        >>> node.transition(NodeState.STANDBY, reason="boot_complete")
+    69	        {'changed': True, 'old_state': 'BOOT', 'new_state': 'STANDBY', ...}
+    70	    """
+    71	
+    72	    def __init__(self, node_id, priority):
+    73	        """
+    74	        Inicializa un nodo del cluster.
+    75	
+    76	        Args:
+    77	            node_id: ID único del nodo (string).
+    78	            priority: Prioridad para leader election (menor = más prioritario).
+    79	
+    80	        Example:
+    81	            >>> node = NodeRuntime("lnx203hp", priority=10)
+    82	            >>> node = NodeRuntime("lnx200nas", priority=100)
+    83	        """
+    84	        self.node_id = node_id
+    85	        self.priority = priority
+    86	        self.state = NodeState.BOOT
+    87	        self.last_heartbeat = time.time()
+    88	
+    89	        ensure_state_meta(self)
+    90	        self.state_reason = "node_init"
+    91	
+    92	    def transition(self, new_state, reason=None):
+    93	        """
+    94	        Transiciona el nodo a un nuevo estado.
+    95	
+    96	        Delega en transition_node_state() y muestra un log si el estado cambia.
+    97	
+    98	        Args:
+    99	            new_state: Nuevo estado (NodeState enum o string).
+   100	            reason: Razón de la transición (ej: "leader_selected", "boot_complete").
+   101	
+   102	        Returns:
+   103	            dict: Resultado de la transición (changed, old_state, new_state, ...).
+   104	
+   105	        Example:
+   106	            >>> node.transition(NodeState.STANDBY, reason="boot_complete")
+   107	            [lnx203hp] BOOT -> STAND-BY (reason=boot_complete)
+   108	            {'changed': True, 'old_state': 'BOOT', 'new_state': 'STANDBY', ...}
+   109	
+   110	            >>> node.transition(NodeState.ACTIVE, reason="leader_selected")
+   111	            [lnx203hp] STAND-BY -> ACTIVE (reason=leader_selected)
+   112	            {'changed': True, 'old_state': 'STANDBY', 'new_state': 'ACTIVE', ...}
+   113	        """
+   114	        result = transition_node_state(self, new_state, reason=reason)
+   115	
+   116	        if result["changed"]:
+   117	            print(
+   118	                f"[{self.node_id}] "
+   119	                f"{result['old_state']} -> {result['new_state']} "
+   120	                f"(reason={result['state_reason']})"
+   121	            )
+   122	
+   123	        return result
+   124	
+   125	    def tick(self):
+   126	        """
+   127	        Ejecuta la lógica de cada tick del nodo (~1s).
+   128	
+   129	        Comprueba quién es el líder y transiciona automáticamente:
+   130	            - Si soy el líder y estoy en STANDBY -> paso a ACTIVE
+   131	            - Si no soy el líder y estoy en ACTIVE -> paso a STANDBY
+   132	
+   133	        Note:
+   134	            - Se llama en cada iteration del worker loop (~1s)
+   135	            - La transición es automática, no requiere comando externo
+   136	            - Si no hay líder (None), el nodo se queda en su estado actual
+   137	
+   138	        Example:
+   139	            >>> node.state = NodeState.STANDBY
+   140	            >>> node.tick()  # Si soy líder
+   141	            [CLUSTER] [lnx203hp] becoming ACTIVE
+   142	            >>> node.state
+   143	            <NodeState.ACTIVE: 'ACTIVE'>
+   144	        """
+   145	        #        if self.state == NodeState.BOOT:
+   146	        #            self.transition(NodeState.STANDBY, reason="boot_complete")
+   147	        #            return
+   148	
+   149	        #log_state("yellow", "[NodeRunTime tick]", f"[{self.node_id}] ticking ...", 3)
+   150	
+   151	        leader = compute_leader()
+   152	
+   153	        if leader == self.node_id:
+   154	            if self.state == NodeState.STANDBY:
+   155	                log_state("yellow", "[CLUSTER]", f"[{self.node_id}] becoming ACTIVE", 3)
+   156	                self.transition(NodeState.ACTIVE, reason="leader_selected")
+   157	        else:
+   158	            if self.state == NodeState.ACTIVE:
+   159	                log_state("yellow", "[CLUSTER]", f"[{self.node_id}] becoming STANDBY", 3)
+   160	                self.transition(NodeState.STANDBY, reason="leader_lost")
+   161	
+   162	    def emit_heartbeat(self, peers):
+   163	        """
+   164	        Emite un heartbeat a todos los peers del cluster.
+   165	
+   166	        Envía el estado actual del nodo (state, priority, state_since, ...)
+   167	        a todos los peers para que actualicen cluster_state.
+   168	
+   169	        Args:
+   170	            peers: Lista de dicts con info de peers (cada uno tiene 'host' y 'port').
+   171	
+   172	        Note:
+   173	            - Se usa POST /heartbeat en cada peer (api_app.py)
+   174	            - Timeout: 2s por peer
+   175	            - Falla silenciosamente si un peer no responde (no levanta exception)
+   176	            - Se llama en cada tick del worker (~1s)
+   177	
+   178	        Example:
+   179	            >>> peers = [
+   180	            ...     {"host": "100.100.1.200", "port": 8000},
+   181	            ...     {"host": "100.100.1.201", "port": 8000}
+   182	            ... ]
+   183	            >>> node.emit_heartbeat(peers)
+   184	            # Envía POST http://100.100.1.200:8000/heartbeat y POST http://100.100.1.201:8000/heartbeat
+   185	        """
+   186	        hb = {
+   187	            "node_id": self.node_id,
+   188	            "state": self.state.value,
+   189	            "priority": self.priority,
+   190	            "state_since": getattr(self, "state_since", None),
+   191	            "prev_state": getattr(self, "prev_state", None),
+   192	            "state_reason": getattr(self, "state_reason", None),
+   193	        }
+   194	
+   195	        for peer in peers:
+   196	            url = f"http://{peer['host']}:{peer['port']}/heartbeat"
+   197	            try:
+   198	                requests.post(url, json=hb, timeout=2)
+   199	            except requests.exceptions.RequestException:
+   200	                pass
+
+
+===== ./cluster/runtime/node_worker.py =====
+     1	# File: ./cluster/runtime/node_worker.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:11:20+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/node_worker.py 0.0.0 2026-05-28T17:11:20+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Worker en background que ejecuta el tick del nodo cada ~1s.
+    12	#   NodeWorker es un hilo daemon que ejecuta loop infinito llamando a tick()
+    13	#   según el estado actual del nodo. Cada tick ejecuta: heartbeat, watchdog,
+    14	#   replicación de logs, check de estado de eventos, y transiciones a DRAINING/SEGMENTATION
+    15	#   si es necesario.
+    16	# Notes:
+    17	#   - Se arranca en run_node() como hilo daemon (no bloquea uvicorn)
+    18	#   - interval=1.0s por defecto (se puede ajustar con env var)
+    19	#   - tick_*() se llama según el estado: BOOT, STANDBY, ACTIVE, SEGMENTATION, DRAINING, ISOLATED, OFFLINE
+    20	#   -EVENTSTATECHECKPERIODSEC=10s: check de estado de eventos cada 10s
+    21	#   - STATEDEBUGPERIODSEC=30s: log de debug de estado cada 30s
+    22	#   - MAX_SEGMENT_COUNT=2500:enter DRAINING si total_events > 2500
+    23	#   - _can_segment(): solo se puede segmentar si created=0, executing=0, dirty=False
+    24	#
+    25	# FRV-ID: 09d53436254fce74
+    26	# Header_End
+    27	
+    28	import os
+    29	import time
+    30	import threading
+    31	from pathlib import Path
+    32	
+    33	from cluster.runtime.leader import compute_leader
+    34	
+    35	from cluster.runtime.state import NodeState, get_state_age_s
+    36	from cluster.runtime import context as ctx
+    37	from cluster.utils.log_print import log_state
+    38	from cluster.runtime.event_log import rebuild_event_state_index, load_events, load_completed_events, get_local_log_path
+    39	from cluster.runtime.events.event_state import EventStatus
+    40	from cluster.runtime.log_replication import replicate_eventlog, replicate_events
+    41	from cluster.runtime.watchdog import emit_watchdog_if_due
+    42	from cluster.runtime.cluster_store import cluster_state
+    43	from cluster.runtime.api_app import _summarize_events
+    44	
+    45	# =============================================================================
+    46	# Configuración del worker (mediante env vars)
+    47	# =============================================================================
+    48	
+    49	#: Frecuencia de check de estado de eventos en segundos (default: 10s)
+    50	EVENTSTATECHECKPERIODSEC = float(os.getenv("EVENTSTATECHECKPERIODSEC", 10))
+    51	
+    52	#: Frecuencia de log de debug de estado en segundos (default: 30s)
+    53	STATEDEBUGPERIODSEC = float(os.getenv("STATEDEBUGPERIODSEC", 30))
+    54	
+    55	#: Máximo número de eventos antes de entrar en DRAINING (default: 2500)
+    56	MAX_SEGMENT_COUNT = int(os.getenv("MAX_SEGMENT_COUNT", 2500))
+    57	
+    58	#: Timestamp del último check de estado de eventos
+    59	lasteventstatecheckts = 0.0
+    60	
+    61	#: Timestamp del último log de debug de estado
+    62	laststatedebugts = 0.0
+    63	
+    64	
+    65	def _node_cache(node):
+    66	    """
+    67	    Obtiene el cache del nodo de cluster_state.
+    68	
+    69	    Args:
+    70	        node: NodeRuntime o dict del nodo.
+    71	
+    72	    Returns:
+    73	        dict: Cache del nodo (streams, counters, etc.), o {} si no existe.
+    74	    """
+    75	    node_id = _node_id(node)
+    76	    if not node_id:
+    77	        return {}
+    78	    data = cluster_state.get(node_id, {}) or {}
+    79	    return data if isinstance(data, dict) else {}
+    80	
+    81	
+    82	def _node_id(node):
+    83	    """
+    84	    Extrae el node_id de un nodo (dict o NodeRuntime).
+    85	
+    86	    Args:
+    87	        node: NodeRuntime o dict.
+    88	
+    89	    Returns:
+    90	        str: node_id del nodo, o "?" si no se puede extraer.
+    91	    """
+    92	    if isinstance(node, dict):
+    93	        return node.get("node_id", "?")
+    94	    return getattr(node, "node_id", "?")
+    95	
+    96	
+    97	def rebuild_node_event_cache(node_id: str):
+    98	    """
+    99	    Reconstruye el cache de eventos de un nodo en cluster_state.
+   100	
+   101	    Carga eventos locales y completados, cuenta por status, y actualiza
+   102	    streams con resúmenes (events_summary_local, events_summary_created, etc.).
+   103	
+   104	    Args:
+   105	        node_id: ID del nodo.
+   106	
+   107	    Note:
+   108	        - Se llama en cada tick para actualizar counters
+   109	        - Actualiza cluster_state para que el dashboard muestre counters actualizados
+   110	    """
+   111	    if not isinstance(node_id, str):
+   112	        node_id = getattr(node_id, "node_id", None)
+   113	
+   114	    if not node_id:
+   115	        log_state("red", "CACHE_BOOTSTRAP", "invalid node_id for event cache bootstrap", 3)
+   116	        return
+   117	
+   118	    node = cluster_state.get(node_id, {}) or {}
+   119	    if not isinstance(node, dict):
+   120	        node = {}
+   121	
+   122	    streams = dict(node.get("streams", {}) or {})
+   123	
+   124	    local_events = load_events() or []
+   125	    completed_events = []
+   126	    try:
+   127	        completed_events = load_completed_events() or []
+   128	    except Exception as e:
+   129	        log_state("red", "CACHE_BOOTSTRAP", f"{node_id} completed_load_failed={e}", 3)
+   130	
+   131	    created_events = [e for e in local_events if e.get("status") == EventStatus.CREATED.value]
+   132	    executing_events = [e for e in local_events if e.get("status") == EventStatus.EXECUTING.value]
+   133	
+   134	    streams["events_summary_local"] = _summarize_events(local_events)
+   135	    streams["events_summary_created"] = _summarize_events(created_events)
+   136	    streams["events_summary_executing"] = _summarize_events(executing_events)
+   137	    streams["events_summary_completed"] = _summarize_events(completed_events)
+   138	
+   139	    node["node_id"] = node_id
+   140	    node["streams"] = streams
+   141	    cluster_state[node_id] = node
+   142	
+   143	    log_state("blue", "NODE STATE a", f"{_node_id(node)} local={len(local_events)} created={len(created_events)} executing={len(executing_events)} completed={len(completed_events)}", 3)
+   144	
+   145	
+   146	def _node_streams(node):
+   147	    """Obtiene streams del nodo (dict o NodeRuntime)."""
+   148	    if isinstance(node, dict):
+   149	        return node.get("streams", {}) or {}
+   150	    return getattr(node, "streams", {}) or {}
+   151	
+   152	
+   153	def _node_event_counters(node) -> tuple[int, int, int, int]:
+   154	    """
+   155	    Cuenta eventos por status del nodo.
+   156	
+   157	    Returns:
+   158	        tuple[int, int, int, int]: (created, executing, completed, total)
+   159	    """
+   160	    cache = _node_cache(node)
+   161	    streams = cache.get("streams", {}) or {}
+   162	    summary = streams.get("events_summary_local", {}) or {}
+   163	    counts = summary.get("counts", {}) or {}
+   164	    created = int(counts.get("created", 0))
+   165	    executing = int(counts.get("executing", 0))
+   166	    completed = int(counts.get("completed", 0))
+   167	    total = int(summary.get("total_events", created + executing + completed))
+   168	    return created, executing, completed, total
+   169	
+   170	
+   171	def _can_segment(node) -> bool:
+   172	    """
+   173	    Comprueba si el nodo puede segmentar (rotar logs).
+   174	
+   175	    Solo se puede segmentar si:
+   176	        - created > 0 (hay eventos sin procesar)
+   177	        - executing == 0 (no hay eventos en ejecución)
+   178	        - dirty == False (no hay replicación pendiente)
+   179	
+   180	    Args:
+   181	        node: NodeRuntime del nodo.
+   182	
+   183	    Returns:
+   184	        bool: True si se puede segmentar.
+   185	    """
+   186	    created, executing, completed, total = _node_event_counters(node)
+   187	    cache = _node_cache(node)
+   188	    dirty = bool(cache.get("dirty", False))
+   189	    return created > 0 and executing == 0 and not dirty
+   190	
+   191	
+   192	def _should_enter_DRAINING(node) -> bool:
+   193	    """
+   194	    Comprueba si el nodo debe entrar en DRAINING.
+   195	
+   196	    Entra en DRAINING si total_events > MAX_SEGMENT_COUNT.
+   197	
+   198	    Args:
+   199	        node: NodeRuntime del nodo.
+   200	
+   201	    Returns:
+   202	        bool: True si debe entrar en DRAINING.
+   203	    """
+   204	    created, executing, completed, total = _node_event_counters(node)
+   205	    return total > MAX_SEGMENT_COUNT
+   206	
+   207	
+   208	def _should_enter_segmentation(node) -> bool:
+   209	    """
+   210	    Comprueba si el nodo debe entrar en SEGMENTATION.
+   211	
+   212	    Entra en SEGMENTATION si _can_segment() es True.
+   213	
+   214	    Args:
+   215	        node: NodeRuntime del nodo.
+   216	
+   217	    Returns:
+   218	        bool: True si debe entrar en SEGMENTATION.
+   219	    """
+   220	    return _can_segment(node)
+   221	
+   222	
+   223	def leader_event_state_check_tick():
+   224	    """
+   225	    Check periódico del estado de eventos (cada EVENTSTATECHECKPERIODSEC).
+   226	
+   227	    Carga eventos raw y del state_index, cuenta por status, y logea
+   228	    diferencias (si hay).
+   229	
+   230	    Note:
+   231	        - Throttleado a EVENTSTATECHECKPERIODSEC=10s
+   232	        - Actualmente no hace nada con los conteos (solo cuenta)
+   233	    """
+   234	    global lasteventstatecheckts
+   235	    now = time.time()
+   236	    if now - lasteventstatecheckts < EVENTSTATECHECKPERIODSEC:
+   237	        return
+   238	    lasteventstatecheckts = now
+   239	
+   240	    raw_events = load_events() or []
+   241	    state_index = rebuild_event_state_index()
+   242	
+   243	    raw_created = raw_executing = raw_completed = 0
+   244	    for e in raw_events:
+   245	        status = e.get("status")
+   246	        if hasattr(status, "value"):
+   247	            status = status.value
+   248	        status = str(status).strip().lower()
+   249	        if status == EventStatus.CREATED.value:
+   250	            raw_created += 1
+   251	        elif status == EventStatus.EXECUTING.value:
+   252	            raw_executing += 1
+   253	        elif status == EventStatus.COMPLETED.value:
+   254	            raw_completed += 1
+   255	
+   256	    created = executing = completed = 0
+   257	    for event in state_index.values():
+   258	        status = event.get("status") if isinstance(event, dict) else getattr(event, "status", None)
+   259	        if hasattr(status, "value"):
+   260	            status = status.value
+   261	        status = str(status).strip().lower()
+   262	        if status == EventStatus.CREATED.value:
+   263	            created += 1
+   264	        elif status == EventStatus.EXECUTING.value:
+   265	            executing += 1
+   266	        elif status == EventStatus.COMPLETED.value:
+   267	            completed += 1
+   268	
+   269	
+   270	def cleanup_local_segment_files(node_id: str, segment: str = "000", files=None):
+   271	    """
+   272	    Elimina archivos de segmento local después de rotar.
+   273	
+   274	    Args:
+   275	        node_id: ID del nodo.
+   276	        segment: Segmento a limpiar (default: "000").
+   277	        files: Lista de tipos de archivos (default: ["events", "event_log"]).
+   278	
+   279	    Returns:
+   280	        dict: Resumen de archivos eliminados y faltantes.
+   281	    """
+   282	    files = files or ["events", "event_log"]
+   283	    base_dir = Path(get_local_log_path(None)).resolve().parent
+   284	    removed = []
+   285	    missing = []
+   286	
+   287	    for kind in files:
+   288	        p = base_dir / f"{kind}.local.{segment}.jsonl"
+   289	        if p.exists():
+   290	            p.unlink()
+   291	            removed.append(str(p))
+   292	        else:
+   293	            missing.append(str(p))
+   294	
+   295	    return {
+   296	        "node_id": node_id,
+   297	        "segment": segment,
+   298	        "removed": removed,
+   299	        "missing": missing,
+   300	    }
+   301	
+   302	
+   303	def log_state_runtime_debug(node):
+   304	    """
+   305	    Log de debug de estado del nodo (cada STATEDEBUGPERIODSEC).
+   306	
+   307	    Args:
+   308	        node: NodeRuntime del nodo.
+   309	
+   310	    Note:
+   311	        - Throttleado a STATEDEBUGPERIODSEC=30s
+   312	        - Reconstruye cache de eventos antes de logear
+   313	    """
+   314	    global laststatedebugts
+   315	    now = time.time()
+   316	    if now - laststatedebugts < STATEDEBUGPERIODSEC:
+   317	        return
+   318	    laststatedebugts = now
+   319	
+   320	    age_s = get_state_age_s(node, now=now)
+   321	    rebuild_node_event_cache(node.node_id)
+   322	
+   323	    log_state("blue", "NODE STATE b", f"{_node_id(node)} state={node.state.value} age={age_s:.1f}s prev={getattr(node, 'prev_state', None)} reason={getattr(node, 'state_reason', None)}", 3)
+   324	
+   325	
+   326	def rotate_segment_files(target_group: str, segment: str = "000", files=None, force: bool = False):
+   327	    """
+   328	    Rota archivos de segmento (renombra .local.000.jsonl a .{node_id}.001.jsonl).
+   329	
+   330	    Args:
+   331	        target_group: Grupo destino (no usado, se usa node_id local).
+   332	        segment: Segmento a rotar (default: "000").
+   333	        files: Lista de tipos de archivos (default: ["events", "event_log"]).
+   334	        force: Si True, crea entry incluso si el archivo no existe.
+   335	
+   336	    Returns:
+   337	        dict: Resultado con before/after paths e índices.
+   338	
+   339	    Raises:
+   340	        RuntimeError: Si no hay node_id local.
+   341	        FileNotFoundError: Si el archivo no existe y force=False.
+   342	    """
+   343	    files = files or ["events", "event_log"]
+   344	    base_dir = Path(get_local_log_path(None)).resolve().parent
+   345	    local_node_id = getattr(ctx, "node_id", None) or getattr(getattr(ctx, "node", None), "node_id", None)
+   346	
+   347	    if not local_node_id:
+   348	        raise RuntimeError("missing local node_id for segment rotation")
+   349	
+   350	    result = {}
+   351	
+   352	    for kind in files:
+   353	        src = base_dir / f"{kind}.local.{segment}.jsonl"
+   354	        if not src.exists():
+   355	            if force:
+   356	                result[kind] = {"before": str(src), "after": None, "index": None, "forced": True}
+   357	                continue
+   358	            raise FileNotFoundError(str(src))
+   359	
+   360	        idx = _next_rotation_index(base_dir, f"{kind}.{local_node_id}")
+   361	        dst = base_dir / f"{kind}.{local_node_id}.{idx:03d}.jsonl"
+   362	        os.replace(str(src), str(dst))
+   363	        result[kind] = {"before": str(src), "after": str(dst), "index": idx, "forced": False}
+   364	
+   365	    return result
+   366	
+   367	
+   368	def _next_rotation_index(base_dir, stem, suffix=".jsonl"):
+   369	    """
+   370	    Encuentra el próximo índice disponible para rotación.
+   371	
+   372	    Args:
+   373	        base_dir: Directorio base.
+   374	        stem: Prefix del archivo (ej: "event_log.lnx203hp").
+   375	        suffix: Suffix del archivo (default: ".jsonl").
+   376	
+   377	    Returns:
+   378	        int: Próximo índice disponible (001, 002, ...).
+   379	    """
+   380	    base_dir = Path(base_dir)
+   381	    idx = 1
+   382	    while True:
+   383	        candidate = base_dir / f"{stem}.{idx:03d}{suffix}"
+   384	        if not candidate.exists():
+   385	            return idx
+   386	        idx += 1
+   387	
+   388	
+   389	class NodeWorker:
+   390	    """
+   391	    Worker en background que ejecuta el tick del nodo cada ~1s.
+   392	
+   393	    Attributes:
+   394	        node (NodeRuntime): Nodo del cluster.
+   395	        peers (list[dict]): Lista de peers con host, port, node_id.
+   396	        interval (float): Intervalo entre ticks en segundos (default: 1.0).
+   397	        running (bool): Flag para controlar el loop.
+   398	
+   399	    Example:
+   400	        >>> worker = NodeWorker(node, peers, interval=1.0)
+   401	        >>> worker.start()
+   402	        # Worker empieza a ejecutar tick cada 1s en hilo background
+   403	        >>> worker.stop()
+   404	        # Worker para el loop
+   405	    """
+   406	
+   407	    def __init__(self, node, peers, interval=1.0):
+   408	        """
+   409	        Inicializa el worker.
+   410	
+   411	        Args:
+   412	            node: NodeRuntime del nodo.
+   413	            peers: Lista de peers.
+   414	            interval: Intervalo entre ticks en segundos.
+   415	        """
+   416	        self.node = node
+   417	        self.peers = peers
+   418	        self.interval = interval
+   419	        self.running = False
+   420	
+   421	    def start(self):
+   422	        """
+   423	        Arranca el worker en un hilo daemon.
+   424	
+   425	        El hilo ejecuta loop() hasta que running=False.
+   426	        """
+   427	        self.running = True
+   428	        t = threading.Thread(target=self.loop, daemon=True)
+   429	        t.start()
+   430	
+   431	    def stop(self):
+   432	        """Detiene el worker (setting running=False)."""
+   433	        self.running = False
+   434	
+   435	    def tick_boot(self):
+   436	        """
+   437	        Tick del estado BOOT.
+   438	
+   439	        - Emite watchdog busy=True
+   440	        - Reconstruye cache de eventos
+   441	        - Transiciona a STANDBY
+   442	        """
+   443	        emit_watchdog_if_due(self.peers, busy=True)
+   444	        rebuild_node_event_cache(self.node.node_id)
+   445	        self.node.event_cache_ready = True
+   446	        self.node.transition(NodeState.STANDBY, reason="boot_complete")
+   447	
+   448	    def tick_discovering(self):
+   449	        """Tick del estado DISCOVERING (actualmente no hace nada)."""
+   450	        pass
+   451	
+   452	    def tick_standby(self):
+   453	        """
+   454	        Tick del estado STANDBY.
+   455	
+   456	        - Emite heartbeat a peers
+   457	        - Emite watchdog busy=True
+   458	        - Replica event log y events
+   459	        - Check de estado de eventos
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# REASSEMBLY_ORDER : 005/006
+#
+########################################################################

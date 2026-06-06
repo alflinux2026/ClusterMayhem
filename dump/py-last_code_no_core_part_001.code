@@ -1,0 +1,810 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_no_core
+# SOURCE_FILE      : py-last_code_no_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 001/009
+# PART_NUMBER      : 001
+# TOTAL_PARTS      : 009
+#
+# PREVIOUS_PART    : NONE
+# NEXT_PART        : 002
+#
+# CONTENT_LINES    : 775
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+
+
+===== ./cluster/__init__.py =====
+
+
+===== ./cluster/_lease/__init__.py =====
+
+
+===== ./cluster/_lease/lease.py =====
+     1	from dataclasses import dataclass
+     2	import time
+     3	
+     4	
+     5	@dataclass
+     6	class Lease:
+     7	    owner_id: str
+     8	    ttl_seconds: float
+     9	    granted_at: float
+    10	
+    11	    def expires_at(self) -> float:
+    12	        return self.granted_at + self.ttl_seconds
+    13	
+    14	    def is_valid(self, now: float | None = None) -> bool:
+    15	        now = now or time.time()
+    16	        return now < self.expires_at()
+    17	
+    18	    def renew(self):
+    19	        self.granted_at = time.time()
+
+
+===== ./cluster/_lease/lease_manager.py =====
+     1	import time
+     2	
+     3	
+     4	class Lease:
+     5	
+     6	    def __init__(self, owner, ttl):
+     7	
+     8	        self.owner = owner
+     9	        self.ttl = ttl
+    10	        self.created = time.time()
+    11	
+    12	    def is_valid(self):
+    13	
+    14	        return time.time() < self.created + self.ttl
+    15	
+    16	
+    17	class LeaseManager:
+    18	
+    19	    def __init__(self):
+    20	
+    21	        self.leases = {}
+    22	
+    23	    # -----------------------------------------------------
+    24	
+    25	    def grant(self, node_id, ttl):
+    26	
+    27	        self.leases[node_id] = Lease(node_id, ttl)
+    28	
+    29	    # -----------------------------------------------------
+    30	
+    31	    def is_valid(self, node_id):
+    32	
+    33	        lease = self.leases.get(node_id)
+    34	
+    35	        return lease.is_valid() if lease else False
+    36	
+    37	    # -----------------------------------------------------
+    38	
+    39	    def expire(self):
+    40	
+    41	        expired = []
+    42	
+    43	        for node_id, lease in list(self.leases.items()):
+    44	
+    45	            if not lease.is_valid():
+    46	
+    47	                expired.append(node_id)
+    48	                del self.leases[node_id]
+    49	
+    50	        return expired
+    51	
+    52	    # -----------------------------------------------------
+    53	
+    54	    def active_leader(self):
+    55	
+    56	        for node_id, lease in self.leases.items():
+    57	
+    58	            if lease.is_valid():
+    59	
+    60	                return node_id
+    61	
+    62	        return None
+    63	
+    64	    # -----------------------------------------------------
+    65	
+    66	    def get_active_nodes(self):
+    67	
+    68	        active = []
+    69	
+    70	        for node_id, lease in self.leases.items():
+    71	
+    72	            if lease.is_valid():
+    73	
+    74	                active.append(node_id)
+    75	
+    76	        return active
+
+
+===== ./cluster/api/__init__.py =====
+
+
+===== ./cluster/api/routes_cluster.py =====
+
+
+===== ./cluster/api/routes_health.py =====
+
+
+===== ./cluster/cluster_live.py =====
+     1	# File: ./cluster/utils/cluster_live.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:XX:XX+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/utils/cluster_live.py 0.0.0 2026-05-28T17:XX:XX+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Monitor en vivo del cluster (curses TUI + snapshots).
+    12	#   Conecta por SSH a cada nodo para listar archivos de log, y por HTTP a la API
+    13	#   para obtener estado del cluster. Muestra en tiempo real: health, state, progress,
+    14	#   eventos por nodo, consistencia de archivos, y errores. Permite guardar snapshots
+    15	#   en markdown+json.
+    16	# Notes:
+    17	#   - SSH: ls -lb --full-time en /home/alftorres/projects/mayhem-cluster/cluster/data
+    18	#   - API: /dashboard/compact, /health, /integrity, /debug/events/summary
+    19	#   - TUI actualiza cada 1.5s, muestra tabla con colores por estado
+    20	#   - Colores: verde=ok/ACTIVE, amarillo=stale/STANDBY/executing, rojo=stale/ISOLATED/FAILED, cian=progress
+    21	#   - tecla 's': guarda snapshot md+json en snapshots/
+    22	#   - tecla 'q': sale
+    23	#   - Output: cluster_data_remote_inventory.md, cluster_data_remote_inventory.csv, cluster_data_remote_api_snapshot.json
+    24	#   - Consistencia: verifica que size y mtime coincidan entre replicas
+    25	#
+    26	# FRV-ID: xxxx
+    27	# Header_End
+    28	
+    29	import csv
+    30	import curses
+    31	import json
+    32	import re
+    33	import time
+    34	from datetime import datetime
+    35	from pathlib import Path
+    36	
+    37	import paramiko
+    38	import requests
+    39	
+    40	# =============================================================================
+    41	# Configuración de nodos
+    42	# =============================================================================
+    43	
+    44	#: Lista de nodos del cluster (nombre, host, credenciales SSH, puerto API)
+    45	NODES = [
+    46	    {"name": "lnx200nas", "host": "100.100.1.200", "user": "alftorres", "password": "alftorres", "port": 22, "api_port": 7000},
+    47	    {"name": "lnx202pc", "host": "100.100.1.202", "user": "alftorres", "password": "alftorres", "port": 22, "api_port": 7000},
+    48	    {"name": "lnx203hp", "host": "100.100.1.203", "user": "alftorres", "password": "alftorres", "port": 22, "api_port": 7000},
+    49	]
+    50	
+    51	#: Directorios remotos por nodo
+    52	REMOTE_DIRS = {
+    53	    "lnx200nas": "/home/alftorres/projects/ClusterMayhem/cluster/data",
+    54	    "lnx202pc": "/home/alftorres/projects/ClusterMayhem/cluster/data",
+    55	    "lnx203hp": "/home/alftorres/projects/ClusterMayhem/cluster/data",
+    56	}
+    57	
+    58	#: Archivos de salida
+    59	OUT_MD = Path("cluster_data_remote_inventory.md")
+    60	OUT_CSV = Path("cluster_data_remote_inventory.csv")
+    61	OUT_API_JSON = Path("cluster_data_remote_api_snapshot.json")
+    62	OUT_SNAPSHOT_DIR = Path("snapshots")
+    63	
+    64	#: Regex para parsear output de ls -lb --full-time
+    65	LINE_RE = re.compile(
+    66	    r"^(?P<perm>\S+)\s+"
+    67	    r"(?P<links>\d+)\s+"
+    68	    r"(?P<owner>\S+)\s+"
+    69	    r"(?P<group>\S+)\s+"
+    70	    r"(?P<size>\d+)\s+"
+    71	    r"(?P<date>\d{4}-\d{2}-\d{2})\s+"
+    72	    r"(?P<time>\d{2}:\d{2}:\d{2}\.\d+)\s+"
+    73	    r"(?P<tz>[+-]\d{4})\s+"
+    74	    r"(?P<name>.+)$"
+    75	)
+    76	
+    77	#: Sesión HTTP compartida
+    78	HTTP = requests.Session()
+    79	
+    80	#: Última línea de status (para UI)
+    81	LAST_STATUS_LINE = ""
+    82	
+    83	
+    84	def ssh_ls(node):
+    85	    """
+    86	    Ejecuta ls -lb --full-time en el nodo remoto por SSH.
+    87	
+    88	    Args:
+    89	        node: Dict del nodo (name, host, user, password, port).
+    90	
+    91	    Returns:
+    92	        str: Output de ls.
+    93	
+    94	    Raises:
+    95	        RuntimeError: Si hay error en SSH y no hay output.
+    96	    """
+    97	    remote_dir = REMOTE_DIRS[node["name"]]
+    98	    client = paramiko.SSHClient()
+    99	    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+   100	    client.connect(
+   101	        hostname=node["host"],
+   102	        port=node["port"],
+   103	        username=node["user"],
+   104	        password=node["password"],
+   105	        timeout=5,
+   106	        look_for_keys=False,
+   107	        allow_agent=False,
+   108	    )
+   109	    cmd = f'ls -lb --full-time "{remote_dir}"'
+   110	    stdin, stdout, stderr = client.exec_command(cmd)
+   111	    out = stdout.read().decode("utf-8", errors="replace")
+   112	    err = stderr.read().decode("utf-8", errors="replace")
+   113	    client.close()
+   114	
+   115	    if err.strip() and not out.strip():
+   116	        raise RuntimeError(f"{node['name']}: {err.strip()}")
+   117	
+   118	    return out
+   119	
+   120	
+   121	def parse_ls_output(node_name, text):
+   122	    """
+   123	    Parsea output de ls y extrae archivos event_log.*.jsonl.
+   124	
+   125	    Args:
+   126	        node_name: Nombre del nodo.
+   127	        text: Output de ls -lb --full-time.
+   128	
+   129	    Returns:
+   130	        list[dict]: Filas con node, file, source, mtime_date, mtime_time, mtime_tz, size.
+   131	
+   132	    Note:
+   133	        - Extrae event_log.{source}.000.jsonl
+   134	        - event_log.local.000.jsonl tiene source=node_name
+   135	    """
+   136	    rows = []
+   137	    for line in text.splitlines():
+   138	        line = line.rstrip()
+   139	        if not line or line.startswith("total "):
+   140	            continue
+   141	        m = LINE_RE.match(line)
+   142	        if not m:
+   143	            continue
+   144	        d = m.groupdict()
+   145	        file_name = d["name"]
+   146	        m_source = re.match(r"^event_log\.(.+)\.000\.jsonl$", file_name)
+   147	        if not m_source and file_name != "event_log.local.000.jsonl":
+   148	            continue
+   149	
+   150	        source = m_source.group(1) if m_source else None
+   151	        if file_name == "event_log.local.000.jsonl":
+   152	            source = node_name
+   153	
+   154	        rows.append(
+   155	            {
+   156	                "node": node_name,
+   157	                "file": file_name,
+   158	                "source": source,
+   159	                "mtime_date": d["date"],
+   160	                "mtime_time": d["time"],
+   161	                "mtime_tz": d["tz"],
+   162	                "size": int(d["size"]),
+   163	            }
+   164	        )
+   165	    return rows
+   166	
+   167	
+   168	def parse_ev_output(node_name, text):
+   169	    """
+   170	    Parsea output de ls y extrae archivos events.*.jsonl.
+   171	
+   172	    Args:
+   173	        node_name: Nombre del nodo.
+   174	        text: Output de ls -lb --full-time.
+   175	
+   176	    Returns:
+   177	        list[dict]: Filas con node, file, source, mtime_date, mtime_time, mtime_tz, size.
+   178	
+   179	    Note:
+   180	        - Extrae events.{source}.000.jsonl
+   181	        - events.local.000.jsonl tiene source=node_name
+   182	    """
+   183	    rows = []
+   184	    for line in text.splitlines():
+   185	        line = line.rstrip()
+   186	        if not line or line.startswith("total "):
+   187	            continue
+   188	        m = LINE_RE.match(line)
+   189	        if not m:
+   190	            continue
+   191	        d = m.groupdict()
+   192	        file_name = d["name"]
+   193	        m_source = re.match(r"^events\.(.+)\.000\.jsonl$", file_name)
+   194	        if not m_source and file_name != "events.local.000.jsonl":
+   195	            continue
+   196	
+   197	        source = m_source.group(1) if m_source else None
+   198	        if file_name == "events.local.000.jsonl":
+   199	            source = node_name
+   200	
+   201	        rows.append(
+   202	            {
+   203	                "node": node_name,
+   204	                "file": file_name,
+   205	                "source": source,
+   206	                "mtime_date": d["date"],
+   207	                "mtime_time": d["time"],
+   208	                "mtime_tz": d["tz"],
+   209	                "size": int(d["size"]),
+   210	            }
+   211	        )
+   212	    return rows
+   213	
+   214	
+   215	def fetch_json(url, timeout=4):
+   216	    """
+   217	    Fetch JSON de una URL.
+   218	
+   219	    Args:
+   220	        url: URL a fetchear.
+   221	        timeout: Timeout en segundos.
+   222	
+   223	    Returns:
+   224	        dict: JSON parseado, o {"error": ..., "url": ...} si falla.
+   225	    """
+   226	    try:
+   227	        resp = HTTP.get(url, timeout=timeout)
+   228	        resp.raise_for_status()
+   229	        return resp.json()
+   230	    except Exception as e:
+   231	        return {"error": str(e), "url": url}
+   232	
+   233	
+   234	def fetch_api_snapshot(node):
+   235	    """
+   236	    Obtiene snapshot completo de la API de un nodo.
+   237	
+   238	    Args:
+   239	        node: Dict del nodo.
+   240	
+   241	    Returns:
+   242	        dict: Snapshot con health, dashboard, integrity, events_summary_local.
+   243	    """
+   244	    base = f"http://{node['host']}:{node['api_port']}"
+   245	    dashboard = fetch_json(f"{base}/dashboard/compact")
+   246	    health = fetch_json(f"{base}/health")
+   247	    integrity = fetch_json(f"{base}/integrity")
+   248	    events_summary_local = fetch_json(f"{base}/debug/events/summary")
+   249	
+   250	    return {
+   251	        "node": node["name"],
+   252	        "host": node["host"],
+   253	        "health": health,
+   254	        "dashboard": dashboard,
+   255	        "integrity": integrity,
+   256	        "events_summary_local": events_summary_local,
+   257	    }
+   258	
+   259	
+   260	def build_groups_ev(rows):
+   261	    """Agrupa eventos por source."""
+   262	    groups_ev = {}
+   263	    for row in rows:
+   264	        groups_ev.setdefault(row["source"], []).append(row)
+   265	    return groups_ev
+   266	
+   267	
+   268	def build_groups(rows):
+   269	    """Agrupa archivos por source."""
+   270	    groups = {}
+   271	    for row in rows:
+   272	        groups.setdefault(row["source"], []).append(row)
+   273	    return groups
+   274	
+   275	
+   276	def check_consistency(groups):
+   277	    """
+   278	    Verifica consistencia de archivos entre replicas.
+   279	
+   280	    Args:
+   281	        groups: Dict de grupos por source.
+   282	
+   283	    Note:
+   284	        - Verifica que size sea igual en todos los nodos
+   285	        - Verifica que mtime difiera en <= 2 nodos
+   286	    """
+   287	    for source, entries in groups.items():
+   288	        for file_name in set(e["file"] for e in entries):
+   289	            entries_file = [e for e in entries if e["file"] == file_name]
+   290	            sizes = {e["node"]: e["size"] for e in entries_file}
+   291	            mtimes = {e["node"]: (e["mtime_date"], e["mtime_time"]) for e in entries_file}
+   292	            size_ok = len(set(sizes.values())) == 1
+   293	            mtime_ok = len(set(mtimes.values())) <= 2
+   294	            print(
+   295	                f"[INFO] {source}/{file_name}: size={'OK' if size_ok else 'MISMATCH'} "
+   296	                f"mtime={'OK' if mtime_ok else 'MISMATCH'}"
+   297	            )
+   298	
+   299	
+   300	def _node_runtime_view(api_snapshots, node_name):
+   301	    """
+   302	    Construye la vista de runtime de un nodo.
+   303	
+   304	    Args:
+   305	        api_snapshots: Dict de snapshots de API por nodo.
+   306	        node_name: Nombre del nodo.
+   307	
+   308	    Returns:
+   309	        dict: Vista con health, state, state_age_s, progress, counters, dirty.
+   310	
+   311	    Note:
+   312	        - Combina datos de dashboard (otros nodos) y health/integrity (local)
+   313	        - Scorea rows para elegir la mejor vista del nodo
+   314	        - Calcula progress_pct si hay progress_current y progress_total
+   315	    """
+   316	    def fallback(*values):
+   317	        for value in values:
+   318	            if value is not None:
+   319	                return value
+   320	        return None
+   321	
+   322	    def score_row(row):
+   323	        if not isinstance(row, dict):
+   324	            return -1
+   325	        score = 0
+   326	        if row.get("node_id") == node_name:
+   327	            score += 1
+   328	        if row.get("presence_age_s") is not None:
+   329	            score += 2
+   330	        if row.get("watchdog_age_s") is not None:
+   331	            score += 4
+   332	        if row.get("watchdog_busy") is not None:
+   333	            score += 2
+   334	        if row.get("health") == "ok":
+   335	            score += 1
+   336	        if row.get("progress_stage") is not None:
+   337	            score += 1
+   338	        if row.get("progress_age_s") is not None:
+   339	            score += 1
+   340	        return score
+   341	
+   342	    local_snap = api_snapshots.get(node_name, {}) or {}
+   343	    local_health = local_snap.get("health", {}) or {}
+   344	    local_integrity = local_snap.get("integrity", {}) or {}
+   345	    local_summary = local_snap.get("events_summary_local", {}) or {}
+   346	
+   347	    candidate_rows = []
+   348	
+   349	    for snap_name, snap in (api_snapshots or {}).items():
+   350	        dashboard = (snap or {}).get("dashboard", {}) or {}
+   351	        for r in dashboard.get("nodes", []) or []:
+   352	            if r.get("node_id") == node_name:
+   353	                candidate_rows.append((snap_name, r))
+   354	
+   355	    best_row = {}
+   356	    if candidate_rows:
+   357	        candidate_rows.sort(key=lambda item: score_row(item[1]), reverse=True)
+   358	        best_row = candidate_rows[0][1] or {}
+   359	
+   360	    counts = local_summary.get("counts", {}) if isinstance(local_summary, dict) else {}
+   361	    local_meta = local_integrity.get("local_log_meta", {}) if isinstance(local_integrity, dict) else {}
+   362	    last_append = local_integrity.get("last_append_meta", {}) if isinstance(local_integrity, dict) else {}
+   363	
+   364	    state_raw = fallback(best_row.get("state"), local_health.get("state"))
+   365	    state_value = state_raw if state_raw in (
+   366	        "ACTIVE", "STAND-BY", "STANDBY", "DRAINING", "SEGMENTATION", "ISOLATED", "OFFLINE"
+   367	    ) else "???"
+   368	
+   369	    progress_active = fallback(best_row.get("progress_active"), local_health.get("progress_active"), False)
+   370	    progress_stage = fallback(best_row.get("progress_stage"), local_health.get("progress_stage"))
+   371	    progress_age_s = fallback(best_row.get("progress_age_s"), local_health.get("progress_age_s"))
+   372	    progress_current = fallback(best_row.get("progress_current"), local_health.get("progress_current"))
+   373	    progress_total = fallback(best_row.get("progress_total"), local_health.get("progress_total"))
+   374	    progress_stalled = fallback(best_row.get("progress_stalled"), local_health.get("progress_stalled"), False)
+   375	
+   376	    progress_pct = None
+   377	    try:
+   378	        if progress_current is not None and progress_total not in (None, 0):
+   379	            progress_pct = round((float(progress_current) / float(progress_total)) * 100.0, 1)
+   380	    except Exception:
+   381	        progress_pct = None
+   382	
+   383	    return {
+   384	        "health": fallback(best_row.get("health"), local_health.get("status"), "?"),
+   385	        "state": state_value,
+   386	        "state_age_s": fallback(best_row.get("state_age_s"), local_health.get("state_age_s")),
+   387	        "presence_age_s": fallback(best_row.get("presence_age_s"), local_health.get("presence_age_s")),
+   388	        "watchdog_age_s": fallback(best_row.get("watchdog_age_s"), local_health.get("watchdog_age_s")),
+   389	        "watchdog_busy": fallback(best_row.get("watchdog_busy"), local_health.get("watchdog_busy")),
+   390	        "progress_active": bool(progress_active),
+   391	        "progress_stage": progress_stage,
+   392	        "progress_age_s": progress_age_s,
+   393	        "progress_current": progress_current,
+   394	        "progress_total": progress_total,
+   395	        "progress_pct": progress_pct,
+   396	        "progress_stalled": bool(progress_stalled),
+   397	        "local_size": int(local_meta.get("size", 0) or 0),
+   398	        "local_events": int(local_summary.get("total_events", 0) or 0),
+   399	        "created": int(counts.get("created", 0) or 0),
+   400	        "executing": int(counts.get("executing", 0) or 0),
+   401	        "completed": int(counts.get("completed", 0) or 0),
+   402	        "dirty": last_append.get("dirty", "-"),
+   403	    }
+   404	
+   405	
+   406	def setup_colors():
+   407	    """Inicializa pares de colores para curses."""
+   408	    if not curses.has_colors():
+   409	        return False
+   410	
+   411	    curses.start_color()
+   412	    curses.use_default_colors()
+   413	
+   414	    curses.init_pair(1, curses.COLOR_GREEN, -1)   # ok/ACTIVE/completed
+   415	    curses.init_pair(2, curses.COLOR_YELLOW, -1)  # stale/STANDBY/executing
+   416	    curses.init_pair(3, curses.COLOR_RED, -1)     # error/ISOLATED/FAILED/stalled
+   417	    curses.init_pair(4, curses.COLOR_CYAN, -1)    # headers/progress_stage
+   418	    curses.init_pair(5, curses.COLOR_WHITE, -1)   # default
+   419	    curses.init_pair(6, curses.COLOR_MAGENTA, -1) # busy/created/DRAINING
+   420	    return True
+   421	
+   422	
+   423	def color_for_health(value):
+   424	    """Color para health value."""
+   425	    v = str(value or "").lower()
+   426	    if v == "ok":
+   427	        return curses.color_pair(1) | curses.A_BOLD
+   428	    if v == "stale":
+   429	        return curses.color_pair(3) | curses.A_BOLD
+   430	    return curses.color_pair(2) | curses.A_BOLD
+   431	
+   432	
+   433	def color_for_state(state, stale=False):
+   434	    """Color para state value."""
+   435	    if stale:
+   436	        return curses.color_pair(3) | curses.A_BOLD
+   437	
+   438	    s = str(state or "").upper()
+   439	    if s == "ACTIVE":
+   440	        return curses.color_pair(1) | curses.A_BOLD
+   441	    if s in ("STAND-BY", "STANDBY"):
+   442	        return curses.color_pair(2) | curses.A_BOLD
+   443	    if s == "DRAINING":
+   444	        return curses.color_pair(6) | curses.A_BOLD
+   445	    if s in ("ISOLATED", "OFFLINE", "???"):
+   446	        return curses.color_pair(3) | curses.A_BOLD
+   447	    return curses.color_pair(5)
+   448	
+   449	
+   450	def color_for_dirty(value):
+   451	    """Color para dirty flag."""
+   452	    if value is True or str(value).lower() == "true":
+   453	        return curses.color_pair(3) | curses.A_BOLD
+   454	    return curses.color_pair(1)
+   455	
+   456	
+   457	def color_for_count(label, value):
+   458	    """Color para counters (created, executing, completed)."""
+   459	    try:
+   460	        n = int(value)
+   461	    except Exception:
+   462	        n = 0
+   463	
+   464	    if label == "executing" and n > 0:
+   465	        return curses.color_pair(2) | curses.A_BOLD
+   466	    if label == "created" and n > 0:
+   467	        return curses.color_pair(6) | curses.A_BOLD
+   468	    if label == "completed" and n > 0:
+   469	        return curses.color_pair(1)
+   470	    return curses.color_pair(5)
+   471	
+   472	
+   473	def color_for_age(value, warn_s=1.5, stale_s=3.0):
+   474	    """Color para age (watchdog_age_s, presence_age_s, etc.)."""
+   475	    if value is None:
+   476	        return curses.color_pair(5)
+   477	    try:
+   478	        age = float(value)
+   479	    except Exception:
+   480	        return curses.color_pair(5)
+   481	    if age >= stale_s:
+   482	        return curses.color_pair(3) | curses.A_BOLD
+   483	    if age >= warn_s:
+   484	        return curses.color_pair(2) | curses.A_BOLD
+   485	    return curses.color_pair(1)
+   486	
+   487	
+   488	def color_for_busy(value):
+   489	    """Color para watchdog_busy."""
+   490	    if value is True:
+   491	        return curses.color_pair(6) | curses.A_BOLD
+   492	    if value is False:
+   493	        return curses.color_pair(1)
+   494	    return curses.color_pair(5)
+   495	
+   496	
+   497	def color_for_progress_active(value):
+   498	    """Color para progress_active."""
+   499	    if value is True:
+   500	        return curses.color_pair(6) | curses.A_BOLD
+   501	    return curses.color_pair(5)
+   502	
+   503	
+   504	def color_for_progress_stalled(value):
+   505	    """Color para progress_stalled."""
+   506	    if value is True:
+   507	        return curses.color_pair(3) | curses.A_BOLD
+   508	    return curses.color_pair(1)
+   509	
+   510	
+   511	def color_for_progress_stage(stage):
+   512	    """Color para progress_stage."""
+   513	    if not stage:
+   514	        return curses.color_pair(5)
+   515	    return curses.color_pair(4)
+   516	
+   517	
+   518	def render_top_summary_1(api_snapshots, groups):
+   519	    """
+   520	    Renderiza summary del cluster en markdown.
+   521	
+   522	    Args:
+   523	        api_snapshots: Dict de snapshots de API.
+   524	        groups: Dict de grupos de archivos.
+   525	
+   526	    Returns:
+   527	        list[str]: Líneas de markdown.
+   528	    """
+   529	    source_order = ["lnx200nas", "lnx202pc", "lnx203hp"]
+   530	    lines = []
+   531	
+   532	    NODE_W = 12
+   533	    HEALTH_W = 8
+   534	    STATE_W = 12
+   535	    TSTATE_W = 8
+   536	    PRES_W = 7
+   537	    WDOG_W = 7
+   538	    BUSY_W = 5
+   539	    STAGE_W = 18
+   540	    PROG_W = 12
+   541	    PAGE_W = 7
+   542	    STALL_W = 6
+   543	    SIZE_W = 10
+   544	    EVENTS_W = 12
+   545	    COUNT_W = 9
+   546	    DIRTY_W = 7
+   547	
+   548	    def cut(value, width):
+   549	        s = "-" if value is None else str(value)
+   550	        return s if len(s) <= width else s[: max(0, width - 1)] + "…"
+   551	
+   552	    def fmt_age(value):
+   553	        if value is None:
+   554	            return "-"
+   555	        try:
+   556	            value = float(value)
+   557	        except Exception:
+   558	            return "-"
+   559	        if value < 60:
+   560	            return f"{value:.0f}s"
+   561	        if value < 3600:
+   562	            return f"{value / 60:.1f}m"
+   563	        return f"{value / 3600:.1f}h"
+   564	
+   565	    def fmt_busy(value):
+   566	        if value is True:
+   567	            return "Y"
+   568	        if value is False:
+   569	            return "N"
+   570	        return "?"
+   571	
+   572	    def fmt_progress(current, total, pct):
+   573	        if current is None and total is None:
+   574	            return "-"
+   575	        try:
+   576	            if pct is not None and current is not None and total is not None:
+   577	                return f"{int(current)}/{int(total)} {pct:.0f}%"
+   578	            if current is not None and total is not None:
+   579	                return f"{int(current)}/{int(total)}"
+   580	            return str(current if current is not None else "-")
+   581	        except Exception:
+   582	            return "-"
+   583	
+   584	    lines.append("### resumen cluster")
+   585	    lines.append("")
+   586	    lines.append(
+   587	        "- leader esperado: "
+   588	        + ", ".join(
+   589	            f"{node}: {api_snapshots.get(node, {}).get('dashboard', {}).get('cluster', {}).get('leader', '?')}"
+   590	            for node in source_order
+   591	        )
+   592	    )
+   593	    lines.append("")
+   594	    lines.append(
+   595	        f"- {'nodo':<{NODE_W}}  {'health':<{HEALTH_W}}  {'state':<{STATE_W}}  {'t_state':>{TSTATE_W}}  "
+   596	        f"{'pres':>{PRES_W}}  {'wdog':>{WDOG_W}}  {'busy':<{BUSY_W}}  "
+   597	        f"{'stage':<{STAGE_W}}  {'prog':>{PROG_W}}  {'p_age':>{PAGE_W}}  {'stall':<{STALL_W}}  "
+   598	        f"{'local_size':>{SIZE_W}}  {'local_events':>{EVENTS_W}}  "
+   599	        f"{'created':>{COUNT_W}}  {'executing':>{COUNT_W}}  {'completed':>{COUNT_W}}  "
+   600	        f"{'dirty':<{DIRTY_W}}"
+   601	    )
+   602	
+   603	    for node_name in source_order:
+   604	        view = _node_runtime_view(api_snapshots, node_name)
+   605	        lines.append(
+   606	            f"- {node_name:<{NODE_W}}  "
+   607	            f"{cut(view['health'], HEALTH_W):<{HEALTH_W}}  "
+   608	            f"{cut(view['state'], STATE_W):<{STATE_W}}  "
+   609	            f"{fmt_age(view['state_age_s']):>{TSTATE_W}}  "
+   610	            f"{fmt_age(view['presence_age_s']):>{PRES_W}}  "
+   611	            f"{fmt_age(view['watchdog_age_s']):>{WDOG_W}}  "
+   612	            f"{fmt_busy(view['watchdog_busy']):<{BUSY_W}}  "
+   613	            f"{cut(view['progress_stage'], STAGE_W):<{STAGE_W}}  "
+   614	            f"{cut(fmt_progress(view['progress_current'], view['progress_total'], view['progress_pct']), PROG_W):>{PROG_W}}  "
+   615	            f"{fmt_age(view['progress_age_s']):>{PAGE_W}}  "
+   616	            f"{('Y' if view['progress_stalled'] else 'N'):<{STALL_W}}  "
+   617	            f"{view['local_size']:>{SIZE_W}}  "
+   618	            f"{view['local_events']:>{EVENTS_W}}  "
+   619	            f"{view['created']:>{COUNT_W}}  "
+   620	            f"{view['executing']:>{COUNT_W}}  "
+   621	            f"{view['completed']:>{COUNT_W}}  "
+   622	            f"{cut(view['dirty'], DIRTY_W):<{DIRTY_W}}"
+   623	        )
+   624	
+   625	    lines.append("")
+   626	    return lines
+   627	
+   628	
+   629	def draw_top_summary_curses(stdscr, start_y, api_snapshots, width):
+   630	    """
+   631	    Renderiza summary del cluster en curses.
+   632	
+   633	    Args:
+   634	        stdscr: Ventana curses.
+   635	        start_y: Y inicial.
+   636	        api_snapshots: Dict de snapshots de API.
+   637	        width: Ancho de la ventana.
+   638	
+   639	    Returns:
+   640	        int: Próxima Y disponible.
+   641	    """
+   642	    source_order = ["lnx200nas", "lnx202pc", "lnx203hp"]
+   643	
+   644	    NODE_W = 12
+   645	    HEALTH_W = 8
+   646	    STATE_W = 12
+   647	    TSTATE_W = 8
+   648	    PRES_W = 7
+   649	    WDOG_W = 7
+   650	    BUSY_W = 5
+   651	    STAGE_W = 18
+   652	    PROG_W = 12
+   653	    PAGE_W = 7
+   654	    STALL_W = 6
+   655	    SIZE_W = 10
+   656	    EVENTS_W = 12
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_no_core
+# REASSEMBLY_ORDER : 001/009
+#
+########################################################################

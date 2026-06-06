@@ -1,0 +1,817 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# SOURCE_FILE      : py-last_code_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 003/006
+# PART_NUMBER      : 003
+# TOTAL_PARTS      : 006
+#
+# PREVIOUS_PART    : 002
+# NEXT_PART        : 004
+#
+# CONTENT_LINES    : 782
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+   229	            if not line:
+   230	                continue
+   231	            try:
+   232	                events.append(json.loads(line))
+   233	            except json.JSONDecodeError:
+   234	                continue
+   235	    return events
+   236	
+   237	
+   238	def _write_json_atomic(target_path: Path, payload: dict):
+   239	    """
+   240	    Escribe un dict como JSON de forma atómica (thread-safe).
+   241	
+   242	    Usa tempfile.mkstemp + fsync + os.replace para escritura atómica.
+   243	
+   244	    Args:
+   245	        target_path: Ruta del archivo destino.
+   246	        payload: Dict a escribir.
+   247	
+   248	    Note:
+   249	        - Usa _STATE_LOCK para evitar escrituras concurrentes
+   250	        - tempfile.mkstemp en el mismo directorio para os.replace atómico
+   251	    """
+   252	    ensure_dir()
+   253	    with _STATE_LOCK:
+   254	        fd, tmp_name = tempfile.mkstemp(
+   255	            prefix=f"{target_path.name}.",
+   256	            suffix=".tmp",
+   257	            dir=str(target_path.parent),
+   258	            text=True,
+   259	        )
+   260	        try:
+   261	            with os.fdopen(fd, "w", encoding="utf-8") as f:
+   262	                json.dump(payload, f, ensure_ascii=False)
+   263	                f.flush()
+   264	                os.fsync(f.fileno())
+   265	            os.replace(tmp_name, str(target_path))
+   266	        except Exception:
+   267	            try:
+   268	                os.remove(tmp_name)
+   269	            except FileNotFoundError:
+   270	                pass
+   271	            raise
+   272	
+   273	
+   274	def write_text_atomic(path: str, content: str):
+   275	    """
+   276	    Escribe texto en un archivo de forma atómica.
+   277	
+   278	    Args:
+   279	        path: Ruta del archivo destino.
+   280	        content: Contenido a escribir.
+   281	    """
+   282	    ensure_dir()
+   283	    target_path = Path(path)
+   284	    fd, tmp_name = tempfile.mkstemp(
+   285	        prefix=f"{target_path.name}.",
+   286	        suffix=".tmp",
+   287	        dir=str(target_path.parent),
+   288	        text=True,
+   289	    )
+   290	    try:
+   291	        with os.fdopen(fd, "w", encoding="utf-8") as f:
+   292	            f.write(content)
+   293	            f.flush()
+   294	            os.fsync(f.fileno())
+   295	        os.replace(tmp_name, str(target_path))
+   296	    except Exception:
+   297	        try:
+   298	            os.remove(tmp_name)
+   299	        except FileNotFoundError:
+   300	            pass
+   301	        raise
+   302	
+   303	
+   304	def read_local_log_text() -> str:
+   305	    """Lee todo el contenido del log local."""
+   306	    if not LOCAL_LOG_PATH.exists():
+   307	        return ""
+   308	    return LOCAL_LOG_PATH.read_text(encoding="utf-8")
+   309	
+   310	
+   311	def read_completed_log_text() -> str:
+   312	    """Lee todo el contenido del log de eventos completados."""
+   313	    if not COMPLETED_LOG_PATH.exists():
+   314	        return ""
+   315	    return COMPLETED_LOG_PATH.read_text(encoding="utf-8")
+   316	
+   317	
+   318	def write_replica_log(node_id: str, content: str):
+   319	    """Escribe el log como replica para un peer."""
+   320	    ensure_dir()
+   321	    write_text_atomic(get_replica_log_path(node_id), content)
+   322	
+   323	
+   324	def write_replica_events(node_id: str, content: str):
+   325	    """Escribe los events como replica para un peer."""
+   326	    ensure_dir()
+   327	    write_text_atomic(get_replica_events_path(node_id), content)
+   328	
+   329	
+   330	def write_completed_log(content: str):
+   331	    """Escribe el log de eventos completados."""
+   332	    ensure_dir()
+   333	    write_text_atomic(str(COMPLETED_LOG_PATH), content)
+   334	
+   335	
+   336	def read_state() -> dict:
+   337	    """
+   338	    Lee el estado del archivo state.
+   339	
+   340	    Returns:
+   341	        dict: Estado con dirty flags y metadata, o {} si no existe.
+   342	    """
+   343	    if not STATE_PATH.exists():
+   344	        return {}
+   345	
+   346	    try:
+   347	        with open(STATE_PATH, "r", encoding="utf-8") as f:
+   348	            data = json.load(f)
+   349	            return data if isinstance(data, dict) else {}
+   350	    except (OSError, json.JSONDecodeError):
+   351	        return {}
+   352	
+   353	
+   354	def get_last_append_meta() -> dict:
+   355	    """Devuelve metadata del último append."""
+   356	    state = read_state()
+   357	    return state if isinstance(state, dict) else {}
+   358	
+   359	
+   360	def write_state(state: dict):
+   361	    """Escribe el estado de forma atómica."""
+   362	    _write_json_atomic(STATE_PATH, state)
+   363	
+   364	
+   365	def clear_eventlog_dirty_state():
+   366	    """Limpia el dirty flag del event log (replicación exitosa)."""
+   367	    state = read_state()
+   368	    state["dirty"] = False
+   369	    write_state(state)
+   370	
+   371	
+   372	def clear_events_dirty_state():
+   373	    """Limpia el dirty flag del events log (replicación exitosa)."""
+   374	    state = read_state()
+   375	    state["events_dirty"] = False
+   376	    write_state(state)
+   377	
+   378	
+   379	def load_events() -> List[dict]:
+   380	    """Carga eventos del log local."""
+   381	    return load_events_from_path(str(LOCAL_LOG_PATH))
+   382	
+   383	
+   384	def load_local_events() -> List[dict]:
+   385	    """Alias de load_events()."""
+   386	    return load_events_from_path(str(LOCAL_LOG_PATH))
+   387	
+   388	
+   389	def load_completed_events() -> List[dict]:
+   390	    """Carga eventos del log de completados."""
+   391	    return load_events_from_path(str(COMPLETED_LOG_PATH))
+   392	
+   393	
+   394	def load_replica_events(node_id: str) -> List[dict]:
+   395	    """Carga eventos de la replica de un peer."""
+   396	    return load_events_from_path(get_replica_log_path(node_id))
+   397	
+   398	
+   399	def load_all_replica_events() -> List[dict]:
+   400	    """Carga eventos de todas las replicas."""
+   401	    events: List[dict] = []
+   402	    for path in list_replica_log_paths():
+   403	        events.extend(load_events_from_path(path))
+   404	    return events
+   405	
+   406	
+   407	def load_cluster_events() -> List[dict]:
+   408	    """Alias de load_all_replica_events()."""
+   409	    return load_all_replica_events()
+   410	
+   411	
+   412	def _normalize_event(e: dict) -> dict:
+   413	    """
+   414	    Normaliza un evento asegurando campos defaults.
+   415	
+   416	    Args:
+   417	        e: Dict de evento.
+   418	
+   419	    Returns:
+   420	        dict: Evento normalizado con schema_version, received_at, attempt, route_hops, execution_key.
+   421	    """
+   422	    e = dict(e)
+   423	    e["schema_version"] = str(e.get("schema_version", "0.1"))
+   424	    e.setdefault("received_at", None)
+   425	    e.setdefault("attempt", 0)
+   426	    e.setdefault("route_hops", [])
+   427	    e.setdefault("execution_key", None)
+   428	    return e
+   429	
+   430	
+   431	def _latest_map(events: List[dict]) -> Dict[str, dict]:
+   432	    """
+   433	    Crea un mapa event_id -> último evento (por orden en el log).
+   434	
+   435	    Args:
+   436	        events: Lista de eventos (puede tener duplicados por event_id).
+   437	
+   438	    Returns:
+   439	        dict[str, dict]: Mapa de event_id -> último evento.
+   440	    """
+   441	    latest: Dict[str, dict] = {}
+   442	    for e in events:
+   443	        e = _normalize_event(e)
+   444	        latest[e["event_id"]] = e
+   445	    return latest
+   446	
+   447	
+   448	def rebuild_event_state_index() -> Dict[str, dict]:
+   449	    """
+   450	    Reconstruye el index de eventos por event_id (último versión).
+   451	
+   452	    Returns:
+   453	        dict[str, dict]: Mapa event_id -> último evento.
+   454	    """
+   455	    return _latest_map(load_events())
+   456	
+   457	
+   458	def get_latest_event(event_id: str) -> Optional[dict]:
+   459	    """
+   460	    Obtiene el último evento con un event_id específico.
+   461	
+   462	    Args:
+   463	        event_id: ID del evento a buscar.
+   464	
+   465	    Returns:
+   466	        dict | None: Último evento con ese event_id, o None si no existe.
+   467	    """
+   468	    events = load_events()
+   469	    for e in reversed(events):
+   470	        if e["event_id"] == event_id:
+   471	            return _normalize_event(e)
+   472	    return None
+   473	
+   474	
+   475	def get_created_events():
+   476	    """
+   477	    Obtiene eventos en estado CREATED.
+   478	
+   479	    Returns:
+   480	        list[ClusterEvent]: Eventos con status=CREATED.
+   481	    """
+   482	    latest = rebuild_event_state_index()
+   483	    domain_events = [ClusterEvent(**e) for e in latest.values()]
+   484	    return [e for e in domain_events if e.status == EventStatus.CREATED]
+   485	
+   486	
+   487	def get_completed_event_ids():
+   488	    """
+   489	    Obtiene IDs de eventos en estado COMPLETED.
+   490	
+   491	    Returns:
+   492	        set[str]: event_ids de eventos COMPLETED.
+   493	    """
+   494	    latest = rebuild_event_state_index()
+   495	    domain_events = [ClusterEvent(**e) for e in latest.values()]
+   496	    return {e.event_id for e in domain_events if e.status == EventStatus.COMPLETED}
+   497	
+   498	
+   499	def append_event(event: ClusterEvent):
+   500	    """
+   501	    Añade un evento al log local.
+   502	
+   503	    Secuencia:
+   504	        1. Asegura archivos iniciales (ensure_initial_files)
+   505	        2. Crea record con campos del evento
+   506	        3. Añade línea al log local (JSONL append)
+   507	        4. Actualiza state con dirty=True y metadata del append
+   508	        5. Si status=CREATED, también añade al completed log
+   509	        6. Actualiza cache de counters en cluster_state
+   510	
+   511	    Args:
+   512	        event: Evento a appendear.
+   513	
+   514	    Note:
+   515	        - El dirty flag se pone para indicar que hay que replicar
+   516	        - Se escribe manualmente con fsync para asegurar durabilidad
+   517	        - Si falla write_state, imprime error pero no levanta exception
+   518	    """
+   519	    ensure_initial_files()
+   520	
+   521	    record = {
+   522	        "event_id": event.event_id,
+   523	        "event_type": event.event_type,
+   524	        "schema_version": str(event.schema_version),
+   525	        "created_at": event.created_at,
+   526	        "updated_at": getattr(event, "updated_at", None),
+   527	        "received_at": getattr(event, "received_at", None),
+   528	        "trace_id": event.trace_id,
+   529	        "target_node": event.target_node,
+   530	        "source_node": getattr(event, "source_node", None),
+   531	        "route_hops": list(getattr(event, "route_hops", []) or []),
+   532	        "status": event.status.value if hasattr(event.status, "value") else event.status,
+   533	        "attempt": event.attempt,
+   534	        "execution_key": getattr(event, "execution_key", None),
+   535	        "payload": event.payload,
+   536	    }
+   537	
+   538	    line = json.dumps(record) + "\n"
+   539	    with open(LOCAL_LOG_PATH, "a", encoding="utf-8") as f:
+   540	        f.write(line)
+   541	        f.flush()
+   542	        os.fsync(f.fileno())
+   543	
+   544	    state = read_state()
+   545	    state["dirty"] = True
+   546	    state["last_append_event_id"] = event.event_id
+   547	    state["last_append_created_at"] = event.created_at
+   548	    state["last_append_updated_at"] = getattr(event, "updated_at", None)
+   549	
+   550	    if record["status"] == EventStatus.CREATED.value:
+   551	        with open(COMPLETED_LOG_PATH, "a", encoding="utf-8") as f:
+   552	            f.write(line)
+   553	            f.flush()
+   554	            os.fsync(f.fileno())
+   555	
+   556	        state["events_dirty"] = True
+   557	        state["last_completed_event_id"] = event.event_id
+   558	        state["last_completed_created_at"] = event.created_at
+   559	        state["last_completed_updated_at"] = getattr(event, "updated_at", None)
+   560	
+   561	    try:
+   562	        write_state(state)
+   563	        _update_node_events_cache(event, record["status"])
+   564	
+   565	    except Exception as e:
+   566	        print(f"[STATE WRITE FAIL] {event.event_id} -> {e}")
+   567	
+   568	
+   569	def replay_events(handler, stream: str | None = None):
+   570	    """
+   571	    Reproduce todos los eventos del log llamando a handler para cada uno.
+   572	
+   573	    Args:
+   574	        handler: Función a llamar para cada evento (event -> None).
+   575	        stream: (Opcional) Stream a filtrar (no implementado aún).
+   576	
+   577	    Example:
+   578	        >>> def handler(event):
+   579	        ...     print(f"Replaying {event.event_id}")
+   580	        >>> replay_events(handler)
+   581	    """
+   582	    events = load_events()
+   583	    for raw in events:
+   584	        event = ClusterEvent(**_normalize_event(raw))
+   585	        handler(event)
+   586	
+   587	
+   588	def ingest_event(event, node_id):
+   589	    """
+   590	    Ingerta un evento (marca como CREATED y lo appendea).
+   591	
+   592	    Args:
+   593	        event: Evento a ingerir.
+   594	        node_id: ID del nodo que ingiere (líder).
+   595	
+   596	    Returns:
+   597	        dict: Resultado con event_id, status="accepted", leader, trace_id.
+   598	
+   599	    Note:
+   600	        - Se llama desde POST /event en api_app.py
+   601	        - Marca el evento como CREATED (si no lo está ya)
+   602	        - Marca received_at (si no lo tiene ya)
+   603	        - Logeia el evento con log_state
+   604	    """
+   605	    event.mark_status(EventStatus.CREATED)
+   606	    event.mark_received()
+   607	    append_event(event)
+   608	
+   609	    msg = event.payload.get("msg", "<no-msg>")
+   610	
+   611	    log_state("yellow", "(EVENT)", f"{msg:12} -> CREATED", 3)
+   612	    log_state("cyan", "[EVENT OK]", f"{msg:12}", 3)
+   613	
+   614	    return {
+   615	        "event_id": event.event_id,
+   616	        "status": "accepted",
+   617	        "leader": node_id,
+   618	        "trace_id": event.trace_id
+   619	    }
+
+
+===== ./cluster/runtime/events/cluster_event.py =====
+     1	# File: ./cluster/runtime/events/cluster_event.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:09:05+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/events/cluster_event.py 0.0.0 2026-05-28T17:09:05+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Modelo de dato de evento del cluster.
+    12	#   ClusterEvent es el objeto que representa un evento en el sistema,
+    13	#   con todos los metadatos necesarios para routing, tracking, y state management.
+    14	#   Hereda de Pydantic BaseModel para validación automática y serialization.
+    15	# Notes:
+    16	#   - event_id y trace_id se generan automáticamente con uuid4()
+    17	#   - status es un EventStatus (CREATED, EXECUTING, COMPLETED, FAILED)
+    18	#   - route_hops trackea el path del evento a través del cluster (para debugging)
+    19	#   - target_node y source_node para routing entre nodos
+    20	#   - created_at, updated_at, received_at para tracking temporal
+    21	#   - attempt y execution_key para retries y deduplication
+    22	#   - add_hop(), mark_status(), mark_received() actualizan updated_at automáticamente
+    23	#
+    24	# FRV-ID: 317a6125cc88cfcb
+    25	# Header_End
+    26	
+    27	from pydantic import BaseModel, Field
+    28	from typing import Optional
+    29	from uuid import uuid4
+    30	import time
+    31	
+    32	from cluster.runtime.events.event_state import EventStatus
+    33	
+    34	
+    35	class ClusterEvent(BaseModel):
+    36	    """
+    37	    Evento del cluster.
+    38	
+    39	    Objeto de dato que representa un evento en el sistema distribuido.
+    40	    Incluye metadatos para routing, tracking, state management, y debugging.
+    41	
+    42	    Attributes:
+    43	        event_id (str): ID único del evento (UUID v4, auto-generado).
+    44	        trace_id (str): ID de traza para correlación (UUID v4, auto-generado).
+    45	        schema_version (str): Versión del schema del evento (default: "0.1").
+    46	        event_type (str): Tipo del evento (ej: "user_command", "timer", "webhook").
+    47	        payload (dict): Datos del evento (business payload).
+    48	        status (EventStatus): Estado actual (CREATED, EXECUTING, COMPLETED, FAILED).
+    49	        route_hops (list[str]): Lista de nodos por donde pasó el evento.
+    50	        target_node (str | None): Nodo destino del evento.
+    51	        source_node (str | None): Nodo origen del evento.
+    52	        created_at (float): Timestamp cuando se creó el evento.
+    53	        updated_at (float): Timestamp de la última actualización.
+    54	        received_at (float | None): Timestamp cuando se recibió el evento.
+    55	        attempt (int): Número de intentos de ejecución (para retries).
+    56	        execution_key (str | None): Key para deduplication de ejecución.
+    57	
+    58	    Example:
+    59	        >>> event = ClusterEvent(
+    60	        ...     event_type="user_command",
+    61	        ...     payload={"msg": "hola", "data": {"foo": "bar"}}
+    62	        ... )
+    63	        >>> event.event_id
+    64	        'a1b2c3d4-...'
+    65	        >>> event.status
+    66	        <EventStatus.CREATED: 'created'>
+    67	
+    68	        >>> event.mark_status(EventStatus.EXECUTING)
+    69	        >>> event.status
+    70	        <EventStatus.EXECUTING: 'executing'>
+    71	
+    72	        >>> event.add_hop("lnx203hp")
+    73	        >>> event.route_hops
+    74	        ['lnx203hp']
+    75	
+    76	    Note:
+    77	        - Hereda de Pydantic BaseModel: validación automática, .model_dump(), .model_json()
+    78	        - event_id y trace_id se generan con default_factory=lambda: str(uuid4())
+    79	        - payload es un dict vacío por defecto (default_factory=dict)
+    80	        - route_hops es una lista vacía por defecto (default_factory=list)
+    81	    """
+    82	    event_id: str = Field(default_factory=lambda: str(uuid4()))
+    83	    trace_id: str = Field(default_factory=lambda: str(uuid4()))
+    84	
+    85	    schema_version: str = "0.1"
+    86	    event_type: str
+    87	
+    88	    payload: dict = Field(default_factory=dict)
+    89	
+    90	    status: EventStatus = EventStatus.CREATED
+    91	
+    92	    route_hops: list[str] = Field(default_factory=list)
+    93	
+    94	    target_node: Optional[str] = None
+    95	    source_node: Optional[str] = None
+    96	
+    97	    created_at: float = Field(default_factory=time.time)
+    98	    updated_at: float = Field(default_factory=time.time)
+    99	
+   100	    received_at: Optional[float] = None
+   101	
+   102	    attempt: int = 0
+   103	    execution_key: Optional[str] = None
+   104	
+   105	    def add_hop(self, hop: str):
+   106	        """
+   107	        Añade un hop al route_hops (tracking de routing).
+   108	
+   109	        Args:
+   110	            hop: node_id del nodo por donde pasó el evento.
+   111	
+   112	        Example:
+   113	            >>> event = ClusterEvent(event_type="test")
+   114	            >>> event.route_hops
+   115	            []
+   116	            >>> event.add_hop("lnx203hp")
+   117	            >>> event.route_hops
+   118	            ['lnx203hp']
+   119	            >>> event.add_hop("lnx200nas")
+   120	            >>> event.route_hops
+   121	            ['lnx203hp', 'lnx200nas']
+   122	
+   123	        Note:
+   124	            - Actualiza updated_at al añadir el hop
+   125	            - Se usa para debugging de routing en cluster
+   126	        """
+   127	        self.route_hops.append(hop)
+   128	        self.updated_at = time.time()
+   129	
+   130	    def mark_status(self, status: EventStatus):
+   131	        """
+   132	        Marca el estado del evento.
+   133	
+   134	        Args:
+   135	            status: Nuevo estado (EventStatus enum).
+   136	
+   137	        Example:
+   138	            >>> event = ClusterEvent(event_type="test")
+   139	            >>> event.status
+   140	            <EventStatus.CREATED: 'created'>
+   141	            >>> event.mark_status(EventStatus.EXECUTING)
+   142	            >>> event.status
+   143	            <EventStatus.EXECUTING: 'executing'>
+   144	            >>> event.mark_status(EventStatus.COMPLETED)
+   145	            >>> event.status
+   146	            <EventStatus.COMPLETED: 'completed'>
+   147	
+   148	        Note:
+   149	            - Actualiza updated_at al cambiar el estado
+   150	            - No valida la transición (usa validate_transition() si hace falta)
+   151	        """
+   152	        self.status = status
+   153	        self.updated_at = time.time()
+   154	
+   155	    def mark_received(self):
+   156	        """
+   157	        Marca el timestamp cuando se recibió el evento.
+   158	
+   159	        Sets received_at = time.time() y updated_at = received_at.
+   160	
+   161	        Example:
+   162	            >>> event = ClusterEvent(event_type="test")
+   163	            >>> event.received_at
+   164	            None
+   165	            >>> event.mark_received()
+   166	            >>> event.received_at
+   167	            1779956226.123
+   168	        Note:
+   169	            - Se llama en ingest_event() cuando se ingiere el evento
+   170	        """
+   171	        self.received_at = time.time()
+   172	        self.updated_at = self.received_at
+
+
+===== ./cluster/runtime/events/event_state.py =====
+     1	# File: ./cluster/runtime/events/event_state.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:09:28+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/events/event_state.py 0.0.0 2026-05-28T17:09:28+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Definición de estados de eventos y transiciones válidas.
+    12	#   Define la máquina de estados finitos (FSM) para el ciclo de vida de un evento:
+    13	#     CREATED -> EXECUTING -> COMPLETED o FAILED
+    14	#   También valida que las transiciones entre estados sean válidas.
+    15	# Notes:
+    16	#   - CREATED: evento recién creado, esperando ser ejecutado
+    17	#   - EXECUTING: evento en ejecución (business logic se está ejecutando)
+    18	#   - COMPLETED: evento ejecutado exitosamente
+    19	#   - FAILED: evento fallido (no se reintentará automáticamente)
+    20	#   - VALID_TRANSITIONS define qué transiciones son permitidas
+    21	#   - validate_transition() levanta ValueError si la transición es inválida
+    22	#   - Transiciones idempotentes (old == new) son sempre válidas (NO-OP)
+    23	#
+    24	# FRV-ID: 0aa52064e4460767
+    25	# Header_End
+    26	
+    27	from enum import Enum
+    28	
+    29	
+    30	class EventStatus(str, Enum):
+    31	    """
+    32	    Estados de un evento en el cluster.
+    33	
+    34	    Ciclo de vida típico:
+    35	        CREATED -> EXECUTING -> COMPLETED
+    36	
+    37	    O en caso de error:
+    38	        CREATED -> EXECUTING -> FAILED
+    39	
+    40	    Attributes:
+    41	        CREATED: Evento recién creado, esperando ser ejecutado.
+    42	        EXECUTING: Evento en ejecución (business logic se está ejecutando).
+    43	        COMPLETED: Evento ejecutado exitosamente.
+    44	        FAILED: Evento fallido (no se reintentó o falló el retry).
+    45	
+    46	    Example:
+    47	        >>> EventStatus.CREATED
+    48	        <EventStatus.CREATED: 'created'>
+    49	
+    50	        >>> EventStatus.CREATED.value
+    51	        'created'
+    52	
+    53	        >>> str(EventStatus.COMPLETED)
+    54	        'completed'
+    55	
+    56	    Note:
+    57	        - Hereda de str para poder comparar directamente con strings
+    58	        - value es el nombre del estado en minúsculas
+    59	    """
+    60	    CREATED = "created"
+    61	    EXECUTING = "executing"
+    62	    COMPLETED = "completed"
+    63	    FAILED = "failed"
+    64	
+    65	
+    66	    """
+    67	    Máquina de estados de evento.
+    68	
+    69	    Defines qué transiciones entre estados son permitidas:
+    70	        - CREATED -> EXECUTING: iniciar ejecución
+    71	        - EXECUTING -> COMPLETED: ejecución exitosa
+    72	        - EXECUTING -> FAILED: ejecución fallida
+    73	        - EXECUTING -> CREATED: retry (volver a empezar)
+    74	        - COMPLETED -> cualquiera: NO (evento ya completado, inmutable)
+    75	        - FAILED -> cualquiera: NO (evento fallido, inmutable)
+    76	
+    77	    Example:
+    78	        >>> VALID_TRANSITIONS[EventStatus.CREATED]
+    79	        [<EventStatus.EXECUTING: 'executing'>]
+    80	
+    81	        >>> VALID_TRANSITIONS[EventStatus.EXECUTING]
+    82	        [<EventStatus.COMPLETED: 'completed'>, <EventStatus.FAILED: 'failed'>, <EventStatus.CREATED: 'created'>]
+    83	    """
+    84	
+    85	    # Transiciones válidas entre estados de evento
+    86	
+    87	VALID_TRANSITIONS = {
+    88	    EventStatus.CREATED: [
+    89	        EventStatus.EXECUTING,
+    90	    ],
+    91	
+    92	    EventStatus.EXECUTING: [
+    93	        EventStatus.COMPLETED,
+    94	        EventStatus.FAILED,
+    95	        EventStatus.CREATED,  # retry
+    96	    ],
+    97	
+    98	    EventStatus.COMPLETED: [],
+    99	
+   100	    EventStatus.FAILED: [],
+   101	}
+   102	
+   103	
+   104	def validate_transition(old_status, new_status):
+   105	    """
+   106	    Valida que una transición entre estados sea válida.
+   107	
+   108	    Args:
+   109	        old_status: Estado actual (EventStatus enum).
+   110	        new_status: Nuevo estado (EventStatus enum).
+   111	
+   112	    Raises:
+   113	        ValueError: Si la transición no está permitida.
+   114	
+   115	    Example:
+   116	        >>> validate_transition(EventStatus.CREATED, EventStatus.EXECUTING)
+   117	        # OK (no levanta exception)
+   118	
+   119	        >>> validate_transition(EventStatus.CREATED, EventStatus.COMPLETED)
+   120	        ValueError: Invalid transition: created -> completed
+   121	
+   122	        >>> validate_transition(EventStatus.COMPLETED, EventStatus.COMPLETED)
+   123	        # OK (idempotent NO-OP)
+   124	
+   125	    Note:
+   126	        - Transiciones idempotentes (old == new) siempre son válidas (NO-OP)
+   127	        - Si old_status no está en VALID_TRANSITIONS, retorna allowed=[] (ninguna transición válida)
+   128	    """
+   129	    if old_status == new_status:
+   130	        return  # IDEMPOTENTE NO-OP
+   131	
+   132	    allowed = VALID_TRANSITIONS.get(old_status, [])
+   133	
+   134	    if new_status not in allowed:
+   135	        raise ValueError(
+   136	            f"Invalid transition: {old_status} -> {new_status}"
+   137	        )
+
+
+===== ./cluster/runtime/integrity.py =====
+     1	# File: ./cluster/runtime/integrity.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:09:52+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/integrity.py 0.0.0 2026-05-28T17:09:52+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Verificación de integridad del cluster.
+    12	#   Comprueba que todos los nodos tienen una vista consistente del cluster_state.
+    13	#   Каноникализирует los datos (ordena claves, ignora last_seen) y compara hash SHA256
+    14	#   para detectar divergencias. Se usa para debugging y para detectar split-brain.
+    15	# Notes:
+    16	#   - canonicalize() ordena claves recursivamente para comparar dicts independientemente del orden
+    17	#   - IGNORED_NODE_KEYS = {"last_seen"} se ignora porque cambia constantemente
+    18	#   - integrity_ok = True si todos los nodos tienen la misma vista
+    19	#   - Se llama desde /integrity y /integrity/cluster en api_app.py
+    20	#   - compute_views() compacta la vista para reducir ruido en logs
+    21	#
+    22	# FRV-ID: bb416140aa771527
+    23	# Header_End
+    24	
+    25	
+    26	import os
+    27	import hashlib
+    28	from typing import Any
+    29	
+    30	from cluster.runtime import context as ctx
+    31	from cluster.runtime.cluster_store import cluster_state
+    32	
+    33	import json
+    34	from cluster.runtime.event_log import get_integrity_canonical
+    35	
+    36	from cluster.runtime.leader import compute_alive
+    37	
+    38	# =============================================================================
+    39	# Configuración de integridad
+    40	# =============================================================================
+    41	
+    42	#: Claves a ignorar al comparar views (cambian constantemente)
+    43	IGNORED_NODE_KEYS = {"last_seen"}
+    44	
+    45	# descomentado si hace falta validar log_meta
+    46	#INTEGRITY_KEYS = (
+    47	#    "dirty",
+    48	#    "last_append_event_id",
+    49	#    "last_append_created_at",
+    50	#    "log_size",
+    51	#    "file_size",
+    52	#    "file_hash",
+    53	#)
+    54	
+    55	
+    56	#def file_sha256(path: str | Path, block_size: int = 65536) -> str | None:
+    57	#    """Calcula SHA256 de un archivo."""
+    58	#    path = str(path)
+    59	#    if not os.path.exists(path):
+    60	#        return None
+    61	#    h = hashlib.sha256()
+    62	#    with open(path, "rb") as f:
+    63	#        while True:
+    64	#            chunk = f.read(block_size)
+    65	#            if not chunk:
+    66	#                break
+    67	#            h.update(chunk)
+    68	#    return h.hexdigest()
+    69	
+    70	
+    71	def canonicalize(obj: Any, ignored_keys: set[str] | None = None) -> Any:
+    72	    """
+    73	    Canonicaiza un objeto recursivamente (ordena claves, ignora ciertas keys).
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# REASSEMBLY_ORDER : 003/006
+#
+########################################################################

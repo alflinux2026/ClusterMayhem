@@ -1,0 +1,810 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_no_core
+# SOURCE_FILE      : py-last_code_no_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 008/009
+# PART_NUMBER      : 008
+# TOTAL_PARTS      : 009
+#
+# PREVIOUS_PART    : 007
+# NEXT_PART        : 009
+#
+# CONTENT_LINES    : 775
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+   267	        return 0.0
+   268	    values = sorted(data)
+   269	    if len(values) == 1:
+   270	        return float(values[0])
+   271	    rank = (len(values) - 1) * (p / 100.0)
+   272	    low = int(rank)
+   273	    high = min(low + 1, len(values) - 1)
+   274	    fraction = rank - low
+   275	    return float(values[low] + (values[high] - values[low]) * fraction)
+   276	
+   277	
+   278	def is_retryable_response(payload):
+   279	    if not isinstance(payload, dict):
+   280	        return False
+   281	
+   282	    if payload.get("error") in {"no leader", "node isolated"}:
+   283	        return True
+   284	
+   285	    error = str(payload.get("error", "")).lower()
+   286	
+   287	    retry_patterns = [
+   288	        "timeout",
+   289	        "connection",
+   290	        "refused",
+   291	        "temporarily unavailable",
+   292	        "isolated",
+   293	        "no leader",
+   294	    ]
+   295	
+   296	    return any(p in error for p in retry_patterns)
+   297	
+   298	
+   299	def extract_leader(payload):
+   300	    if not isinstance(payload, dict):
+   301	        return None
+   302	
+   303	    if "result" in payload and isinstance(payload["result"], dict):
+   304	        return payload["result"].get("leader")
+   305	
+   306	    return payload.get("leader")
+   307	
+   308	
+   309	def classify_submit_response(status_code, payload):
+   310	    if status_code != 200:
+   311	        return "http_not_ok"
+   312	
+   313	    if not isinstance(payload, dict):
+   314	        return "submit_ok"
+   315	
+   316	    if payload.get("error"):
+   317	        if is_retryable_response(payload):
+   318	            return "retryable_error"
+   319	        return "hard_fail"
+   320	
+   321	    result = payload.get("result")
+   322	    if isinstance(result, dict) and result.get("error"):
+   323	        if is_retryable_response(result):
+   324	            return "retryable_error"
+   325	        return "hard_fail"
+   326	
+   327	    return "submit_ok"
+   328	
+   329	
+   330	def next_enqueue_seq():
+   331	    global enqueue_seq
+   332	    with enqueue_seq_lock:
+   333	        enqueue_seq += 1
+   334	        return enqueue_seq
+   335	
+   336	
+   337	def enqueue_pending(pending, delay_seconds=0.0):
+   338	    run_at = time.time() + max(0.0, delay_seconds)
+   339	    pending_queue.put((run_at, next_enqueue_seq(), pending))
+   340	    with stats_lock:
+   341	        depth = pending_queue.qsize()
+   342	        if depth > stats["queue_max_depth"]:
+   343	            stats["queue_max_depth"] = depth
+   344	
+   345	
+   346	def mark_producer_done():
+   347	    global producer_done
+   348	    with producer_done_lock:
+   349	        producer_done = True
+   350	
+   351	
+   352	def is_producer_done():
+   353	    with producer_done_lock:
+   354	        return producer_done
+   355	
+   356	
+   357	def compute_retry_backoff(retries_done):
+   358	    backoff = RETRY_BACKOFF_BASE * (2 ** max(0, retries_done - 1))
+   359	    return min(backoff, RETRY_BACKOFF_MAX)
+   360	
+   361	
+   362	def print_test_config():
+   363	    print("\n" + "=" * 56)
+   364	    print("CHAOS TEST CONFIG v3")
+   365	    print("=" * 56)
+   366	    print(f"run_id..............: {RUN_ID}")
+   367	    print(f"stats_file..........: {STATS_FILE}")
+   368	    print(f"started_at..........: {datetime.fromtimestamp(TEST_STARTED_AT).isoformat()}")
+   369	    print(f"nodes...............: {NODES}")
+   370	    print(f"events..............: {EVENTS}")
+   371	    print(f"event_delay_range...: {EVENT_DELAY_RANGE}")
+   372	    print(f"kill_probability....: {KILL_PROBABILITY}")
+   373	    print(f"death_time_range....: {DEATH_TIME_RANGE}")
+   374	    print(f"request_timeout.....: {REQUEST_TIMEOUT}")
+   375	    print(f"max_retries.........: {MAX_RETRIES}")
+   376	    print(f"sleep_only_node.....: {SLEEP_ONLY_NODE}")
+   377	    print(f"slow_threshold_ms...: {SLOW_EVENT_THRESHOLD_MS}")
+   378	    print(f"send_workers........: {SEND_WORKERS}")
+   379	    print(f"retry_backoff_base..: {RETRY_BACKOFF_BASE}")
+   380	    print(f"retry_backoff_max...: {RETRY_BACKOFF_MAX}")
+   381	    print(f"drain_timeout.......: {DRAIN_TIMEOUT}")
+   382	    print(f"seed................: {ARGS.seed}")
+   383	    print("=" * 56 + "\n")
+   384	
+   385	
+   386	# =====================================================
+   387	# KILL / REVIVE
+   388	# =====================================================
+   389	
+   390	def kill_node(node, seconds=None):
+   391	    stat_inc("kill_attempts")
+   392	
+   393	    try:
+   394	        resp = requests.post(f"{node}/sleep", timeout=2)
+   395	        payload = {}
+   396	
+   397	        try:
+   398	            payload = resp.json()
+   399	        except Exception:
+   400	            payload = {"raw_text": resp.text}
+   401	
+   402	        if resp.status_code == 200 and payload.get("ok") is True:
+   403	            with dead_lock:
+   404	                dead_nodes.add(node)
+   405	
+   406	            stat_inc("kills")
+   407	            stat_kill_event(node=node, action="sleep", ok=True, payload=payload, seconds=seconds)
+   408	            print(f"[CHAOS] SLEEP {node}")
+   409	            return True
+   410	
+   411	        stat_inc("kill_failures")
+   412	        stat_kill_event(node=node, action="sleep", ok=False, payload=payload, seconds=seconds)
+   413	        print(f"[CHAOS FAIL SLEEP] {node} -> status={resp.status_code} payload={payload}")
+   414	        return False
+   415	
+   416	    except Exception as e:
+   417	        stat_inc("kill_failures")
+   418	        stat_kill_event(node=node, action="sleep", ok=False, error=str(e), seconds=seconds)
+   419	        print(f"[CHAOS FAIL SLEEP] {node} -> {e}")
+   420	        return False
+   421	
+   422	
+   423	def revive_node(node):
+   424	    try:
+   425	        resp = requests.post(f"{node}/revive", timeout=2)
+   426	        payload = {}
+   427	
+   428	        try:
+   429	            payload = resp.json()
+   430	        except Exception:
+   431	            payload = {"raw_text": resp.text}
+   432	
+   433	        if resp.status_code == 200 and payload.get("ok") is True:
+   434	            with dead_lock:
+   435	                dead_nodes.discard(node)
+   436	
+   437	            stat_inc("revives")
+   438	            stat_kill_event(node=node, action="revive", ok=True, payload=payload)
+   439	            print(f"[CHAOS] REVIVE {node}")
+   440	            return True
+   441	
+   442	        stat_inc("revive_failures")
+   443	        stat_kill_event(node=node, action="revive", ok=False, payload=payload)
+   444	        print(f"[CHAOS FAIL REVIVE] {node} -> status={resp.status_code} payload={payload}")
+   445	        return False
+   446	
+   447	    except Exception as e:
+   448	        stat_inc("revive_failures")
+   449	        stat_kill_event(node=node, action="revive", ok=False, error=str(e))
+   450	        print(f"[CHAOS FAIL REVIVE] {node} -> {e}")
+   451	        return False
+   452	
+   453	
+   454	def kill_cycle(node, seconds):
+   455	    try:
+   456	        ok = kill_node(node, seconds=seconds)
+   457	        if ok:
+   458	            print(f"[CHAOS] DEAD {node} for {seconds:.2f}s")
+   459	            time.sleep(seconds)
+   460	    finally:
+   461	        revive_node(node)
+   462	
+   463	
+   464	# =====================================================
+   465	# EVENT PROCESSING
+   466	# =====================================================
+   467	
+   468	def process_pending_event(pending: PendingEvent):
+   469	    i = pending.event_index
+   470	    event = pending.event
+   471	    attempt_number = pending.retries_done + 1
+   472	
+   473	    available = [n for n in NODES if n not in pending.tried_nodes]
+   474	
+   475	    if not available:
+   476	        pending.tried_nodes.clear()
+   477	        available = list(NODES)
+   478	
+   479	    node = random.choice(available)
+   480	    pending.tried_nodes.add(node)
+   481	    start = time.time()
+   482	
+   483	    try:
+   484	        r = requests.post(
+   485	            f"{node}/event",
+   486	            json=event,
+   487	            timeout=REQUEST_TIMEOUT
+   488	        )
+   489	
+   490	        elapsed_ms = (time.time() - start) * 1000
+   491	        stat_latency(elapsed_ms)
+   492	
+   493	        payload = {}
+   494	        try:
+   495	            payload = r.json()
+   496	        except Exception:
+   497	            payload = {"raw_text": r.text}
+   498	
+   499	        leader = extract_leader(payload)
+   500	        if leader:
+   501	            stat_leader(leader)
+   502	
+   503	        if elapsed_ms >= SLOW_EVENT_THRESHOLD_MS:
+   504	            stat_slow_event(
+   505	                event_index=i,
+   506	                attempt=attempt_number,
+   507	                node=node,
+   508	                latency_ms=elapsed_ms,
+   509	                leader=leader,
+   510	                payload=payload,
+   511	            )
+   512	
+   513	        if r.status_code == 200:
+   514	            stat_inc("submit_http_200")
+   515	
+   516	        result = classify_submit_response(r.status_code, payload)
+   517	
+   518	        if result == "submit_ok":
+   519	            stat_inc("events_ok")
+   520	            stat_inc("submit_semantic_ok")
+   521	            stat_node_ok(node)
+   522	
+   523	            print(
+   524	                f"[TORTURE] "
+   525	                f"{i:03} "
+   526	                f"OK "
+   527	                f"attempt={attempt_number} "
+   528	                f"node={node} "
+   529	                f"leader={leader} "
+   530	                f"latency={elapsed_ms:.1f}ms"
+   531	            )
+   532	            return True
+   533	
+   534	        if result == "retryable_error" or r.status_code >= 500:
+   535	            stat_inc("events_retried")
+   536	
+   537	            if isinstance(payload, dict) and payload.get("error") == "no leader":
+   538	                stat_inc("events_no_leader")
+   539	
+   540	            result_payload = payload.get("result") if isinstance(payload.get("result"), dict) else None
+   541	            if isinstance(result_payload, dict) and result_payload.get("error") == "no leader":
+   542	                stat_inc("events_no_leader")
+   543	
+   544	            print(
+   545	                f"[RETRY] "
+   546	                f"{i:03} "
+   547	                f"attempt={attempt_number} "
+   548	                f"node={node} "
+   549	                f"status={r.status_code} "
+   550	                f"payload={payload}"
+   551	            )
+   552	
+   553	            if pending.retries_done + 1 >= MAX_RETRIES:
+   554	                stat_inc("events_failed")
+   555	                stat_unexpected_failure(
+   556	                    event_index=i,
+   557	                    attempt=attempt_number,
+   558	                    node=node,
+   559	                    status_code=r.status_code,
+   560	                    payload=payload,
+   561	                    reason="dropped_after_retries_retryable_response",
+   562	                )
+   563	                print(f"[DROP] {i:03} event dropped after retries")
+   564	                return False
+   565	
+   566	            pending.retries_done += 1
+   567	            stat_inc("queue_requeues")
+   568	            enqueue_pending(pending, compute_retry_backoff(pending.retries_done))
+   569	            return False
+   570	
+   571	        stat_inc("events_failed")
+   572	        stat_inc("submit_hard_fail")
+   573	        stat_node_fail(node)
+   574	        stat_unexpected_failure(
+   575	            event_index=i,
+   576	            attempt=attempt_number,
+   577	            node=node,
+   578	            status_code=r.status_code,
+   579	            payload=payload,
+   580	            reason="hard_fail_non_retryable_response",
+   581	        )
+   582	
+   583	        print(
+   584	            f"[FAIL] "
+   585	            f"{i:03} "
+   586	            f"attempt={attempt_number} "
+   587	            f"node={node} "
+   588	            f"status={r.status_code} "
+   589	            f"payload={payload}"
+   590	        )
+   591	        return False
+   592	
+   593	    except requests.Timeout as e:
+   594	        stat_inc("events_timeout")
+   595	        stat_inc("events_retried")
+   596	
+   597	        print(
+   598	            f"[TIMEOUT] "
+   599	            f"{i:03} "
+   600	            f"attempt={attempt_number} "
+   601	            f"{node} -> {e}"
+   602	        )
+   603	
+   604	    except requests.ConnectionError as e:
+   605	        stat_inc("events_connection_error")
+   606	        stat_inc("events_retried")
+   607	
+   608	        print(
+   609	            f"[CONNECTION] "
+   610	            f"{i:03} "
+   611	            f"attempt={attempt_number} "
+   612	            f"{node} -> {e}"
+   613	        )
+   614	
+   615	    except Exception as e:
+   616	        stat_inc("events_forward_error")
+   617	        stat_inc("events_retried")
+   618	        stat_unexpected_failure(
+   619	            event_index=i,
+   620	            attempt=attempt_number,
+   621	            node=node,
+   622	            reason=f"exception:{type(e).__name__}",
+   623	            payload={"exception": str(e)},
+   624	        )
+   625	
+   626	        print(
+   627	            f"[ERROR] "
+   628	            f"{i:03} "
+   629	            f"attempt={attempt_number} "
+   630	            f"{node} -> {e}"
+   631	        )
+   632	
+   633	    if pending.retries_done + 1 >= MAX_RETRIES:
+   634	        stat_inc("events_failed")
+   635	        stat_unexpected_failure(
+   636	            event_index=i,
+   637	            attempt=attempt_number,
+   638	            node=node,
+   639	            reason="dropped_after_retries_exception",
+   640	            payload={"tried_nodes": list(pending.tried_nodes)},
+   641	        )
+   642	        print(f"[DROP] {i:03} event dropped after retries")
+   643	        return False
+   644	
+   645	    pending.retries_done += 1
+   646	    stat_inc("queue_requeues")
+   647	    enqueue_pending(pending, compute_retry_backoff(pending.retries_done))
+   648	    return False
+   649	
+   650	
+   651	def sender_worker(worker_id):
+   652	    while True:
+   653	        try:
+   654	            run_at, _, pending = pending_queue.get(timeout=0.5)
+   655	        except queue.Empty:
+   656	            if is_producer_done() and pending_queue.empty():
+   657	                return
+   658	            continue
+   659	
+   660	        now = time.time()
+   661	        if run_at > now:
+   662	            pending_queue.put((run_at, next_enqueue_seq(), pending))
+   663	            pending_queue.task_done()
+   664	            time.sleep(min(run_at - now, 0.2))
+   665	            continue
+   666	
+   667	        try:
+   668	            process_pending_event(pending)
+   669	        finally:
+   670	            pending_queue.task_done()
+   671	
+   672	
+   673	# =====================================================
+   674	# MAIN LOOP
+   675	# =====================================================
+   676	
+   677	def chaos_loop():
+   678	    for i in range(EVENTS):
+   679	        if random.random() < KILL_PROBABILITY:
+   680	            if SLEEP_ONLY_NODE:
+   681	                node = SLEEP_ONLY_NODE
+   682	            else:
+   683	                node = random.choice(NODES)
+   684	
+   685	            seconds = random.uniform(*DEATH_TIME_RANGE)
+   686	
+   687	            t = threading.Thread(
+   688	                target=kill_cycle,
+   689	                args=(node, seconds),
+   690	                daemon=True
+   691	            )
+   692	            t.start()
+   693	            kill_threads.append(t)
+   694	
+   695	        stat_inc("events_total")
+   696	        pending = PendingEvent(
+   697	            event_index=i,
+   698	            event=build_event(i),
+   699	        )
+   700	        enqueue_pending(pending, delay_seconds=0.0)
+   701	
+   702	        time.sleep(random.uniform(*EVENT_DELAY_RANGE))
+   703	
+   704	    mark_producer_done()
+   705	
+   706	
+   707	# =====================================================
+   708	# FORCE REVIVE ALL
+   709	# =====================================================
+   710	
+   711	def revive_everything():
+   712	    print("\n[MAIN] REVIVING ALL NODES\n")
+   713	
+   714	    unique_nodes = sorted(set(NODES))
+   715	
+   716	    for node in unique_nodes:
+   717	        try:
+   718	            requests.post(f"{node}/revive", timeout=2)
+   719	            print(f"[FORCE REVIVE] {node}")
+   720	        except Exception as e:
+   721	            print(f"[FORCE REVIVE FAIL] {node} -> {e}")
+   722	
+   723	
+   724	# =====================================================
+   725	# WAIT ALL KILL THREADS
+   726	# =====================================================
+   727	
+   728	def wait_kills():
+   729	    print("\n[MAIN] waiting active kill cycles...\n")
+   730	
+   731	    for t in kill_threads:
+   732	        t.join(timeout=30)
+   733	
+   734	
+   735	# =====================================================
+   736	# WAIT QUEUE DRAIN
+   737	# =====================================================
+   738	
+   739	def wait_queue_drain():
+   740	    deadline = time.time() + DRAIN_TIMEOUT
+   741	
+   742	    while time.time() < deadline:
+   743	        if pending_queue.empty():
+   744	            time.sleep(0.5)
+   745	            if pending_queue.empty():
+   746	                return True
+   747	        time.sleep(0.2)
+   748	
+   749	    return False
+   750	
+   751	
+   752	# =====================================================
+   753	# STATS REPORT
+   754	# =====================================================
+   755	
+   756	def print_stats():
+   757	    ended_at = time.time()
+   758	
+   759	    print("\n")
+   760	    print("=" * 56)
+   761	    print("FINAL CHAOS STATS v3")
+   762	    print("=" * 56)
+   763	
+   764	    with stats_lock:
+   765	        total = stats["events_total"]
+   766	        ok = stats["events_ok"]
+   767	        failed = stats["events_failed"]
+   768	
+   769	        success_rate = ((ok / total) * 100) if total else 0
+   770	
+   771	        avg_latency = (sum(stats["latency"]) / len(stats["latency"])) if stats["latency"] else 0
+   772	        max_latency = max(stats["latency"]) if stats["latency"] else 0
+   773	        min_latency = min(stats["latency"]) if stats["latency"] else 0
+   774	        p50_latency = percentile(stats["latency"], 50)
+   775	        p95_latency = percentile(stats["latency"], 95)
+   776	        p99_latency = percentile(stats["latency"], 99)
+   777	
+   778	        print(f"events_total........: {total}")
+   779	        print(f"events_ok...........: {ok}")
+   780	        print(f"events_failed.......: {failed}")
+   781	        print(f"success_rate........: {success_rate:.2f}%")
+   782	
+   783	        print()
+   784	
+   785	        print(f"events_retried......: {stats['events_retried']}")
+   786	        print(f"events_no_leader....: {stats['events_no_leader']}")
+   787	        print(f"timeouts............: {stats['events_timeout']}")
+   788	        print(f"connection_errors...: {stats['events_connection_error']}")
+   789	        print(f"forward_errors......: {stats['events_forward_error']}")
+   790	        print(f"unexpected_fail.....: {stats['events_unexpected_fail']}")
+   791	        print(f"slow_events.........: {stats['events_slow']}")
+   792	
+   793	        print()
+   794	
+   795	        print(f"submit_http_200.....: {stats['submit_http_200']}")
+   796	        print(f"submit_semantic_ok..: {stats['submit_semantic_ok']}")
+   797	        print(f"submit_hard_fail....: {stats['submit_hard_fail']}")
+   798	        print(f"queue_requeues......: {stats['queue_requeues']}")
+   799	        print(f"queue_max_depth.....: {stats['queue_max_depth']}")
+   800	
+   801	        print()
+   802	
+   803	        print(f"kill_attempts.......: {stats['kill_attempts']}")
+   804	        print(f"kills...............: {stats['kills']}")
+   805	        print(f"kill_failures.......: {stats['kill_failures']}")
+   806	        print(f"revives.............: {stats['revives']}")
+   807	        print(f"revive_failures.....: {stats['revive_failures']}")
+   808	
+   809	        print()
+   810	
+   811	        print(f"latency_avg.........: {avg_latency:.1f} ms")
+   812	        print(f"latency_min.........: {min_latency:.1f} ms")
+   813	        print(f"latency_p50.........: {p50_latency:.1f} ms")
+   814	        print(f"latency_p95.........: {p95_latency:.1f} ms")
+   815	        print(f"latency_p99.........: {p99_latency:.1f} ms")
+   816	        print(f"latency_max.........: {max_latency:.1f} ms")
+   817	
+   818	        print()
+   819	        print("LEADERS SEEN")
+   820	        for leader, count in sorted(stats["leaders_seen"].items()):
+   821	            print(f"  {leader:15} -> {count}")
+   822	
+   823	        print()
+   824	        print("NODE SUCCESS")
+   825	        for node, count in sorted(stats["per_node_ok"].items()):
+   826	            print(f"  {node:30} -> {count}")
+   827	
+   828	        print()
+   829	        print("NODE FAIL")
+   830	        for node, count in sorted(stats["per_node_fail"].items()):
+   831	            print(f"  {node:30} -> {count}")
+   832	
+   833	        print()
+   834	        print("SLOW EVENTS")
+   835	        if stats["slow_events"]:
+   836	            for idx, item in enumerate(stats["slow_events"][:20], start=1):
+   837	                print(
+   838	                    f"  #{idx:02} "
+   839	                    f"event={item.get('event_index')} "
+   840	                    f"attempt={item.get('attempt')} "
+   841	                    f"node={item.get('node')} "
+   842	                    f"leader={item.get('leader')} "
+   843	                    f"latency_ms={item.get('latency_ms')}"
+   844	                )
+   845	            if len(stats["slow_events"]) > 20:
+   846	                print(f"  ... and {len(stats['slow_events']) - 20} more")
+   847	        else:
+   848	            print("  none")
+   849	
+   850	        print()
+   851	        print("UNEXPECTED FAILURES")
+   852	        if stats["unexpected_failures"]:
+   853	            for idx, item in enumerate(stats["unexpected_failures"][:20], start=1):
+   854	                print(
+   855	                    f"  #{idx:02} "
+   856	                    f"event={item.get('event_index')} "
+   857	                    f"attempt={item.get('attempt')} "
+   858	                    f"node={item.get('node')} "
+   859	                    f"status={item.get('status_code')} "
+   860	                    f"reason={item.get('reason')}"
+   861	                )
+   862	            if len(stats["unexpected_failures"]) > 20:
+   863	                print(f"  ... and {len(stats['unexpected_failures']) - 20} more")
+   864	        else:
+   865	            print("  none")
+   866	
+   867	        print("=" * 56)
+   868	
+   869	        report = {
+   870	            "test_config": TEST_CONFIG,
+   871	            "run_meta": {
+   872	                "started_at_epoch": TEST_STARTED_AT,
+   873	                "ended_at_epoch": ended_at,
+   874	                "started_at_iso": datetime.fromtimestamp(TEST_STARTED_AT).isoformat(),
+   875	                "ended_at_iso": datetime.fromtimestamp(ended_at).isoformat(),
+   876	                "duration_seconds": round(ended_at - TEST_STARTED_AT, 3),
+   877	            },
+   878	            "stats": {
+   879	                **stats,
+   880	                "success_rate": round(success_rate, 2),
+   881	                "latency_avg": round(avg_latency, 3),
+   882	                "latency_min": round(min_latency, 3),
+   883	                "latency_p50": round(p50_latency, 3),
+   884	                "latency_p95": round(p95_latency, 3),
+   885	                "latency_p99": round(p99_latency, 3),
+   886	                "latency_max": round(max_latency, 3),
+   887	                "per_node_ok": dict(stats["per_node_ok"]),
+   888	                "per_node_fail": dict(stats["per_node_fail"]),
+   889	                "leaders_seen": dict(stats["leaders_seen"]),
+   890	            }
+   891	        }
+   892	
+   893	        with open(STATS_FILE, "w") as f:
+   894	            json.dump(report, f, indent=2)
+   895	
+   896	        print(f"\n[MAIN] stats saved to {STATS_FILE}\n")
+   897	
+   898	
+   899	# =====================================================
+   900	# MAIN
+   901	# =====================================================
+   902	
+   903	def main():
+   904	    print("[MAIN] starting UNIVERSAL chaos torture v3")
+   905	    print_test_config()
+   906	
+   907	    workers = []
+   908	    for idx in range(SEND_WORKERS):
+   909	        t = threading.Thread(target=sender_worker, args=(idx,), daemon=True)
+   910	        t.start()
+   911	        workers.append(t)
+   912	
+   913	    drained = False
+   914	
+   915	    try:
+   916	        chaos_loop()
+   917	        drained = wait_queue_drain()
+   918	        pending_queue.join()
+   919	
+   920	        for t in workers:
+   921	            t.join(timeout=5)
+   922	
+   923	    finally:
+   924	        wait_kills()
+   925	        revive_everything()
+   926	
+   927	        if not drained:
+   928	            print(f"\n[MAIN WARN] queue drain timeout reached after {DRAIN_TIMEOUT:.1f}s\n")
+   929	
+   930	        print_test_config()
+   931	        print_stats()
+   932	        print("\n[MAIN] cluster restored\n")
+   933	
+   934	
+   935	# =====================================================
+   936	# ENTRYPOINT
+   937	# =====================================================
+   938	
+   939	if __name__ == "__main__":
+   940	    main()
+
+
+===== ./cluster/utils/chaos_v4.py =====
+     1	import time
+     2	import json
+     3	import random
+     4	import requests
+     5	import threading
+     6	import uuid
+     7	import argparse
+     8	import queue
+     9	from dataclasses import dataclass, field
+    10	from datetime import datetime
+    11	from collections import defaultdict
+    12	
+    13	from cluster.runtime.models import StreamKey
+    14	from cluster.runtime.events.cluster_event import ClusterEvent
+    15	
+    16	DEFAULT_NODES = [
+    17	    "http://100.100.1.200:7000",
+    18	    "http://100.100.1.202:7000",
+    19	    "http://100.100.1.203:7000",
+    20	]
+    21	
+    22	DEFAULT_EVENTS = 100000
+    23	DEFAULT_EVENT_DELAY_MIN = 0.1
+    24	DEFAULT_EVENT_DELAY_MAX = 0.2
+    25	DEFAULT_KILL_PROBABILITY = 0.05
+    26	DEFAULT_DEATH_TIME_MIN = 1.5
+    27	DEFAULT_DEATH_TIME_MAX = 15.0
+    28	DEFAULT_REQUEST_TIMEOUT = 5.0
+    29	DEFAULT_MAX_RETRIES = 25
+    30	DEFAULT_SLOW_EVENT_THRESHOLD_MS = 500.0
+    31	DEFAULT_SLEEP_ONLY_NODE = None
+    32	DEFAULT_SEND_WORKERS = 4
+    33	DEFAULT_RETRY_BACKOFF_BASE = 0.5
+    34	DEFAULT_RETRY_BACKOFF_MAX = 3.0
+    35	DEFAULT_TENANT_ID = "chaos"
+    36	DEFAULT_APP_ID = "chaos_v4"
+    37	DEFAULT_DATA_TYPE = "event"
+    38	DEFAULT_SCHEMA_VERSION = "0.1"
+    39	
+    40	
+    41	def parse_args():
+    42	    parser = argparse.ArgumentParser(description="Universal chaos torture runner v4")
+    43	    parser.add_argument("--nodes", nargs="+", default=DEFAULT_NODES, help="Node base URLs")
+    44	    parser.add_argument("--events", type=int, default=DEFAULT_EVENTS, help="Number of events")
+    45	    parser.add_argument("--delay-min", type=float, default=DEFAULT_EVENT_DELAY_MIN, help="Min delay between events")
+    46	    parser.add_argument("--delay-max", type=float, default=DEFAULT_EVENT_DELAY_MAX, help="Max delay between events")
+    47	    parser.add_argument("--kill-prob", type=float, default=DEFAULT_KILL_PROBABILITY, help="Probability of kill per event")
+    48	    parser.add_argument("--death-min", type=float, default=DEFAULT_DEATH_TIME_MIN, help="Min isolation time")
+    49	    parser.add_argument("--death-max", type=float, default=DEFAULT_DEATH_TIME_MAX, help="Max isolation time")
+    50	    parser.add_argument("--timeout", type=float, default=DEFAULT_REQUEST_TIMEOUT, help="HTTP request timeout")
+    51	    parser.add_argument("--retries", type=int, default=DEFAULT_MAX_RETRIES, help="Max retries per event")
+    52	    parser.add_argument("--sleep-only-node", default=DEFAULT_SLEEP_ONLY_NODE, help="Always kill the same node")
+    53	    parser.add_argument("--slow-ms", type=float, default=DEFAULT_SLOW_EVENT_THRESHOLD_MS, help="Slow event threshold in ms")
+    54	    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
+    55	    parser.add_argument("--output", default=None, help="Optional explicit output JSON filename")
+    56	    parser.add_argument("--send-workers", type=int, default=DEFAULT_SEND_WORKERS, help="Concurrent sender workers")
+    57	    parser.add_argument("--retry-backoff-base", type=float, default=DEFAULT_RETRY_BACKOFF_BASE, help="Base retry backoff seconds")
+    58	    parser.add_argument("--retry-backoff-max", type=float, default=DEFAULT_RETRY_BACKOFF_MAX, help="Max retry backoff seconds")
+    59	    parser.add_argument("--drain-timeout", type=float, default=60.0, help="Seconds to wait for queue drain after producer ends")
+    60	    parser.add_argument("--tenant-id", default=DEFAULT_TENANT_ID, help="Stream tenant id")
+    61	    parser.add_argument("--app-id", default=DEFAULT_APP_ID, help="Stream app id")
+    62	    parser.add_argument("--data-type", default=DEFAULT_DATA_TYPE, help="Stream data type")
+    63	    parser.add_argument("--schema-version", default=DEFAULT_SCHEMA_VERSION, help="Stream schema version")
+    64	    return parser.parse_args()
+    65	
+    66	
+    67	ARGS = parse_args()
+    68	
+    69	if ARGS.seed is not None:
+    70	    random.seed(ARGS.seed)
+    71	
+    72	NODES = ARGS.nodes
+    73	EVENTS = ARGS.events
+    74	EVENT_DELAY_RANGE = (ARGS.delay_min, ARGS.delay_max)
+    75	KILL_PROBABILITY = ARGS.kill_prob
+    76	DEATH_TIME_RANGE = (ARGS.death_min, ARGS.death_max)
+    77	REQUEST_TIMEOUT = ARGS.timeout
+    78	MAX_RETRIES = ARGS.retries
+    79	SLEEP_ONLY_NODE = ARGS.sleep_only_node
+    80	SLOW_EVENT_THRESHOLD_MS = ARGS.slow_ms
+    81	SEND_WORKERS = ARGS.send_workers
+    82	RETRY_BACKOFF_BASE = ARGS.retry_backoff_base
+    83	RETRY_BACKOFF_MAX = ARGS.retry_backoff_max
+    84	DRAIN_TIMEOUT = ARGS.drain_timeout
+    85	STREAM_KEY = StreamKey(
+    86	    tenant_id=ARGS.tenant_id,
+    87	    app_id=ARGS.app_id,
+    88	    data_type=ARGS.data_type,
+    89	    schema_version=ARGS.schema_version,
+    90	)
+    91	
+    92	TEST_STARTED_AT = time.time()
+    93	RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
+    94	STATS_FILE = ARGS.output or f"chaos_stats_{RUN_ID}.json"
+    95	
+    96	TEST_CONFIG = {
+    97	    "nodes": NODES,
+    98	    "events": EVENTS,
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_no_core
+# REASSEMBLY_ORDER : 008/009
+#
+########################################################################

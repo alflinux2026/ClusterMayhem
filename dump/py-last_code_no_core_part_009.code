@@ -1,0 +1,805 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_no_core
+# SOURCE_FILE      : py-last_code_no_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 009/009
+# PART_NUMBER      : 009
+# TOTAL_PARTS      : 009
+#
+# PREVIOUS_PART    : 008
+# NEXT_PART        : NONE
+#
+# CONTENT_LINES    : 770
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+    99	    "event_delay_range": EVENT_DELAY_RANGE,
+   100	    "kill_probability": KILL_PROBABILITY,
+   101	    "death_time_range": DEATH_TIME_RANGE,
+   102	    "request_timeout": REQUEST_TIMEOUT,
+   103	    "max_retries": MAX_RETRIES,
+   104	    "sleep_only_node": SLEEP_ONLY_NODE,
+   105	    "slow_event_threshold_ms": SLOW_EVENT_THRESHOLD_MS,
+   106	    "seed": ARGS.seed,
+   107	    "run_id": RUN_ID,
+   108	    "stats_file": STATS_FILE,
+   109	    "send_workers": SEND_WORKERS,
+   110	    "retry_backoff_base": RETRY_BACKOFF_BASE,
+   111	    "retry_backoff_max": RETRY_BACKOFF_MAX,
+   112	    "drain_timeout": DRAIN_TIMEOUT,
+   113	    "stream": {
+   114	        "tenant_id": STREAM_KEY.tenant_id,
+   115	        "app_id": STREAM_KEY.app_id,
+   116	        "data_type": STREAM_KEY.data_type,
+   117	        "schema_version": STREAM_KEY.schema_version,
+   118	        "stream_id": STREAM_KEY.stream_id(),
+   119	    },
+   120	}
+   121	
+   122	kill_threads = []
+   123	dead_nodes = set()
+   124	
+   125	dead_lock = threading.Lock()
+   126	stats_lock = threading.Lock()
+   127	producer_done_lock = threading.Lock()
+   128	enqueue_seq_lock = threading.Lock()
+   129	
+   130	pending_queue = queue.PriorityQueue()
+   131	producer_done = False
+   132	enqueue_seq = 0
+   133	
+   134	stats = {
+   135	    "events_total": 0,
+   136	    "events_ok": 0,
+   137	    "events_failed": 0,
+   138	    "events_retried": 0,
+   139	    "events_no_leader": 0,
+   140	    "events_timeout": 0,
+   141	    "events_connection_error": 0,
+   142	    "events_forward_error": 0,
+   143	    "events_unexpected_fail": 0,
+   144	    "events_slow": 0,
+   145	    "kills": 0,
+   146	    "revives": 0,
+   147	    "kill_attempts": 0,
+   148	    "kill_failures": 0,
+   149	    "revive_failures": 0,
+   150	    "per_node_ok": defaultdict(int),
+   151	    "per_node_fail": defaultdict(int),
+   152	    "leaders_seen": defaultdict(int),
+   153	    "latency": [],
+   154	    "unexpected_failures": [],
+   155	    "slow_events": [],
+   156	    "kill_events": [],
+   157	    "submit_http_200": 0,
+   158	    "submit_semantic_ok": 0,
+   159	    "submit_hard_fail": 0,
+   160	    "queue_requeues": 0,
+   161	    "queue_max_depth": 0,
+   162	}
+   163	
+   164	
+   165	@dataclass
+   166	class PendingEvent:
+   167	    event_index: int
+   168	    event: dict
+   169	    retries_done: int = 0
+   170	    tried_nodes: set = field(default_factory=set)
+   171	    first_enqueued_at: float = field(default_factory=time.time)
+   172	
+   173	
+   174	def build_event(i):
+   175	    event = ClusterEvent(
+   176	        event_type="chaos.test",
+   177	        payload={
+   178	            "msg": f"msg-203: {i}",
+   179	            "seq": i,
+   180	            "source": "chaos_v4",
+   181	            "run_id": RUN_ID,
+   182	            "stream_id": STREAM_KEY.stream_id(),
+   183	        },
+   184	    )
+   185	    return event.model_dump()
+   186	
+   187	
+   188	def stat_inc(key, amount=1):
+   189	    with stats_lock:
+   190	        stats[key] += amount
+   191	
+   192	
+   193	def stat_node_ok(node):
+   194	    with stats_lock:
+   195	        stats["per_node_ok"][node] += 1
+   196	
+   197	
+   198	def stat_node_fail(node):
+   199	    with stats_lock:
+   200	        stats["per_node_fail"][node] += 1
+   201	
+   202	
+   203	def stat_leader(name):
+   204	    with stats_lock:
+   205	        stats["leaders_seen"][name] += 1
+   206	
+   207	
+   208	def stat_latency(ms):
+   209	    with stats_lock:
+   210	        stats["latency"].append(ms)
+   211	
+   212	
+   213	def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+   214	    with stats_lock:
+   215	        stats["events_unexpected_fail"] += 1
+   216	        stats["unexpected_failures"].append({
+   217	            "event_index": event_index,
+   218	            "attempt": attempt,
+   219	            "node": node,
+   220	            "status_code": status_code,
+   221	            "payload": payload,
+   222	            "reason": reason,
+   223	            "timestamp": datetime.now().isoformat(),
+   224	        })
+   225	
+   226	
+   227	def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+   228	    with stats_lock:
+   229	        stats["events_slow"] += 1
+   230	        stats["slow_events"].append({
+   231	            "event_index": event_index,
+   232	            "attempt": attempt,
+   233	            "node": node,
+   234	            "latency_ms": round(latency_ms, 3),
+   235	            "leader": leader,
+   236	            "payload": payload,
+   237	            "timestamp": datetime.now().isoformat(),
+   238	        })
+   239	
+   240	
+   241	def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+   242	    with stats_lock:
+   243	        stats["kill_events"].append({
+   244	            "action": action,
+   245	            "node": node,
+   246	            "ok": ok,
+   247	            "seconds": seconds,
+   248	            "payload": payload,
+   249	            "error": error,
+   250	            "timestamp": datetime.now().isoformat(),
+   251	        })
+   252	
+   253	
+   254	def percentile(data, p):
+   255	    if not data:
+   256	        return 0.0
+   257	    values = sorted(data)
+   258	    if len(values) == 1:
+   259	        return float(values[0])
+   260	    rank = (len(values) - 1) * (p / 100.0)
+   261	    low = int(rank)
+   262	    high = min(low + 1, len(values) - 1)
+   263	    fraction = rank - low
+   264	    return float(values[low] + (values[high] - values[low]) * fraction)
+   265	
+   266	
+   267	def is_retryable_response(payload):
+   268	    if not isinstance(payload, dict):
+   269	        return False
+   270	    if payload.get("error") in {"no leader", "node isolated"}:
+   271	        return True
+   272	    error = str(payload.get("error", "")).lower()
+   273	    retry_patterns = ["timeout", "connection", "refused", "temporarily unavailable", "isolated", "no leader"]
+   274	    return any(p in error for p in retry_patterns)
+   275	
+   276	
+   277	def extract_leader(payload):
+   278	    if not isinstance(payload, dict):
+   279	        return None
+   280	    if "result" in payload and isinstance(payload["result"], dict):
+   281	        return payload["result"].get("leader")
+   282	    return payload.get("leader")
+   283	
+   284	
+   285	def classify_submit_response(status_code, payload):
+   286	    if status_code != 200:
+   287	        return "http_not_ok"
+   288	    if not isinstance(payload, dict):
+   289	        return "submit_ok"
+   290	    if payload.get("error"):
+   291	        if is_retryable_response(payload):
+   292	            return "retryable_error"
+   293	        return "hard_fail"
+   294	    result = payload.get("result")
+   295	    if isinstance(result, dict) and result.get("error"):
+   296	        if is_retryable_response(result):
+   297	            return "retryable_error"
+   298	        return "hard_fail"
+   299	    return "submit_ok"
+   300	
+   301	
+   302	def next_enqueue_seq():
+   303	    global enqueue_seq
+   304	    with enqueue_seq_lock:
+   305	        enqueue_seq += 1
+   306	        return enqueue_seq
+   307	
+   308	
+   309	def enqueue_pending(pending, delay_seconds=0.0):
+   310	    run_at = time.time() + max(0.0, delay_seconds)
+   311	    pending_queue.put((run_at, next_enqueue_seq(), pending))
+   312	    with stats_lock:
+   313	        depth = pending_queue.qsize()
+   314	        if depth > stats["queue_max_depth"]:
+   315	            stats["queue_max_depth"] = depth
+   316	
+   317	
+   318	def mark_producer_done():
+   319	    global producer_done
+   320	    with producer_done_lock:
+   321	        producer_done = True
+   322	
+   323	
+   324	def is_producer_done():
+   325	    with producer_done_lock:
+   326	        return producer_done
+   327	
+   328	
+   329	def compute_retry_backoff(retries_done):
+   330	    backoff = RETRY_BACKOFF_BASE * (2 ** max(0, retries_done - 1))
+   331	    return min(backoff, RETRY_BACKOFF_MAX)
+   332	
+   333	
+   334	def print_test_config():
+   335	    print("
+   336	" + "=" * 56)
+   337	    print("CHAOS TEST CONFIG v4")
+   338	    print("=" * 56)
+   339	    print(f"run_id..............: {RUN_ID}")
+   340	    print(f"stats_file..........: {STATS_FILE}")
+   341	    print(f"started_at..........: {datetime.fromtimestamp(TEST_STARTED_AT).isoformat()}")
+   342	    print(f"stream_id...........: {STREAM_KEY.stream_id()}")
+   343	    print(f"stream_tenant.......: {STREAM_KEY.tenant_id}")
+   344	    print(f"stream_app..........: {STREAM_KEY.app_id}")
+   345	    print(f"stream_type.........: {STREAM_KEY.data_type}")
+   346	    print(f"stream_schema.......: {STREAM_KEY.schema_version}")
+   347	    print(f"nodes...............: {NODES}")
+   348	    print(f"events..............: {EVENTS}")
+   349	    print(f"event_delay_range...: {EVENT_DELAY_RANGE}")
+   350	    print(f"kill_probability....: {KILL_PROBABILITY}")
+   351	    print(f"death_time_range....: {DEATH_TIME_RANGE}")
+   352	    print(f"request_timeout.....: {REQUEST_TIMEOUT}")
+   353	    print(f"max_retries.........: {MAX_RETRIES}")
+   354	    print(f"sleep_only_node.....: {SLEEP_ONLY_NODE}")
+   355	    print(f"slow_threshold_ms...: {SLOW_EVENT_THRESHOLD_MS}")
+   356	    print(f"send_workers........: {SEND_WORKERS}")
+   357	    print(f"retry_backoff_base..: {RETRY_BACKOFF_BASE}")
+   358	    print(f"retry_backoff_max...: {RETRY_BACKOFF_MAX}")
+   359	    print(f"drain_timeout.......: {DRAIN_TIMEOUT}")
+   360	    print(f"seed................: {ARGS.seed}")
+   361	    print("=" * 56 + "
+   362	")
+   363	
+   364	
+   365	def kill_node(node, seconds=None):
+   366	    stat_inc("kill_attempts")
+   367	    try:
+   368	        resp = requests.post(f"{node}/sleep", timeout=2)
+   369	        try:
+   370	            payload = resp.json()
+   371	        except Exception:
+   372	            payload = {"raw_text": resp.text}
+   373	        if resp.status_code == 200 and payload.get("ok") is True:
+   374	            with dead_lock:
+   375	                dead_nodes.add(node)
+   376	            stat_inc("kills")
+   377	            stat_kill_event(node=node, action="sleep", ok=True, payload=payload, seconds=seconds)
+   378	            print(f"[CHAOS] SLEEP {node}")
+   379	            return True
+   380	        stat_inc("kill_failures")
+   381	        stat_kill_event(node=node, action="sleep", ok=False, payload=payload, seconds=seconds)
+   382	        print(f"[CHAOS FAIL SLEEP] {node} -> status={resp.status_code} payload={payload}")
+   383	        return False
+   384	    except Exception as e:
+   385	        stat_inc("kill_failures")
+   386	        stat_kill_event(node=node, action="sleep", ok=False, error=str(e), seconds=seconds)
+   387	        print(f"[CHAOS FAIL SLEEP] {node} -> {e}")
+   388	        return False
+   389	
+   390	
+   391	def revive_node(node):
+   392	    try:
+   393	        resp = requests.post(f"{node}/revive", timeout=2)
+   394	        try:
+   395	            payload = resp.json()
+   396	        except Exception:
+   397	            payload = {"raw_text": resp.text}
+   398	        if resp.status_code == 200 and payload.get("ok") is True:
+   399	            with dead_lock:
+   400	                dead_nodes.discard(node)
+   401	            stat_inc("revives")
+   402	            stat_kill_event(node=node, action="revive", ok=True, payload=payload)
+   403	            print(f"[CHAOS] REVIVE {node}")
+   404	            return True
+   405	        stat_inc("revive_failures")
+   406	        stat_kill_event(node=node, action="revive", ok=False, payload=payload)
+   407	        print(f"[CHAOS FAIL REVIVE] {node} -> status={resp.status_code} payload={payload}")
+   408	        return False
+   409	    except Exception as e:
+   410	        stat_inc("revive_failures")
+   411	        stat_kill_event(node=node, action="revive", ok=False, error=str(e))
+   412	        print(f"[CHAOS FAIL REVIVE] {node} -> {e}")
+   413	        return False
+   414	
+   415	
+   416	def kill_cycle(node, seconds):
+   417	    try:
+   418	        ok = kill_node(node, seconds=seconds)
+   419	        if ok:
+   420	            print(f"[CHAOS] DEAD {node} for {seconds:.2f}s")
+   421	            time.sleep(seconds)
+   422	    finally:
+   423	        revive_node(node)
+   424	
+   425	
+   426	def process_pending_event(pending: PendingEvent):
+   427	    i = pending.event_index
+   428	    event = pending.event
+   429	    attempt_number = pending.retries_done + 1
+   430	    available = [n for n in NODES if n not in pending.tried_nodes]
+   431	    if not available:
+   432	        pending.tried_nodes.clear()
+   433	        available = list(NODES)
+   434	    node = random.choice(available)
+   435	    pending.tried_nodes.add(node)
+   436	    start = time.time()
+   437	    try:
+   438	        r = requests.post(f"{node}/event", json=event, timeout=REQUEST_TIMEOUT)
+   439	        elapsed_ms = (time.time() - start) * 1000
+   440	        stat_latency(elapsed_ms)
+   441	        payload = {}
+   442	        try:
+   443	            payload = r.json()
+   444	        except Exception:
+   445	            payload = {"raw_text": r.text}
+   446	        leader = extract_leader(payload)
+   447	        if leader:
+   448	            stat_leader(leader)
+   449	        if elapsed_ms >= SLOW_EVENT_THRESHOLD_MS:
+   450	            stat_slow_event(event_index=i, attempt=attempt_number, node=node, latency_ms=elapsed_ms, leader=leader, payload=payload)
+   451	        if r.status_code == 200:
+   452	            stat_inc("submit_http_200")
+   453	        result = classify_submit_response(r.status_code, payload)
+   454	        if result == "submit_ok":
+   455	            stat_inc("events_ok")
+   456	            stat_inc("submit_semantic_ok")
+   457	            stat_node_ok(node)
+   458	            print(f"[TORTURE] {i:03} OK attempt={attempt_number} node={node} leader={leader} latency={elapsed_ms:.1f}ms")
+   459	            return True
+   460	        if result == "retryable_error" or r.status_code >= 500:
+   461	            stat_inc("events_retried")
+   462	            if isinstance(payload, dict) and payload.get("error") == "no leader":
+   463	                stat_inc("events_no_leader")
+   464	            result_payload = payload.get("result") if isinstance(payload.get("result"), dict) else None
+   465	            if isinstance(result_payload, dict) and result_payload.get("error") == "no leader":
+   466	                stat_inc("events_no_leader")
+   467	            print(f"[RETRY] {i:03} attempt={attempt_number} node={node} status={r.status_code} payload={payload}")
+   468	            if pending.retries_done + 1 >= MAX_RETRIES:
+   469	                stat_inc("events_failed")
+   470	                stat_unexpected_failure(event_index=i, attempt=attempt_number, node=node, status_code=r.status_code, payload=payload, reason="dropped_after_retries_retryable_response")
+   471	                print(f"[DROP] {i:03} event dropped after retries")
+   472	                return False
+   473	            pending.retries_done += 1
+   474	            stat_inc("queue_requeues")
+   475	            enqueue_pending(pending, compute_retry_backoff(pending.retries_done))
+   476	            return False
+   477	        stat_inc("events_failed")
+   478	        stat_inc("submit_hard_fail")
+   479	        stat_node_fail(node)
+   480	        stat_unexpected_failure(event_index=i, attempt=attempt_number, node=node, status_code=r.status_code, payload=payload, reason="hard_fail_non_retryable_response")
+   481	        print(f"[FAIL] {i:03} attempt={attempt_number} node={node} status={r.status_code} payload={payload}")
+   482	        return False
+   483	    except requests.Timeout as e:
+   484	        stat_inc("events_timeout")
+   485	        stat_inc("events_retried")
+   486	        print(f"[TIMEOUT] {i:03} attempt={attempt_number} {node} -> {e}")
+   487	    except requests.ConnectionError as e:
+   488	        stat_inc("events_connection_error")
+   489	        stat_inc("events_retried")
+   490	        print(f"[CONNECTION] {i:03} attempt={attempt_number} {node} -> {e}")
+   491	    except Exception as e:
+   492	        stat_inc("events_forward_error")
+   493	        stat_inc("events_retried")
+   494	        stat_unexpected_failure(event_index=i, attempt=attempt_number, node=node, reason=f"exception:{type(e).__name__}", payload={"exception": str(e)})
+   495	        print(f"[ERROR] {i:03} attempt={attempt_number} {node} -> {e}")
+   496	    if pending.retries_done + 1 >= MAX_RETRIES:
+   497	        stat_inc("events_failed")
+   498	        stat_unexpected_failure(event_index=i, attempt=attempt_number, node=node, reason="dropped_after_retries_exception", payload={"tried_nodes": list(pending.tried_nodes)})
+   499	        print(f"[DROP] {i:03} event dropped after retries")
+   500	        return False
+   501	    pending.retries_done += 1
+   502	    stat_inc("queue_requeues")
+   503	    enqueue_pending(pending, compute_retry_backoff(pending.retries_done))
+   504	    return False
+   505	
+   506	
+   507	def sender_worker(worker_id):
+   508	    while True:
+   509	        try:
+   510	            run_at, _, pending = pending_queue.get(timeout=0.5)
+   511	        except queue.Empty:
+   512	            if is_producer_done() and pending_queue.empty():
+   513	                return
+   514	            continue
+   515	        now = time.time()
+   516	        if run_at > now:
+   517	            pending_queue.put((run_at, next_enqueue_seq(), pending))
+   518	            pending_queue.task_done()
+   519	            time.sleep(min(run_at - now, 0.2))
+   520	            continue
+   521	        try:
+   522	            process_pending_event(pending)
+   523	        finally:
+   524	            pending_queue.task_done()
+   525	
+   526	
+   527	def chaos_loop():
+   528	    for i in range(EVENTS):
+   529	        if random.random() < KILL_PROBABILITY:
+   530	            node = SLEEP_ONLY_NODE if SLEEP_ONLY_NODE else random.choice(NODES)
+   531	            seconds = random.uniform(*DEATH_TIME_RANGE)
+   532	            t = threading.Thread(target=kill_cycle, args=(node, seconds), daemon=True)
+   533	            t.start()
+   534	            kill_threads.append(t)
+   535	        stat_inc("events_total")
+   536	        pending = PendingEvent(event_index=i, event=build_event(i))
+   537	        enqueue_pending(pending, delay_seconds=0.0)
+   538	        time.sleep(random.uniform(*EVENT_DELAY_RANGE))
+   539	    mark_producer_done()
+   540	
+   541	
+   542	def revive_everything():
+   543	    print("
+   544	[MAIN] REVIVING ALL NODES
+   545	")
+   546	    unique_nodes = sorted(set(NODES))
+   547	    for node in unique_nodes:
+   548	        try:
+   549	            requests.post(f"{node}/revive", timeout=2)
+   550	            print(f"[FORCE REVIVE] {node}")
+   551	        except Exception as e:
+   552	            print(f"[FORCE REVIVE FAIL] {node} -> {e}")
+   553	
+   554	
+   555	def wait_kills():
+   556	    print("
+   557	[MAIN] waiting active kill cycles...
+   558	")
+   559	    for t in kill_threads:
+   560	        t.join(timeout=30)
+   561	
+   562	
+   563	def wait_queue_drain():
+   564	    deadline = time.time() + DRAIN_TIMEOUT
+   565	    while time.time() < deadline:
+   566	        if pending_queue.empty():
+   567	            time.sleep(0.5)
+   568	            if pending_queue.empty():
+   569	                return True
+   570	        time.sleep(0.2)
+   571	    return False
+   572	
+   573	
+   574	def print_stats():
+   575	    ended_at = time.time()
+   576	    print("
+   577	")
+   578	    print("=" * 56)
+   579	    print("FINAL CHAOS STATS v4")
+   580	    print("=" * 56)
+   581	    with stats_lock:
+   582	        total = stats["events_total"]
+   583	        ok = stats["events_ok"]
+   584	        failed = stats["events_failed"]
+   585	        success_rate = ((ok / total) * 100) if total else 0
+   586	        avg_latency = (sum(stats["latency"]) / len(stats["latency"])) if stats["latency"] else 0
+   587	        max_latency = max(stats["latency"]) if stats["latency"] else 0
+   588	        min_latency = min(stats["latency"]) if stats["latency"] else 0
+   589	        p50_latency = percentile(stats["latency"], 50)
+   590	        p95_latency = percentile(stats["latency"], 95)
+   591	        p99_latency = percentile(stats["latency"], 99)
+   592	        print(f"events_total........: {total}")
+   593	        print(f"events_ok...........: {ok}")
+   594	        print(f"events_failed.......: {failed}")
+   595	        print(f"success_rate........: {success_rate:.2f}%")
+   596	        print()
+   597	        print(f"events_retried......: {stats['events_retried']}")
+   598	        print(f"events_no_leader....: {stats['events_no_leader']}")
+   599	        print(f"timeouts............: {stats['events_timeout']}")
+   600	        print(f"connection_errors...: {stats['events_connection_error']}")
+   601	        print(f"forward_errors......: {stats['events_forward_error']}")
+   602	        print(f"unexpected_fail.....: {stats['events_unexpected_fail']}")
+   603	        print(f"slow_events.........: {stats['events_slow']}")
+   604	        print()
+   605	        print(f"submit_http_200.....: {stats['submit_http_200']}")
+   606	        print(f"submit_semantic_ok..: {stats['submit_semantic_ok']}")
+   607	        print(f"submit_hard_fail....: {stats['submit_hard_fail']}")
+   608	        print(f"queue_requeues......: {stats['queue_requeues']}")
+   609	        print(f"queue_max_depth.....: {stats['queue_max_depth']}")
+   610	        print()
+   611	        print(f"kill_attempts.......: {stats['kill_attempts']}")
+   612	        print(f"kills...............: {stats['kills']}")
+   613	        print(f"kill_failures.......: {stats['kill_failures']}")
+   614	        print(f"revives.............: {stats['revives']}")
+   615	        print(f"revive_failures.....: {stats['revive_failures']}")
+   616	        print()
+   617	        print(f"latency_avg.........: {avg_latency:.1f} ms")
+   618	        print(f"latency_min.........: {min_latency:.1f} ms")
+   619	        print(f"latency_p50.........: {p50_latency:.1f} ms")
+   620	        print(f"latency_p95.........: {p95_latency:.1f} ms")
+   621	        print(f"latency_p99.........: {p99_latency:.1f} ms")
+   622	        print(f"latency_max.........: {max_latency:.1f} ms")
+   623	        print()
+   624	        print("LEADERS SEEN")
+   625	        for leader, count in sorted(stats["leaders_seen"].items()):
+   626	            print(f"  {leader:15} -> {count}")
+   627	        print()
+   628	        print("NODE SUCCESS")
+   629	        for node, count in sorted(stats["per_node_ok"].items()):
+   630	            print(f"  {node:30} -> {count}")
+   631	        print()
+   632	        print("NODE FAIL")
+   633	        for node, count in sorted(stats["per_node_fail"].items()):
+   634	            print(f"  {node:30} -> {count}")
+   635	        print()
+   636	        print("SLOW EVENTS")
+   637	        if stats["slow_events"]:
+   638	            for idx, item in enumerate(stats["slow_events"][:20], start=1):
+   639	                print(f"  #{idx:02} event={item.get('event_index')} attempt={item.get('attempt')} node={item.get('node')} leader={item.get('leader')} latency_ms={item.get('latency_ms')}")
+   640	            if len(stats["slow_events"]) > 20:
+   641	                print(f"  ... and {len(stats['slow_events']) - 20} more")
+   642	        else:
+   643	            print("  none")
+   644	        print()
+   645	        print("UNEXPECTED FAILURES")
+   646	        if stats["unexpected_failures"]:
+   647	            for idx, item in enumerate(stats["unexpected_failures"][:20], start=1):
+   648	                print(f"  #{idx:02} event={item.get('event_index')} attempt={item.get('attempt')} node={item.get('node')} status={item.get('status_code')} reason={item.get('reason')}")
+   649	            if len(stats["unexpected_failures"]) > 20:
+   650	                print(f"  ... and {len(stats['unexpected_failures']) - 20} more")
+   651	        else:
+   652	            print("  none")
+   653	        print("=" * 56)
+   654	        report = {
+   655	            "test_config": TEST_CONFIG,
+   656	            "run_meta": {
+   657	                "started_at_epoch": TEST_STARTED_AT,
+   658	                "ended_at_epoch": ended_at,
+   659	                "started_at_iso": datetime.fromtimestamp(TEST_STARTED_AT).isoformat(),
+   660	                "ended_at_iso": datetime.fromtimestamp(ended_at).isoformat(),
+   661	                "duration_seconds": round(ended_at - TEST_STARTED_AT, 3),
+   662	            },
+   663	            "stats": {
+   664	                **stats,
+   665	                "success_rate": round(success_rate, 2),
+   666	                "latency_avg": round(avg_latency, 3),
+   667	                "latency_min": round(min_latency, 3),
+   668	                "latency_p50": round(p50_latency, 3),
+   669	                "latency_p95": round(p95_latency, 3),
+   670	                "latency_p99": round(p99_latency, 3),
+   671	                "latency_max": round(max_latency, 3),
+   672	                "per_node_ok": dict(stats["per_node_ok"]),
+   673	                "per_node_fail": dict(stats["per_node_fail"]),
+   674	                "leaders_seen": dict(stats["leaders_seen"]),
+   675	            }
+   676	        }
+   677	        with open(STATS_FILE, "w") as f:
+   678	            json.dump(report, f, indent=2)
+   679	        print(f"
+   680	[MAIN] stats saved to {STATS_FILE}
+   681	")
+   682	
+   683	
+   684	def main():
+   685	    print("[MAIN] starting UNIVERSAL chaos torture v4")
+   686	    print_test_config()
+   687	    workers = []
+   688	    for idx in range(SEND_WORKERS):
+   689	        t = threading.Thread(target=sender_worker, args=(idx,), daemon=True)
+   690	        t.start()
+   691	        workers.append(t)
+   692	    drained = False
+   693	    try:
+   694	        chaos_loop()
+   695	        drained = wait_queue_drain()
+   696	        pending_queue.join()
+   697	        for t in workers:
+   698	            t.join(timeout=5)
+   699	    finally:
+   700	        wait_kills()
+   701	        revive_everything()
+   702	        if not drained:
+   703	            print(f"
+   704	[MAIN WARN] queue drain timeout reached after {DRAIN_TIMEOUT:.1f}s
+   705	")
+   706	        print_test_config()
+   707	        print_stats()
+   708	        print("
+   709	[MAIN] cluster restored
+   710	")
+   711	
+   712	
+   713	if __name__ == "__main__":
+   714	    main()
+
+
+===== ./cluster/watchdog/__init__.py =====
+
+
+===== ./cluster/watchdog/healthcheck.py =====
+
+
+===== ./cluster/watchdog/watchdog.py =====
+
+
+===== ./cluster/workers/__init__.py =====
+
+
+===== ./cluster/workers/cluster_worker.py =====
+     1	import time
+     2	
+     3	from cluster.transport.server import register_local_node
+     4	
+     5	class ClusterWorker:
+     6	
+     7	    def __init__(self, node, peers, interval=1.0):
+     8	
+     9	        self.node = node
+    10	        self.peers = peers
+    11	        self.interval = interval
+    12	        self.running = False
+    13	
+    14	    # -----------------------------------------
+    15	
+    16	    def start(self):
+    17	
+    18	        self.running = True
+    19	
+    20	        print(f"[{self.node.node_id}] CLUSTER WORKER STARTED")
+    21	
+    22	        while self.running:
+    23	
+    24	            self.tick()
+    25	
+    26	            time.sleep(self.interval)
+    27	
+    28	    # -----------------------------------------
+    29	
+    30	    def stop(self):
+    31	
+    32	        self.running = False
+    33	
+    34	    # -----------------------------------------
+    35	
+    36	    def tick(self):
+    37	
+    38	        print(f"[{self.node.node_id}] REGISTERING SELF")
+    39	
+    40	        # 👇 registrar self localmente
+    41	        register_local_node(
+    42	            node_id=self.node.node_id,
+    43	            state=self.node.state.value,
+    44	            priority=self.node.priority,
+    45	        )
+    46	
+    47	        # 👇 enviar a peers
+    48	        self.node.emit_heartbeat(self.peers)
+
+
+===== ./cluster/workers/heartbeat_worker.py =====
+     1	import time
+     2	from cluster.runtime.state import NodeState
+     3	
+     4	
+     5	class HeartbeatWorker:
+     6	
+     7	    def __init__(self, nodes, lease_manager, interval=1.0):
+     8	
+     9	        self.nodes = nodes
+    10	        self.lease_manager = lease_manager
+    11	        self.interval = interval
+    12	
+    13	    # -----------------------------------------------------
+    14	
+    15	    def start(self, ticks=5):
+    16	
+    17	        print("\n=== HEARTBEAT START ===\n")
+    18	
+    19	        for i in range(ticks):
+    20	
+    21	            print(f"\n--- tick {i} ---\n")
+    22	
+    23	            self.tick()
+    24	
+    25	            time.sleep(self.interval)
+    26	
+    27	    # -----------------------------------------------------
+    28	
+    29	    def tick(self):
+    30	
+    31	        self.send_heartbeats()
+    32	        self.expire_leases()
+    33	        self.update_nodes()
+    34	
+    35	    # -----------------------------------------------------
+    36	
+    37	    def send_heartbeats(self):
+    38	
+    39	        for node in self.nodes:
+    40	
+    41	            if node.state == NodeState.ACTIVE:
+    42	
+    43	                self.lease_manager.grant(
+    44	                    node.node_id,
+    45	                    ttl=2.5
+    46	                )
+    47	
+    48	                print(f"HEARTBEAT from {node.node_id}")
+    49	
+    50	    # -----------------------------------------------------
+    51	
+    52	    def expire_leases(self):
+    53	
+    54	        expired = self.lease_manager.expire()
+    55	
+    56	        for node_id in expired:
+    57	
+    58	            print(f"LEASE EXPIRED: {node_id}")
+    59	
+    60	    # -----------------------------------------------------
+    61	
+    62	    def update_nodes(self):
+    63	
+    64	        for node in self.nodes:
+    65	
+    66	            node.tick()
+    67	
+    68	            lease_valid = self.lease_manager.is_valid(
+    69	                node.node_id
+    70	            )
+    71	
+    72	            # ACTIVE sin lease → degradación lógica
+    73	            if node.state == NodeState.ACTIVE and not lease_valid:
+    74	
+    75	                print(
+    76	                    f"ACTIVE LOST LEASE: {node.node_id}"
+    77	                )
+    78	
+    79	                node.transition(NodeState.DEGRADED)
+
+
+===== ./cluster/workers/lease_worker.py =====
+
+
+===== ./cluster/workers/replication_worker.py =====
+
+
+===== ./cluster/workers/watchdog_worker.py =====
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_no_core
+# REASSEMBLY_ORDER : 009/009
+#
+########################################################################

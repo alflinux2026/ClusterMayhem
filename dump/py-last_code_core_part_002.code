@@ -1,0 +1,817 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# SOURCE_FILE      : py-last_code_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 002/006
+# PART_NUMBER      : 002
+# TOTAL_PARTS      : 006
+#
+# PREVIOUS_PART    : 001
+# NEXT_PART        : 003
+#
+# CONTENT_LINES    : 782
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+   777	            "executing": counts.get("executing", 0),
+   778	            "completed": counts.get("completed", 0),
+   779	            "dirty": ((node.get("cluster_integrity") or {}).get("last_append_meta") or {}).get("dirty"),
+   780	            "progress_active": bool(node.get("progress_active", False)),
+   781	            "progress_stage": node.get("progress_stage"),
+   782	            "progress_started_at": node.get("progress_started_at"),
+   783	            "progress_touched_at": node.get("progress_touched_at"),
+   784	            "progress_age_s": round(progress_age_s, 1) if progress_age_s is not None else None,
+   785	            "progress_duration_s": round(progress_duration_s, 1) if progress_duration_s is not None else None,
+   786	            "progress_current": node.get("progress_current"),
+   787	            "progress_total": node.get("progress_total"),
+   788	            "progress_pct": progress_pct,
+   789	            "progress_stalled": progress_stalled,
+   790	            "progress_meta": node.get("progress_meta") or {},
+   791	        }
+   792	        nodes.append(item)
+   793	
+   794	    local_progress = {
+   795	        "progress_active": bool(local_node.get("progress_active", False)),
+   796	        "progress_stage": local_node.get("progress_stage"),
+   797	        "progress_started_at": local_node.get("progress_started_at"),
+   798	        "progress_touched_at": local_node.get("progress_touched_at"),
+   799	        "progress_age_s": None,
+   800	        "progress_duration_s": None,
+   801	        "progress_current": local_node.get("progress_current"),
+   802	        "progress_total": local_node.get("progress_total"),
+   803	        "progress_pct": None,
+   804	        "progress_stalled": bool(local_node.get("progress_stalled", False)),
+   805	        "progress_meta": local_node.get("progress_meta") or {},
+   806	    }
+   807	
+   808	    return {
+   809	        "cluster": {
+   810	            "node_id": ctx.node_id,
+   811	            "leader": leader,
+   812	            "generated_at": now,
+   813	            "integrity_ok": bool(integrity.get("integrity_ok", True)),
+   814	            "local_state": ctx.node.state.value,
+   815	            "local_state_since": getattr(ctx.node, "state_since", None),
+   816	            "local_state_age_s": round(_state_age_s({"state_since": getattr(ctx.node, "state_since", None)}, now) or 0.0, 1),
+   817	        },
+   818	        "local": {
+   819	            "events_summary": local_events,
+   820	            "integrity": integrity,
+   821	            "progress": local_progress,
+   822	        },
+   823	        "nodes": nodes,
+   824	    }
+   825	
+   826	
+   827	@app.get("/integrity")
+   828	def integrity():
+   829	    """Devuelve el reporte de integridad local."""
+   830	    return local_integrity_api()
+   831	
+   832	
+   833	@app.get("/integrity/cluster")
+   834	def integrity_cluster():
+   835	    """Devuelve el reporte de integridad del cluster."""
+   836	    return cluster_integrity_report()
+
+
+===== ./cluster/runtime/bootstrap.py =====
+     1	# File: ./cluster/runtime/bootstrap.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:06:16+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/bootstrap.py 0.0.0 2026-05-28T17:06:16+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Bootstrap de configuración del nodo.
+    12	#   Carga la configuración del cluster desde un archivo nodes.json, identifica
+    13	#   cuál es el nodo local (por hostname, NODE_ID, NODE_HOST, o NODE_IP), Extrae
+    14	#   la configuración del nodo local y de los peers, y la guarda en config/node.json
+    15	#   para uso futuro. Si ya existe config/node.json con el mismo node_id, lo usa
+    16	#   (con merge de configuración).
+    17	# Notes:
+    18	#   - nodes.json define TODOS los nodos del cluster (lista completa)
+    19	#   - node.json es la configuración del NODO LOCAL (se genera automáticamente)
+    20	#   - Identificación del nodo local por prioridad: NODE_ID > NODE_HOST > NODE_IP > hostname
+    21	#   - Escritura atómica de node.json (tmp + rename) para evitar corrupción
+    22	#   - Environment vars override: NODE_ID, NODE_HOST, NODE_IP, NODE_PORT, etc.
+    23	#   - Si node.json existe y tiene el mismo node_id, se hace merge (no se sobrescribe todo)
+    24	#
+    25	# FRV-ID: 94320b527b1c5a2b
+    26	# Header_End
+    27	
+    28	import json
+    29	import os
+    30	import socket
+    31	from pathlib import Path
+    32	
+    33	
+    34	def _write_json_atomic(path: str, data: dict) -> None:
+    35	    """
+    36	    Escribe un dict como JSON de forma atómica.
+    37	
+    38	    Usa el patrón write-to-temp + rename para evitar corrupción si falla
+    39	    la escritura (power failure, crash, etc.).
+    40	
+    41	    Args:
+    42	        path: Ruta del archivo destino.
+    43	        data: Dict a escribir como JSON.
+    44	
+    45	    Note:
+    46	        - Crea el directorio padre si no existe
+    47	        - Escribe en archivo .tmp y luego hace os.replace()
+    48	        - flush() + fsync() aseguran que los datos llegan al disco
+    49	        - os.replace() es atómico en casi todos los filesystems
+    50	
+    51	    Example:
+    52	        >>> _write_json_atomic("config/node.json", {"node_id": "lnx203hp"})
+    53	        # Crea config/ si no existe, escribe config/node.json.tmp, luego renombra
+    54	    """
+    55	    p = Path(path)
+    56	    p.parent.mkdir(parents=True, exist_ok=True)
+    57	    tmp = p.with_suffix(p.suffix + ".tmp")
+    58	    with open(tmp, "w", encoding="utf-8") as f:
+    59	        json.dump(data, f, ensure_ascii=False, indent=2)
+    60	        f.flush()
+    61	        os.fsync(f.fileno())
+    62	    os.replace(tmp, p)
+    63	
+    64	
+    65	def _node_get(node: dict, *keys, default=None):
+    66	    """
+    67	    Obtiene el primer valor no-None de un dict buscando varias claves.
+    68	
+    69	    Útil para soportar nombres alternativos de claves (node_id vs nodeid, etc.).
+    70	
+    71	    Args:
+    72	        node: Dict a buscar.
+    73	        *keys: Claves a buscar en orden.
+    74	        default: Valor por defecto si ninguna clave existe.
+    75	
+    76	    Returns:
+    77	        El primer valor no-None encontrado, o default.
+    78	
+    79	    Example:
+    80	        >>> node = {"hostname": "lnx203hp", "port": 8000}
+    81	        >>> _node_get(node, "node_id", "nodeid", "hostname")
+    82	        'lnx203hp'
+    83	
+    84	        >>> _node_get(node, "port", "bind_port", default=7000)
+    85	        8000
+    86	
+    87	        >>> _node_get(node, "missing", default="fallback")
+    88	        'fallback'
+    89	    """
+    90	    for key in keys:
+    91	        if key in node and node[key] is not None:
+    92	            return node[key]
+    93	    return default
+    94	
+    95	
+    96	def _find_self_node(nodes: list[dict]) -> dict:
+    97	    """
+    98	    Identifica cuál es el nodo local en la lista de nodos del cluster.
+    99	
+   100	    Busca por prioridad:
+   101	        1. NODE_ID o NODEID env var coincide con node_id
+   102	        2. NODE_HOST o NODEHOST env var coincide con host
+   103	        3. NODE_IP o NODEIP env var coincide con host
+   104	        4. node_id coincide con hostname del sistema
+   105	        5. host coincide con hostname del sistema
+   106	
+   107	    Args:
+   108	        nodes: Lista de dicts con info de nodos del cluster.
+   109	
+   110	    Returns:
+   111	        dict: El dict del nodo local.
+   112	
+   113	    Raises:
+   114	        RuntimeError: Si no se puede identificar el nodo local.
+   115	
+   116	    Example:
+   117	        >>> nodes = [
+   118	        ...     {"node_id": "lnx203hp", "host": "10.0.0.1", "port": 8000},
+   119	        ...     {"node_id": "lnx200nas", "host": "10.0.0.2", "port": 8000}
+   120	        ... ]
+   121	        >>> _find_self_node(nodes)  # Si hostname es "lnx203hp"
+   122	        {"node_id": "lnx203hp", "host": "10.0.0.1", "port": 8000}
+   123	
+   124	    Note:
+   125	        - La identificación es importante para saber qué nodo soy en el cluster
+   126	        - Soporta env vars para override en entornos container/Docker/K8s
+   127	    """
+   128	    hostname = socket.gethostname()
+   129	
+   130	    node_id_env = os.getenv("NODE_ID") or os.getenv("NODEID")
+   131	    host_env = os.getenv("NODE_HOST") or os.getenv("NODEHOST")
+   132	    ip_env = os.getenv("NODE_IP") or os.getenv("NODEIP")
+   133	
+   134	    for node in nodes:
+   135	        node_id = _node_get(node, "node_id", "nodeid")
+   136	        host = _node_get(node, "host", "hostname", "ip")
+   137	
+   138	        if node_id_env and node_id == node_id_env:
+   139	            return node
+   140	        if host_env and host == host_env:
+   141	            return node
+   142	        if ip_env and host == ip_env:
+   143	            return node
+   144	        if node_id == hostname:
+   145	            return node
+   146	        if host == hostname:
+   147	            return node
+   148	
+   149	    raise RuntimeError(
+   150	        f"Cannot identify node for hostname={hostname!r} "
+   151	        f"env NODE_ID={node_id_env!r} NODE_HOST={host_env!r} NODE_IP={ip_env!r}"
+   152	    )
+   153	
+   154	
+   155	def load_or_bootstrap_config():
+   156	    """
+   157	    Carga o genera la configuración del nodo.
+   158	
+   159	    Secuencia:
+   160	        1. Carga nodes.json (lista completa de nodos del cluster)
+   161	        2. Identifica el nodo local (_find_self_node)
+   162	        3. Extrae configuración del nodo local y peers
+   163	        4. Si node.json existe y tiene el mismo node_id, hace merge y retorna
+   164	        5. Si no, genera node.json con la configuración y la retorna
+   165	
+   166	    Returns:
+   167	        dict: Configuración del nodo con:
+   168	            - cluster_name (str): Nombre del cluster
+   169	            - node_id (str): ID único del nodo
+   170	            - priority (int): Prioridad para leader election
+   171	            - port (int): Puerto del nodo
+   172	            - host (str): Hostname/IP del nodo
+   173	            - bind_host (str): Host para bind del servidor
+   174	            - bind_port (int): Puerto para bind del servidor
+   175	            - tenants_id, app_id, data_type, schema_version (str): Metadatos
+   176	            - peers (list[dict]): Lista de peers con node_id, host, port, priority
+   177	
+   178	    Raises:
+   179	        FileNotFoundError: Si nodes.json no existe.
+   180	        ValueError: Si nodes.json tiene formato inválido o está vacío.
+   181	        RuntimeError: Si no se puede identificar el nodo local.
+   182	
+   183	    Example:
+   184	        >>> config = load_or_bootstrap_config()
+   185	        >>> config["node_id"]
+   186	        'lnx203hp'
+   187	        >>> config["peers"]
+   188	        [{'node_id': 'lnx200nas', 'host': '10.0.0.2', 'port': 8000, 'priority': 100}]
+   189	
+   190	    Note:
+   191	        - nodes.json por defecto: cluster/config/nodes.json
+   192	        - node.json por defecto: config/node.json
+   193	        - Se puede override con env vars: CLUSTER_NODES, CLUSTER_CONFIG
+   194	        - Env vars adicionales: NODE_ID, NODE_HOST, NODE_IP, NODE_PORT, TENANT_ID, APP_ID, etc.
+   195	    """
+   196	    nodes_path = Path(os.getenv("CLUSTER_NODES", "cluster/config/nodes.json"))
+   197	    config_path = Path(os.getenv("CLUSTER_CONFIG", "config/node.json"))
+   198	
+   199	    if not nodes_path.exists():
+   200	        raise FileNotFoundError(f"Missing cluster nodes file: {nodes_path}")
+   201	
+   202	    with open(nodes_path, "r", encoding="utf-8") as f:
+   203	        cluster_cfg = json.load(f)
+   204	
+   205	    if not isinstance(cluster_cfg, dict):
+   206	        raise ValueError(f"Invalid cluster nodes file: {nodes_path}")
+   207	
+   208	    nodes = cluster_cfg.get("nodes", [])
+   209	    if not isinstance(nodes, list) or not nodes:
+   210	        raise ValueError(f"Empty node list in: {nodes_path}")
+   211	
+   212	    self_node = _find_self_node(nodes)
+   213	
+   214	    self_node_id = _node_get(self_node, "node_id", "nodeid")
+   215	    self_priority = int(_node_get(self_node, "priority", default=100))
+   216	    self_host = _node_get(self_node, "host", "hostname", "ip", default=os.getenv("NODE_HOST", "0.0.0.0"))
+   217	    self_port = int(_node_get(self_node, "port", default=os.getenv("NODE_PORT", "8000")))
+   218	    self_bind_host = _node_get(self_node, "bind_host", default=self_host)
+   219	    self_bind_port = int(_node_get(self_node, "bind_port", default=self_port))
+   220	
+   221	    peers = []
+   222	    for n in nodes:
+   223	        peer_node_id = _node_get(n, "node_id", "nodeid")
+   224	        if peer_node_id == self_node_id:
+   225	            continue
+   226	        peers.append({
+   227	            "node_id": peer_node_id,
+   228	            "host": _node_get(n, "host", "hostname", "ip"),
+   229	            "port": int(_node_get(n, "port")),
+   230	            "priority": int(_node_get(n, "priority", default=100)),
+   231	        })
+   232	
+   233	    cfg = {
+   234	        "cluster_name": cluster_cfg.get("cluster_name", "mayhem-cluster"),
+   235	        "node_id": self_node_id,
+   236	        "priority": self_priority,
+   237	        "port": self_port,
+   238	        "host": self_host,
+   239	        "bind_host": self_bind_host,
+   240	        "bind_port": self_bind_port,
+   241	        "tenant_id": os.getenv("TENANT_ID", "default"),
+   242	        "app_id": os.getenv("APP_ID", "mayhem"),
+   243	        "data_type": os.getenv("DATA_TYPE", "event"),
+   244	        "schema_version": os.getenv("SCHEMA_VERSION", "0.1"),
+   245	        "peers": peers,
+   246	    }
+   247	
+   248	    if config_path.exists():
+   249	        try:
+   250	            with open(config_path, "r", encoding="utf-8") as f:
+   251	                existing = json.load(f)
+   252	            if isinstance(existing, dict) and existing.get("node_id") == cfg["node_id"]:
+   253	                merged = {**existing, **cfg}
+   254	                merged["peers"] = cfg["peers"]
+   255	                return merged
+   256	        except (json.JSONDecodeError, OSError):
+   257	            pass
+   258	
+   259	    _write_json_atomic(str(config_path), cfg)
+   260	    return cfg
+
+
+===== ./cluster/runtime/cluster_store.py =====
+     1	# File: ./cluster/runtime/cluster_store.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:07:24+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/cluster_store.py 0.0.0 2026-05-28T17:07:24+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Almacenamiento en memoria del estado del cluster.
+    12	#   Mantiene un diccionario global con el estado de todos los nodos del cluster,
+    13	#   actualizado mediante heartbeats. Se usa para leader election, watchdog,
+    14	#   y para consultar el estado de otros nodos.
+    15	# Notes:
+    16	#   - Este es un estado en memoria (no persiste, se reinicia al arrancar)
+    17	#   - Se llena con heartbeats de los nodos (ver heartbeat() en api_app.py)
+    18	#   - cluster_state vs CLUSTER_REGISTRY:
+    19	#       * CLUSTER_REGISTRY: nodos configurados estáticamente (host, port, priority)
+    20	#       * cluster_state: estado dinámico de nodos activos (state, last_seen, etc.)
+    21	#   - En un futuro podría amplificarse con persistencia o replicación
+    22	#
+    23	# FRV-ID: ed651d710eb25af1
+    24	# Header_End
+    25	
+    26	import time
+    27	
+    28	# =============================================================================
+    29	# Estado global del cluster (en memoria)
+    30	# =============================================================================
+    31	
+    32	#: Diccionario global con el estado de todos los nodos del cluster
+    33	#: Clave: node_id (str)
+    34	#: Valor: dict con state, priority, last_seen, last_watchdog, watchdog_busy,
+    35	#:        state_since, prev_state, state_reason, log_meta, cluster_integrity, streams
+    36	#: Tipo: dict[str, dict[str, Any]]
+    37	cluster_state = {}
+    38	
+    39	
+    40	def get_active_cluster():
+    41	    """
+    42	    Devuelve el estado completo del cluster.
+    43	
+    44	    Returns:
+    45	        dict[str, dict]: Copia de referencia de cluster_state con todos los nodos.
+    46	
+    47	    Note:
+    48	        - Retorna la referencia directa (no una copia), así que cuidado con modificarlo
+    49	        - Se usa principalmente para debugging/monitoring
+    50	
+    51	    Example:
+    52	        >>> cluster = get_active_cluster()
+    53	        >>> for node_id, info in cluster.items():
+    54	        ...     print(f"{node_id}: {info.get('state')}")
+    55	    """
+    56	    return cluster_state
+    57	
+    58	
+    59	def upsert_node(node_id: str, payload: dict, now: float | None = None) -> dict:
+    60	    """
+    61	    Inserta o actualiza un nodo en el cluster_state.
+    62	
+    63	    Fusiona el payload con el estado existente del nodo, actualizando
+    64	    automáticamente `last_seen` al timestamp actual.
+    65	
+    66	    Args:
+    67	        node_id: ID único del nodo.
+    68	        payload: Dict con los campos a actualizar (state, priority, last_watchdog, etc.).
+    69	        now: Timestamp opcional. Si no se proporciona, usa time.time().
+    70	
+    71	    Returns:
+    72	        dict: El estado actualizado del nodo (después de la actualización).
+    73	
+    74	    Example:
+    75	        >>> upsert_node("lnx203hp", {"state": "ACTIVE", "priority": 10})
+    76	        {'state': 'ACTIVE', 'priority': 10, 'last_seen': 1779956226.123}
+    77	
+    78	    Note:
+    79	        - fusiona payload con el estado existente (no lo sobrescribe completamente)
+    80	        - last_seen siempre se actualiza al timestamp actual (a menos que payload lo fije)
+    81	    """
+    82	    now = now or time.time()
+    83	    current = cluster_state.get(node_id, {})
+    84	
+    85	    cluster_state[node_id] = {
+    86	        **current,
+    87	        **payload,
+    88	        "last_seen": payload.get("last_seen", now),
+    89	    }
+    90	    return cluster_state[node_id]
+    91	
+    92	
+    93	def refresh_node_seen(node_id: str, now: float | None = None) -> dict:
+    94	    """
+    95	    Actualiza solo el last_seen de un nodo (heartbeat).
+    96	
+    97	    Útil para refreshar el timestamp de actividad sin cambiar otros campos.
+    98	
+    99	    Args:
+   100	        node_id: ID del nodo a refreshar.
+   101	        now: Timestamp opcional. Si no se proporciona, usa time.time().
+   102	
+   103	    Returns:
+   104	        dict: El estado del nodo con last_seen actualizado.
+   105	
+   106	    Example:
+   107	        >>> refresh_node_seen("lnx203hp")
+   108	        {'state': 'ACTIVE', 'priority': 10, 'last_seen': 1779956226.456}
+   109	
+   110	    Note:
+   111	        - Solo actualiza last_seen, no cambia state/priority/otros campos
+   112	        - Se usa en heartbeats para marcar que el nodo sigue vivo
+   113	        - Si el nodo no existe, se crea con solo last_seen
+   114	    """
+   115	    now = now or time.time()
+   116	    current = cluster_state.get(node_id, {})
+   117	
+   118	    cluster_state[node_id] = {
+   119	        **current,
+   120	        "last_seen": now,
+   121	    }
+   122	    return cluster_state[node_id]
+   123	
+   124	
+   125	def get_node(node_id: str) -> dict:
+   126	    """
+   127	    Obtiene el estado de un nodo del cluster.
+   128	
+   129	    Args:
+   130	        node_id: ID del nodo a consultar.
+   131	
+   132	    Returns:
+   133	        dict: El estado del nodo si existe, dict vacío {} si no existe.
+   134	
+   135	    Example:
+   136	        >>> get_node("lnx203hp")
+   137	        {'state': 'ACTIVE', 'priority': 10, 'last_seen': 1779956226.123}
+   138	
+   139	        >>> get_node("nodonotexist")
+   140	        {}
+   141	
+   142	    Note:
+   143	        - Retorna dict vacío en lugar de None para evitar checks de None
+   144	        - Se usa en compute_leader(), compute_alive(), dashboard_compact(), etc.
+   145	    """
+   146	    return cluster_state.get(node_id, {})
+
+
+===== ./cluster/runtime/context.py =====
+     1	# File: ./cluster/runtime/context.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:07:42+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/context.py 0.0.0 2026-05-28T17:07:42+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Módulo de contexto global para el cluster.
+    12	#   Almacena variables de estado compartidas que se inicializan durante el bootstrap
+    13	#   y se acceden desde múltiples módulos sin pasarlas explícitamente como parámetros.
+    14	# Notes:
+    15	#   - Este patrón (global state) es común en sistemas single-threaded con event loop
+    16	#   - En un futuro considerar inyección de dependencias explícita para testabilidad
+    17	#   - Las variables se inicializan en None/empty y se llenan en bootstrap.py
+    18	#
+    19	# FRV-ID: fae1f65db3f7af4a
+    20	# Header_End
+    21	
+    22	from typing import Any
+    23	
+    24	# =============================================================================
+    25	# Variables globales de contexto del nodo
+    26	# =============================================================================
+    27	
+    28	#: Objeto NodeRuntime completo del nodo actual (se inicializa en bootstrap)
+    29	#: Tipo: NodeRuntime | None
+    30	node = None
+    31	
+    32	#: ID único del nodo actual dentro del cluster (string)
+    33	#: Se usa para identificar el nodo en heartbeats, leader election, etc.
+    34	#: Tipo: str | None
+    35	node_id = None
+    36	
+    37	#: Alias de node_id para compatibilidad con código legacy
+    38	#: TODO: Deprecar y usar solo node_id
+    39	#: Tipo: str | None
+    40	nodeid = None
+    41	
+    42	#: Lista de nodos peer en el cluster (lista de dicts con info de nodos)
+    43	#: Cada entry típicamente tiene: node_id, host, port, priority, state, etc.
+    44	#: Se actualiza en cluster_state durante bootstrap y heartbeats
+    45	#: Tipo: list[dict[str, Any]]
+    46	peers = []
+    47	
+    48	#: Stream actual del nodo (para multiplexación de eventos por stream)
+    49	#: Si es None, se usa el stream por defecto o node_stream
+    50	#: Tipo: str | None
+    51	stream = None
+    52	
+    53	#: Stream asociado al nodo (alternativa a stream)
+    54	#: Se prioriza stream sobre node_stream en get_stream()
+    55	#: Tipo: str | None
+    56	node_stream = None
+    57	
+    58	
+    59	def get_stream():
+    60	    """
+    61	    Devuelve el stream activo del nodo.
+    62	
+    63	    Prioridad:
+    64	        1. `stream` (si está definido)
+    65	        2. `node_stream` (fallback)
+    66	        3. None (si ninguno está definido)
+    67	
+    68	    Returns:
+    69	        str | None: El stream activo o None si no hay ninguno configurado.
+    70	
+    71	    Example:
+    72	        >>> stream = get_stream()
+    73	        >>> if stream:
+    74	        ...     process_events(stream)
+    75	    """
+    76	    return stream or node_stream
+
+
+===== ./cluster/runtime/event_log.py =====
+     1	# File: ./cluster/runtime/event_log.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:08:01+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/event_log.py 0.0.0 2026-05-28T17:08:01+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Almacenamiento y gestión del event log del cluster.
+    12	#   Guarda eventos en archivos JSONL (one event per line), proporciona funciones
+    13	#   para cargar, filtrar, y appendear eventos. Mantiene dos logs:
+    14	#     - event_log.local.000.jsonl: eventos activos (CREATED, EXECUTING)
+    15	#     - events.local.000.jsonl: eventos completados (COMPLETED)
+    16	#   También gestiona el estado (dirty flags, last_append metadata) y la
+    17	#   replicación de logs a peers.
+    18	# Notes:
+    19	#   - JSONL format: cada línea es un JSON independiente (fácil append y tail)
+    20	#   - Escritura atómica de state (tmp + rename) para evitar corrupción
+    21	#   - Dirty flag se pone al append, se limpia al replicar exitosamente
+    22	#   - _update_node_events_cache() actualiza counters en cluster_state para dashboard
+    23	#   - get_created_events() y get_completed_event_ids() filtran por status
+    24	#   - Se usa en dispatcher.py, ingest.py, reconciler.py, api_app.py
+    25	#
+    26	# FRV-ID: da709be2675a0a9a
+    27	# Header_End
+    28	
+    29	import json
+    30	import os
+    31	import tempfile
+    32	import threading
+    33	from pathlib import Path
+    34	from typing import Dict, List, Optional, Any
+    35	
+    36	from cluster.runtime.events.cluster_event import ClusterEvent
+    37	from cluster.runtime.events.event_state import EventStatus
+    38	from cluster.utils.log_print import log_state
+    39	from cluster.runtime.cluster_store import cluster_state
+    40	
+    41	# =============================================================================
+    42	# Rutas de archivos de event log
+    43	# =============================================================================
+    44	
+    45	#: Directorio de datos del cluster (../data relativo al archivo)
+    46	DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+    47	
+    48	#: Ruta del log local de eventos (JSONL)
+    49	LOCAL_LOG_PATH = DATA_DIR / "event_log.local.000.jsonl"
+    50	
+    51	#: Ruta del log de eventos completados (JSONL)
+    52	COMPLETED_LOG_PATH = DATA_DIR / "events.local.000.jsonl"
+    53	
+    54	#: Ruta del archivo de estado (last append metadata, dirty flags)
+    55	STATE_PATH = DATA_DIR / "last_append.state.json"
+    56	
+    57	#: Lock para escrituras concurrentes de state (thread-safe)
+    58	_STATE_LOCK = threading.Lock()
+    59	
+    60	
+    61	def _update_node_events_cache(event: ClusterEvent, status: str):
+    62	    """
+    63	    Actualiza el cache de counters de eventos en cluster_state.
+    64	
+    65	    Actualiza events_summary_local con total_events y counts por status.
+    66	
+    67	    Args:
+    68	        event: Evento recién appended.
+    69	        status: Status del evento (CREATED, EXECUTING, COMPLETED, FAILED).
+    70	
+    71	    Note:
+    72	        - Se llama en append_event() después de escribir el log
+    73	        - Actualiza cluster_state para que el dashboard muestre counters actualizados
+    74	        - Usa source_node o target_node para identificar el nodo
+    75	    """
+    76	    node_id = getattr(event, "source_node", None) or getattr(event, "target_node", None)
+    77	    if not node_id:
+    78	        return
+    79	
+    80	    node = cluster_state.get(node_id, {}) or {}
+    81	    streams = dict(node.get("streams", {}) or {})
+    82	
+    83	    local_summary = streams.get("events_summary_local", {}) or {}
+    84	    local_summary["last_event_id"] = event.event_id
+    85	    local_summary["counts"] = dict(local_summary.get("counts", {}) or {})
+    86	    local_summary["total_events"] = int(local_summary.get("total_events", 0)) + 1
+    87	    local_summary["counts"][status] = int(local_summary["counts"].get(status, 0)) + 1
+    88	
+    89	    streams["events_summary_local"] = local_summary
+    90	    node["streams"] = streams
+    91	    cluster_state[node_id] = node
+    92	
+    93	
+    94	def get_integrity_canonical() -> dict:
+    95	    """
+    96	    Devuelve la vista canonical del log para verificar integridad.
+    97	
+    98	    Returns:
+    99	        dict: Vista canonical con log_size, file_size, last_append_event_id, last_append_created_at.
+   100	
+   101	    Note:
+   102	        - Se usa en integrity.py para comparar views entre nodos
+   103	        - SHA256 de este dict es el integrity_hash
+   104	    """
+   105	    state = read_state()
+   106	    return {
+   107	        "log_size": os.path.getsize(LOCAL_LOG_PATH) if LOCAL_LOG_PATH.exists() else 0,
+   108	        "file_size": os.path.getsize(LOCAL_LOG_PATH) if LOCAL_LOG_PATH.exists() else 0,
+   109	        "last_append_event_id": state.get("last_append_event_id"),
+   110	        "last_append_created_at": state.get("last_append_created_at"),
+   111	    }
+   112	
+   113	
+   114	def ensure_dir():
+   115	    """Crea DATA_DIR si no existe (incluye directorios padres)."""
+   116	    DATA_DIR.mkdir(parents=True, exist_ok=True)
+   117	
+   118	
+   119	def ensure_initial_files():
+   120	    """
+   121	    Crea los archivos iniciales si no existen.
+   122	
+   123	    Crea:
+   124	        - last_append.state.json: estado con dirty flags y metadata
+   125	        - event_log.local.000.jsonl: log local de eventos (vacío)
+   126	        - events.local.000.jsonl: log de eventos completados (vacío)
+   127	
+   128	    Note:
+   129	        - Se llama en append_event() antes de escribir
+   130	        - El state inicial tiene dirty=True para forzar replicación inicial
+   131	    """
+   132	    ensure_dir()
+   133	
+   134	    if not STATE_PATH.exists():
+   135	        write_state({
+   136	            "dirty": True,
+   137	            "events_dirty": True,
+   138	            "last_append_event_id": None,
+   139	            "last_append_created_at": None,
+   140	            "last_append_updated_at": None,
+   141	            "last_completed_event_id": None,
+   142	            "last_completed_created_at": None,
+   143	            "last_completed_updated_at": None,
+   144	        })
+   145	
+   146	    if not LOCAL_LOG_PATH.exists():
+   147	        LOCAL_LOG_PATH.touch()
+   148	
+   149	    if not COMPLETED_LOG_PATH.exists():
+   150	        COMPLETED_LOG_PATH.touch()
+   151	
+   152	
+   153	def get_local_log_path(stream: str | None = None) -> str:
+   154	    """Devuelve la ruta del log local."""
+   155	    return str(LOCAL_LOG_PATH)
+   156	
+   157	
+   158	def get_completed_log_path(stream: str | None = None) -> str:
+   159	    """Devuelve la ruta del log de eventos completados."""
+   160	    return str(COMPLETED_LOG_PATH)
+   161	
+   162	
+   163	def get_state_path() -> str:
+   164	    """Devuelve la ruta del archivo de estado."""
+   165	    return str(STATE_PATH)
+   166	
+   167	
+   168	def get_replica_log_path(node_id: str) -> str:
+   169	    """
+   170	    Devuelve la ruta para el log replica de un peer.
+   171	
+   172	    Args:
+   173	        node_id: ID del peer.
+   174	
+   175	    Returns:
+   176	        str: Ruta del archivo replica (ej: data/event_log.lnx200nas.000.jsonl).
+   177	    """
+   178	    return str(DATA_DIR / f"event_log.{node_id}.000.jsonl")
+   179	
+   180	
+   181	def get_replica_events_path(node_id: str) -> str:
+   182	    """
+   183	    Devuelve la ruta para el events replica de un peer.
+   184	
+   185	    Args:
+   186	        node_id: ID del peer.
+   187	
+   188	    Returns:
+   189	        str: Ruta del archivo replica de events.
+   190	    """
+   191	    return str(DATA_DIR / f"events.{node_id}.000.jsonl")
+   192	
+   193	
+   194	def list_replica_log_paths() -> List[str]:
+   195	    """
+   196	    Lista todas las rutas de logs locales en DATA_DIR.
+   197	
+   198	    Returns:
+   199	        list[str]: Rutas de archivos *.local.000.jsonl.
+   200	    """
+   201	    if not DATA_DIR.exists():
+   202	        return []
+   203	
+   204	    out: List[str] = []
+   205	    for name in sorted(os.listdir(DATA_DIR)):
+   206	        if not name.endswith(".local.000.jsonl"):
+   207	            continue
+   208	        out.append(str(DATA_DIR / name))
+   209	    return out
+   210	
+   211	
+   212	def load_events_from_path(path: str) -> List[dict]:
+   213	    """
+   214	    Carga eventos de un archivo JSONL.
+   215	
+   216	    Args:
+   217	        path: Ruta del archivo JSONL.
+   218	
+   219	    Returns:
+   220	        list[dict]: Lista de eventos (dicts). Ignora líneas inválidas.
+   221	    """
+   222	    if not os.path.exists(path):
+   223	        return []
+   224	
+   225	    events = []
+   226	    with open(path, "r", encoding="utf-8") as f:
+   227	        for line in f:
+   228	            line = line.strip()
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# REASSEMBLY_ORDER : 002/006
+#
+########################################################################

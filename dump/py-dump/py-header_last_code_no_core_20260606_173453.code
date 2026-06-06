@@ -1,0 +1,523 @@
+===== ./cluster/__init__.py =====
+===== ./cluster/_lease/__init__.py =====
+===== ./cluster/_lease/lease.py =====
+     1	from dataclasses import dataclass
+     2	import time
+     6	class Lease:
+    11	    def expires_at(self) -> float:
+    14	    def is_valid(self, now: float | None = None) -> bool:
+    18	    def renew(self):
+===== ./cluster/_lease/lease_manager.py =====
+     1	import time
+     4	class Lease:
+     6	    def __init__(self, owner, ttl):
+    12	    def is_valid(self):
+    17	class LeaseManager:
+    19	    def __init__(self):
+    25	    def grant(self, node_id, ttl):
+    31	    def is_valid(self, node_id):
+    39	    def expire(self):
+    54	    def active_leader(self):
+    66	    def get_active_nodes(self):
+===== ./cluster/api/__init__.py =====
+===== ./cluster/api/routes_cluster.py =====
+===== ./cluster/api/routes_health.py =====
+===== ./cluster/cluster_live.py =====
+    29	import csv
+    30	import curses
+    31	import json
+    32	import re
+    33	import time
+    34	from datetime import datetime
+    35	from pathlib import Path
+    37	import paramiko
+    38	import requests
+    84	def ssh_ls(node):
+   121	def parse_ls_output(node_name, text):
+   168	def parse_ev_output(node_name, text):
+   215	def fetch_json(url, timeout=4):
+   234	def fetch_api_snapshot(node):
+   260	def build_groups_ev(rows):
+   268	def build_groups(rows):
+   276	def check_consistency(groups):
+   300	def _node_runtime_view(api_snapshots, node_name):
+   316	    def fallback(*values):
+   322	    def score_row(row):
+   406	def setup_colors():
+   423	def color_for_health(value):
+   433	def color_for_state(state, stale=False):
+   450	def color_for_dirty(value):
+   457	def color_for_count(label, value):
+   473	def color_for_age(value, warn_s=1.5, stale_s=3.0):
+   488	def color_for_busy(value):
+   497	def color_for_progress_active(value):
+   504	def color_for_progress_stalled(value):
+   511	def color_for_progress_stage(stage):
+   518	def render_top_summary_1(api_snapshots, groups):
+   548	    def cut(value, width):
+   552	    def fmt_age(value):
+   565	    def fmt_busy(value):
+   572	    def fmt_progress(current, total, pct):
+   629	def draw_top_summary_curses(stdscr, start_y, api_snapshots, width):
+   660	    def cut(value, width):
+   664	    def fmt_age(value):
+   677	    def fmt_busy(value):
+   684	    def fmt_progress(current, total, pct):
+   696	    def put(y, x, text, attr=0):
+   772	def render_file_inventory(groups):
+   820	def render_events_inventory(groups_ev):
+   868	def render_markdown(groups_ev, groups, api_snapshots):
+   887	def collect_snapshot():
+   919	def write_outputs(groups_ev, groups, api_snapshots):
+   950	def save_snapshot(lines, groups, api_snapshots, errors, started_at, refresh_seconds):
+   988	def build_screen_lines(groups_ev, groups, api_snapshots, errors, started_at, refresh_seconds):
+  1025	def ui_loop(stdscr, refresh_seconds=1.5):
+  1129	def run_live_monitor(refresh_seconds=1.5):
+  1139	def run_once():
+===== ./cluster/config/__init__.py =====
+===== ./cluster/config/loader.py =====
+     1	import json
+     3	def load_peers():
+===== ./cluster/core/node.py =====
+     1	from cluster.core.state import NodeState
+     2	from cluster.core.transitions import can_transition
+     4	class ClusterNode:
+     6	    def __init__(self, node_id: str):
+    10	    def set_state(self, new_state: NodeState):
+===== ./cluster/core/transitions.py =====
+     1	from cluster.core.state import NodeState
+    33	def can_transition(from_state: NodeState, to_state: NodeState) -> bool:
+===== ./cluster/datasets/__init__.py =====
+===== ./cluster/datasets/dataset_manager.py =====
+===== ./cluster/datasets/revisioning.py =====
+===== ./cluster/election/__init__.py =====
+===== ./cluster/election/election_engine.py =====
+     1	from cluster.runtime.cluster_store import get_active_cluster
+     3	class ElectionEngine:
+     6	    def can_become_leader(node_id, priority):
+===== ./cluster/election/leader.py =====
+     1	def choose_leader(candidates):
+===== ./cluster/election/lease_validation.py =====
+===== ./cluster/models/__init__.py =====
+===== ./cluster/models/dataset.py =====
+===== ./cluster/models/host.py =====
+===== ./cluster/models/lease.py =====
+===== ./cluster/network/__init__.py =====
+===== ./cluster/network/http_client.py =====
+===== ./cluster/node/__init__.py =====
+===== ./cluster/node/node_runtime.py =====
+     1	import time
+     3	from cluster.runtime.state import NodeState
+     4	from cluster.runtime.leader import compute_leader
+     5	from cluster.runtime.cluster_store import cluster_state
+     7	import requests
+     9	from cluster.utils.log_print import log_state
+    12	class NodeRuntime:
+    14	    def __init__(self, node_id, priority):
+    25	    def transition(self, new_state):
+    37	    def tick(self):
+    82	    def emit_heartbeat(self, peers):
+===== ./cluster/persistence/__init__.py =====
+===== ./cluster/replication/__init__.py =====
+===== ./cluster/replication/pull_sync.py =====
+===== ./cluster/replication/replication_engine.py =====
+===== ./cluster/run_node.py =====
+     1	import json
+     3	from cluster.node.node_runtime import NodeRuntime
+     5	from cluster.runtime.state import NodeState
+     6	from cluster.workers.cluster_worker import ClusterWorker
+     7	from cluster.transport.server import register_local_node
+    12	def load_config():
+    18	def build_peers(config, self_id):
+    26	def main(node_id, priority):
+    45	    import sys
+===== ./cluster/runtime/cluster_view.py =====
+     1	class ClusterView:
+     3	    def __init__(self):
+===== ./cluster/runtime/dispatcher.py =====
+     2	import time
+     4	from cluster.runtime.event_log import (
+    10	from cluster.runtime.cluster_store import cluster_state
+    11	from cluster.runtime.event_router import forward_event
+    13	from cluster.utils.log_print import log_state
+    14	from cluster.runtime.leader import compute_leader
+    16	from cluster.runtime import context as ctx
+    18	from cluster.runtime.events.event_state import EventStatus
+    25	def dispatch_tick():
+    51	def dispatch_created_event(event):
+===== ./cluster/runtime/event_router.py =====
+     1	import time
+     2	import requests
+     4	from cluster.runtime.cluster_store import cluster_state
+     5	from cluster.runtime.registry import CLUSTER_REGISTRY
+     6	from cluster.runtime.leader import compute_leader
+     7	from cluster.utils.log_print import log_state
+     9	from cluster.runtime.events.cluster_event import ClusterEvent
+    10	from cluster.runtime.event_log import (
+    15	from cluster.runtime.events.event_state import EventStatus
+    22	def forward_to_leader(event: ClusterEvent):
+    50	import requests
+    52	from cluster.runtime.registry import CLUSTER_REGISTRY
+    53	from cluster.runtime.leader import compute_leader
+    54	from cluster.utils.log_print import log_state
+    55	from cluster.runtime.events.cluster_event import ClusterEvent
+    58	def forward_event(node_id: str, event: ClusterEvent):
+   104	        from cluster.runtime.state_machine import transition_event
+   105	        from cluster.runtime.events.event_state import EventStatus
+===== ./cluster/runtime/ingest.py =====
+     1	from cluster.runtime.event_log import append_event
+     2	from cluster.runtime.leader import compute_leader
+     3	from cluster.runtime.registry import CLUSTER_REGISTRY
+     4	from cluster.utils.log_print import log_state
+     5	from cluster.runtime.events.event_state import EventStatus
+     8	import requests
+    10	def ingest_event(event, node_id):
+===== ./cluster/runtime/locks.py =====
+===== ./cluster/runtime/models.py =====
+     1	from __future__ import annotations
+     3	from dataclasses import dataclass, field
+     4	from enum import Enum
+     5	from typing import Any, Optional
+     6	from uuid import uuid4
+     7	import time
+    10	class EventStatus(str, Enum):
+    17	class NodeState(str, Enum):
+    29	class StreamKey:
+    35	    def stream_id(self) -> str:
+    38	    def path_parts(self) -> list[str]:
+    43	class EventEnvelope:
+    59	    def add_hop(self, hop: str) -> None:
+    63	    def mark_status(self, status: EventStatus) -> None:
+    67	    def mark_received(self) -> None:
+    73	class SegmentMeta:
+    90	    def seal(self, sha256: str, size_bytes: int) -> None:
+    99	class NodeRuntimeState:
+   108	    def touch(self) -> None:
+   113	class HeartbeatState:
+   122	    def to_record(self) -> dict[str, Any]:
+===== ./cluster/runtime/reconciler/reconciler_loop.py =====
+     1	import time
+     2	from collections import defaultdict
+     4	from cluster.runtime.event_log import load_events, append_event
+     5	from cluster.runtime.events.cluster_event import ClusterEvent
+     6	from cluster.runtime.events.event_state import EventStatus
+    12	def reconcile_tick(node_runtime):
+===== ./cluster/runtime/state_machine.py =====
+     3	from cluster.runtime.events.event_state import EventStatus, validate_transition
+     4	from cluster.runtime.event_log import load_events, append_event
+     6	from cluster.runtime.events.cluster_event import ClusterEvent
+     8	def transition_event(event_id: str, new_status):
+===== ./cluster/runtime/worker/event_worker.py =====
+     5	import time
+     6	from cluster.runtime.event_log import append_event
+     7	from cluster.runtime.events.event_state import EventStatus
+     8	from cluster.utils.log_print import log_state
+    21	def run_business_logic(payload: dict):
+    29	def execute_event(event):
+===== ./cluster/storage/__init__.py =====
+===== ./cluster/storage/backend.py =====
+===== ./cluster/storage/json_backend.py =====
+===== ./cluster/transport/client.py =====
+     1	import requests
+     4	def send_heartbeat(peer_host, peer_port, payload, timeout=1.0):
+    23	def broadcast_heartbeat(peers, payload):
+===== ./cluster/utils/__init__.py =====
+===== ./cluster/utils/chaos_runner_final.py =====
+     1	import time
+     2	import json
+     3	import random
+     4	import requests
+     5	import threading
+     6	import uuid
+     7	import argparse
+     8	import queue
+     9	import csv
+    10	from dataclasses import dataclass, field
+    11	from datetime import datetime
+    12	from collections import defaultdict
+    13	from pathlib import Path
+    15	from cluster.runtime.models import StreamKey
+    41	def parse_args():
+   166	class PendingEvent:
+   174	def build_event(i):
+   210	def stat_inc(key, amount=1):
+   215	def stat_node_ok(node):
+   220	def stat_node_fail(node):
+   225	def stat_leader(name):
+   230	def stat_latency(ms):
+   235	def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+   241	def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+   247	def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+   252	def percentile(data, p):
+   264	def is_retryable_response(payload):
+   273	def extract_leader(payload):
+   281	def classify_submit_response(status_code, payload):
+   294	def next_enqueue_seq():
+   301	def enqueue_pending(pending, delay_seconds=0.0):
+   308	def mark_producer_done():
+   314	def is_producer_done():
+   319	def compute_retry_backoff(retries_done):
+   323	def print_test_config():
+   337	def get_session(worker_id):
+   348	def kill_node(node, seconds=None):
+   374	def revive_node(node):
+   399	def kill_cycle(node, seconds):
+   409	def process_pending_event(pending: PendingEvent, worker_id: int):
+   500	def sender_worker(worker_id):
+   520	def chaos_loop():
+   534	def revive_everything():
+   546	def wait_kills():
+   554	def wait_queue_drain():
+   565	def write_csv_and_json():
+   593	def print_stats():
+   624	def main():
+===== ./cluster/utils/chaos_runner_final_v2.py =====
+     1	import time
+     2	import json
+     3	import random
+     4	import requests
+     5	import threading
+     6	import uuid
+     7	import argparse
+     8	import queue
+     9	import csv
+    10	from dataclasses import dataclass, field
+    11	from datetime import datetime
+    12	from collections import defaultdict
+    13	from pathlib import Path
+    15	import sys
+    16	from pathlib import Path
+    22	from runtime.models import StreamKey
+    44	def parse_args():
+   149	class PendingEvent:
+   157	def build_event(i):
+   161	def stat_inc(key, amount=1):
+   166	def stat_node_ok(node):
+   171	def stat_node_fail(node):
+   176	def stat_leader(name):
+   181	def stat_latency(ms):
+   186	def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+   192	def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+   198	def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+   203	def percentile(data, p):
+   215	def is_retryable_response(payload):
+   223	def extract_leader(payload):
+   231	def classify_submit_response(status_code, payload):
+   244	def next_enqueue_seq():
+   251	def enqueue_pending(pending, delay_seconds=0.0):
+   258	def mark_producer_done():
+   264	def is_producer_done():
+   269	def compute_retry_backoff(retries_done):
+   273	def print_test_config():
+   285	def get_session(worker_id):
+   296	def kill_node(node, seconds=None):
+   322	def revive_node(node):
+   347	def kill_cycle(node, seconds):
+   356	def process_pending_event(pending: PendingEvent, worker_id: int):
+   447	def sender_worker(worker_id):
+   467	def chaos_loop():
+   481	def revive_everything():
+   491	def wait_kills():
+   497	def wait_queue_drain():
+   508	def write_csv_and_json():
+   531	def print_stats():
+   561	def main():
+===== ./cluster/utils/chaos_runner_final_v5.py =====
+    28	import time
+    29	import json
+    30	import random
+    31	import requests
+    32	import threading
+    33	import uuid
+    34	import argparse
+    35	import queue
+    36	import csv
+    37	from dataclasses import dataclass, field
+    38	from datetime import datetime
+    39	from collections import defaultdict
+    40	from pathlib import Path
+    42	import sys
+    43	from pathlib import Path
+    49	from runtime.models import StreamKey
+   110	def parse_args():
+   235	class PendingEvent:
+   253	def build_event(i):
+   266	def stat_inc(key, amount=1):
+   272	def stat_node_ok(node):
+   278	def stat_node_fail(node):
+   284	def stat_leader(name):
+   290	def stat_latency(ms):
+   296	def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+   303	def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+   310	def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+   316	def percentile(data, p):
+   338	def is_retryable_response(payload):
+   355	def extract_leader(payload):
+   364	def classify_submit_response(status_code, payload):
+   387	def next_enqueue_seq():
+   395	def enqueue_pending(pending, delay_seconds=0.0):
+   409	def mark_producer_done():
+   416	def is_producer_done():
+   422	def compute_retry_backoff(retries_done):
+   435	def print_test_config():
+   448	def get_session(worker_id):
+   468	def kill_node(node, seconds=None):
+   504	def revive_node(node):
+   538	def kill_cycle(node, seconds):
+   554	def process_pending_event(pending: PendingEvent, worker_id: int):
+   655	def sender_worker(worker_id):
+   686	def chaos_loop():
+   706	def revive_everything():
+   721	def wait_kills():
+   728	def wait_queue_drain():
+   745	def write_csv_and_json():
+   774	def print_stats():
+   805	def main():
+===== ./cluster/utils/chaos_v2.py =====
+     1	import time
+     2	import json
+     3	import random
+     4	import requests
+     5	import threading
+     6	import uuid
+     7	import argparse
+     8	from datetime import datetime
+     9	from collections import defaultdict
+    38	def parse_args():
+   136	def build_event(i):
+   158	def stat_inc(key, amount=1):
+   163	def stat_node_ok(node):
+   168	def stat_node_fail(node):
+   173	def stat_leader(name):
+   178	def stat_latency(ms):
+   183	def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+   197	def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+   211	def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+   224	def percentile(data, p):
+   237	def is_event_submit_ok(status_code, payload):
+   254	def is_retryable_response(payload):
+   274	def print_test_config():
+   298	def kill_node(node, seconds=None):
+   331	def revive_node(node):
+   362	def kill_cycle(node, seconds):
+   376	def send_event(i):
+   542	def chaos_loop():
+   569	def revive_everything():
+   586	def wait_kills():
+   597	def print_stats():
+   736	def main():
+===== ./cluster/utils/chaos_v3.py =====
+     1	import time
+     2	import json
+     3	import random
+     4	import requests
+     5	import threading
+     6	import uuid
+     7	import argparse
+     8	import queue
+     9	from dataclasses import dataclass, field
+    10	from datetime import datetime
+    11	from collections import defaultdict
+    43	def parse_args():
+   165	class PendingEvent:
+   177	def build_event(i):
+   199	def stat_inc(key, amount=1):
+   204	def stat_node_ok(node):
+   209	def stat_node_fail(node):
+   214	def stat_leader(name):
+   219	def stat_latency(ms):
+   224	def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+   238	def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+   252	def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+   265	def percentile(data, p):
+   278	def is_retryable_response(payload):
+   299	def extract_leader(payload):
+   309	def classify_submit_response(status_code, payload):
+   330	def next_enqueue_seq():
+   337	def enqueue_pending(pending, delay_seconds=0.0):
+   346	def mark_producer_done():
+   352	def is_producer_done():
+   357	def compute_retry_backoff(retries_done):
+   362	def print_test_config():
+   390	def kill_node(node, seconds=None):
+   423	def revive_node(node):
+   454	def kill_cycle(node, seconds):
+   468	def process_pending_event(pending: PendingEvent):
+   651	def sender_worker(worker_id):
+   677	def chaos_loop():
+   711	def revive_everything():
+   728	def wait_kills():
+   739	def wait_queue_drain():
+   756	def print_stats():
+   903	def main():
+===== ./cluster/utils/chaos_v4.py =====
+     1	import time
+     2	import json
+     3	import random
+     4	import requests
+     5	import threading
+     6	import uuid
+     7	import argparse
+     8	import queue
+     9	from dataclasses import dataclass, field
+    10	from datetime import datetime
+    11	from collections import defaultdict
+    13	from cluster.runtime.models import StreamKey
+    14	from cluster.runtime.events.cluster_event import ClusterEvent
+    41	def parse_args():
+   166	class PendingEvent:
+   174	def build_event(i):
+   188	def stat_inc(key, amount=1):
+   193	def stat_node_ok(node):
+   198	def stat_node_fail(node):
+   203	def stat_leader(name):
+   208	def stat_latency(ms):
+   213	def stat_unexpected_failure(event_index, attempt, node, status_code=None, payload=None, reason=None):
+   227	def stat_slow_event(event_index, attempt, node, latency_ms, leader=None, payload=None):
+   241	def stat_kill_event(node, action, ok, payload=None, error=None, seconds=None):
+   254	def percentile(data, p):
+   267	def is_retryable_response(payload):
+   277	def extract_leader(payload):
+   285	def classify_submit_response(status_code, payload):
+   302	def next_enqueue_seq():
+   309	def enqueue_pending(pending, delay_seconds=0.0):
+   318	def mark_producer_done():
+   324	def is_producer_done():
+   329	def compute_retry_backoff(retries_done):
+   334	def print_test_config():
+   365	def kill_node(node, seconds=None):
+   391	def revive_node(node):
+   416	def kill_cycle(node, seconds):
+   426	def process_pending_event(pending: PendingEvent):
+   507	def sender_worker(worker_id):
+   527	def chaos_loop():
+   542	def revive_everything():
+   555	def wait_kills():
+   563	def wait_queue_drain():
+   574	def print_stats():
+   684	def main():
+===== ./cluster/watchdog/__init__.py =====
+===== ./cluster/watchdog/healthcheck.py =====
+===== ./cluster/watchdog/watchdog.py =====
+===== ./cluster/workers/__init__.py =====
+===== ./cluster/workers/cluster_worker.py =====
+     1	import time
+     3	from cluster.transport.server import register_local_node
+     5	class ClusterWorker:
+     7	    def __init__(self, node, peers, interval=1.0):
+    16	    def start(self):
+    30	    def stop(self):
+    36	    def tick(self):
+===== ./cluster/workers/heartbeat_worker.py =====
+     1	import time
+     2	from cluster.runtime.state import NodeState
+     5	class HeartbeatWorker:
+     7	    def __init__(self, nodes, lease_manager, interval=1.0):
+    15	    def start(self, ticks=5):
+    29	    def tick(self):
+    37	    def send_heartbeats(self):
+    52	    def expire_leases(self):
+    62	    def update_nodes(self):
+===== ./cluster/workers/lease_worker.py =====
+===== ./cluster/workers/replication_worker.py =====
+===== ./cluster/workers/watchdog_worker.py =====

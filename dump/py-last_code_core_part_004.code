@@ -1,0 +1,817 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# SOURCE_FILE      : py-last_code_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 004/006
+# PART_NUMBER      : 004
+# TOTAL_PARTS      : 006
+#
+# PREVIOUS_PART    : 003
+# NEXT_PART        : 005
+#
+# CONTENT_LINES    : 782
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+    74	
+    75	    Útil para comparar dicts independientemente del orden de las claves.
+    76	
+    77	    Args:
+    78	        obj: Objeto a canonicalizar (dict, list, o escalar).
+    79	        ignored_keys: Conjunto de claves a ignorar (no incluir en el resultado).
+    80	
+    81	    Returns:
+    82	        Any: Objeto canonicalizado (dict con claves ordenadas, list procesada, o escalar).
+    83	
+    84	    Example:
+    85	        >>> canonicalize({"b": 2, "a": 1})
+    86	        {'a': 1, 'b': 2}
+    87	
+    88	        >>> canonicalize({"b": 2, "a": 1}, ignored_keys={"a"})
+    89	        {'b': 2}
+    90	
+    91	        >>> canonicalize([{"b": 2, "a": 1}])
+    92	        [{'a': 1, 'b': 2}]
+    93	
+    94	    Note:
+    95	        - Se usa antes de comparar views para ignorar el orden de claves
+    96	        - Ignora recursivamente las claves en ignored_keys
+    97	    """
+    98	    ignored_keys = ignored_keys or set()
+    99	    if isinstance(obj, dict):
+   100	        return {
+   101	            k: canonicalize(v, ignored_keys)
+   102	            for k, v in sorted(obj.items())
+   103	            if k not in ignored_keys
+   104	        }
+   105	    if isinstance(obj, list):
+   106	        return [canonicalize(v, ignored_keys) for v in obj]
+   107	    return obj
+   108	
+   109	
+   110	def compare_views(a: dict, b: dict) -> bool:
+   111	    """
+   112	    Compara dos views canonicalizando primero.
+   113	
+   114	    Args:
+   115	        a: Primer dict a comparar.
+   116	        b: Segundo dict a comparar.
+   117	
+   118	    Returns:
+   119	        bool: True si las views son iguales después de canonicalizar.
+   120	
+   121	    Example:
+   122	        >>> compare_views({"b": 2, "a": 1}, {"a": 1, "b": 2})
+   123	        True
+   124	
+   125	        >>> compare_views({"b": 2, "a": 1}, {"a": 1, "b": 3})
+   126	        False
+   127	    """
+   128	    return canonicalize(a, IGNORED_NODE_KEYS) == canonicalize(b, IGNORED_NODE_KEYS)
+   129	
+   130	
+   131	#def log_meta_ok(local_meta: dict, peer_meta: dict) -> bool:
+   132	#    """Compara log_meta entre nodos."""
+   133	#    return all(local_meta.get(k) == peer_meta.get(k) for k in INTEGRITY_KEYS)
+   134	
+   135	
+   136	def _compact_view(view: dict) -> dict:
+   137	    """
+   138	    Compacta una view a solo los campos relevantes para debugging.
+   139	
+   140	    Args:
+   141	        view: Dict completo de un nodo.
+   142	
+   143	    Returns:
+   144	        dict: View compacta con state, state_since, prev_state, state_reason, priority, log_meta, streams.
+   145	
+   146	    Example:
+   147	        >>> view = {"state": "ACTIVE", "state_since": 123, "extra": "ruido", "priority": 10}
+   148	        >>> _compact_view(view)
+   149	        {'state': 'ACTIVE', 'state_since': 123, 'prev_state': None, 'state_reason': None, 'priority': 10, 'log_meta': {}, 'streams': {}}
+   150	    """
+   151	    if not isinstance(view, dict):
+   152	        return {}
+   153	    return {
+   154	        "state": view.get("state"),
+   155	        "state_since": view.get("state_since"),
+   156	        "prev_state": view.get("prev_state"),
+   157	        "state_reason": view.get("state_reason"),
+   158	        "priority": view.get("priority"),
+   159	        "log_meta": view.get("log_meta", {}),
+   160	        "streams": view.get("streams", {}),
+   161	    }
+   162	
+   163	
+   164	def local_integrity_api() -> dict:
+   165	    """
+   166	    Verifica la integridad local del cluster.
+   167	
+   168	    Compara la view del nodo local con la de todos los nodos vivos.
+   169	
+   170	    Returns:
+   171	        dict: Resultado de la verificación:
+   172	            - node_id (str): ID del nodo local
+   173	            - alive_nodes (list[str]): Nodos vivos
+   174	            - self_view (dict): View compacta del nodo local
+   175	            - peer_status (dict[str, dict]): Status de cada peer
+   176	            - integrity_canonical (dict): View canonicalizada
+   177	            - integrity_hash (str): SHA256 de la view canonical
+   178	            - integrity_ok (bool): True si todos los peers tienen la misma view
+   179	
+   180	    Example:
+   181	        >>> local_integrity_api()
+   182	        {
+   183	            'node_id': 'lnx203hp',
+   184	            'alive_nodes': ['lnx203hp', 'lnx200nas'],
+   185	            'self_view': {'state': 'ACTIVE', 'priority': 10, ...},
+   186	            'peer_status': {'lnx203hp': {'view_ok': True}, 'lnx200nas': {'view_ok': True}},
+   187	            'integrity_hash': 'abc123...',
+   188	            'integrity_ok': True
+   189	        }
+   190	    """
+   191	    alive = compute_alive(include_self=True)
+   192	
+   193	    canonical = get_integrity_canonical()
+   194	    integrity_hash = hashlib.sha256(
+   195	        json.dumps(canonical, sort_keys=True).encode("utf-8")
+   196	    ).hexdigest()
+   197	
+   198	    peer_status = {}
+   199	    self_view = canonicalize(cluster_state.get(ctx.node_id, {}), IGNORED_NODE_KEYS)
+   200	    self_meta = self_view.get("log_meta", {}) if isinstance(self_view, dict) else {}
+   201	
+   202	    for node_id, data in alive.items():
+   203	        view = canonicalize(data, IGNORED_NODE_KEYS)
+   204	        meta = view.get("log_meta", {}) if isinstance(view, dict) else {}
+   205	        peer_status[node_id] = {
+   206	            "view": _compact_view(view),
+   207	            "view_ok": view == canonicalize(cluster_state.get(node_id, {}), IGNORED_NODE_KEYS),
+   208	        }
+   209	
+   210	    return {
+   211	        "node_id": ctx.node_id,
+   212	        "alive_nodes": sorted(alive.keys()),
+   213	        "self_view": _compact_view(self_view),
+   214	        "peer_status": peer_status,
+   215	        "integrity_canonical": canonical,
+   216	        "integrity_hash": integrity_hash,
+   217	        "integrity_ok": all(v["view_ok"] for v in peer_status.values()),
+   218	    }
+   219	
+   220	
+   221	def cluster_integrity_report() -> dict:
+   222	    """
+   223	    Genera un reporte de integridad completo del cluster.
+   224	
+   225	    Compara cada nodo con una referencia (cluster_state completo).
+   226	
+   227	    Returns:
+   228	        dict: Reporte de integridad:
+   229	            - node_id (str): ID del nodo local
+   230	            - alive_nodes (list[str]): Nodos vivos
+   231	            - reference (dict[str, dict]): View canonicalizada de cada nodo
+   232	            - per_peer (dict[str, dict]): Detalle por peer
+   233	            - integrity_ok (bool): True si todos coinciden con la referencia
+   234	
+   235	    Example:
+   236	        >>> cluster_integrity_report()
+   237	        {
+   238	            'node_id': 'lnx203hp',
+   239	            'alive_nodes': ['lnx203hp', 'lnx200nas'],
+   240	            'reference': {'lnx203hp': {...}, 'lnx200nas': {...}},
+   241	            'per_peer': {
+   242	                'lnx203hp': {'matches_reference': True, 'matches_log_meta': True, 'state': 'ACTIVE', ...},
+   243	                'lnx200nas': {'matches_reference': True, 'matches_log_meta': True, 'state': 'STANDBY', ...}
+   244	            },
+   245	            'integrity_ok': True
+   246	        }
+   247	    """
+   248	    alive = compute_alive(include_self=True)
+   249	    reference = canonicalize(cluster_state, IGNORED_NODE_KEYS)
+   250	    per_peer = {}
+   251	
+   252	    for node_id, data in alive.items():
+   253	        view = canonicalize(data, IGNORED_NODE_KEYS)
+   254	        meta = view.get("log_meta", {}) if isinstance(view, dict) else {}
+   255	        ref_view = reference.get(node_id, {})
+   256	        ref_meta = ref_view.get("log_meta", {}) if isinstance(ref_view, dict) else {}
+   257	
+   258	        per_peer[node_id] = {
+   259	            "matches_reference": view == ref_view,
+   260	            "matches_log_meta": meta == ref_meta,
+   261	            "state": view.get("state"),
+   262	            "state_since": view.get("state_since"),
+   263	            "prev_state": view.get("prev_state"),
+   264	            "state_reason": view.get("state_reason"),
+   265	            "priority": view.get("priority"),
+   266	            "streams": view.get("streams", {}),
+   267	        }
+   268	
+   269	    return {
+   270	        "node_id": ctx.node_id,
+   271	        "alive_nodes": sorted(alive.keys()),
+   272	        "reference": {k: _compact_view(v) for k, v in reference.items()} if isinstance(reference, dict) else {},
+   273	        "per_peer": per_peer,
+   274	        "integrity_ok": all(v["matches_reference"] and v["matches_log_meta"] for v in per_peer.values()),
+   275	    }
+
+
+===== ./cluster/runtime/leader.py =====
+     1	# File: ./cluster/runtime/leader.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:10:07+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/leader.py 0.0.0 2026-05-28T17:10:07+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Leader election para el cluster.
+    12	#   Implementa un algoritmo simple de leader election basado en priority:
+    13	#   el nodo con menor priority (y node_id alfabético como tie-breaker) se convierte
+    14	#   en líder. Los nodos deben estar "vivos" (heartbeat reciente) para ser considerados.
+    15	#   El líder es el único que procesa eventos; los nodos standby reenvían eventos al líder.
+    16	# Notes:
+    17	#   - Algoritmo: menor priority gana, tie-breaker es node_id alfabético
+    18	#   - Timeout por defecto: 1.5s (si no hay heartbeat en 1.5s, nodo se considera muerto)
+    19	#   - Solo nodos ACTIVE, STANDBY, STAND-BY, DRAINING son candidatos
+    20	#   - Se ejecuta en cada tick del worker (cada ~1s), así que la election es rápida
+    21	#   - No hay split-brain protection (asume red confiable)
+    22	#   - debug_node_id permite forzar un líder para testing
+    23	#
+    24	# FRV-ID: bc64b1dd697351a2
+    25	# Header_End
+    26	
+    27	import time
+    28	
+    29	from cluster.runtime.cluster_store import cluster_state
+    30	from cluster.runtime import context as ctx
+    31	
+    32	# =============================================================================
+    33	# Configuración de leader election
+    34	# =============================================================================
+    35	
+    36	#: Timeout en segundos para considerar un nodo como vivo
+    37	#: Si no hay heartbeat en este tiempo, el nodo se excluye de election
+    38	#: Tipo: float
+    39	LEADER_ALIVE_TIMEOUT = 1.5
+    40	
+    41	
+    42	def refresh_self_alive_entry(now=None):
+    43	    """
+    44	    Actualiza la entrada del nodo actual en cluster_state.
+    45	
+    46	    Sincroniza el estado del nodo local (state, priority, last_seen) con
+    47	    cluster_state para que sea visible para la leader election.
+    48	
+    49	    Args:
+    50	        now: Timestamp opcional. Si no se proporciona, usa time.time().
+    51	
+    52	    Note:
+    53	        - Se llama en compute_alive() antes de election para asegurarse
+    54	          de que el nodo local está visible
+    55	        - Copia state, priority, last_seen, state_since, prev_state, state_reason
+    56	        - Si no hay ctx.node, retorna sin hacer nada
+    57	
+    58	
+    59	Example:
+    60	        >>> refresh_self_alive_entry()
+    61	        # cluster_state["lnx203hp"] = {..., "state": "ACTIVE", "priority": 10, "last_seen": 1779956226}
+    62	    """
+    63	    now = now or time.time()
+    64	    if not getattr(ctx, "node", None):
+    65	        return
+    66	
+    67	    existing = cluster_state.get(ctx.node_id, {})
+    68	
+    69	    cluster_state[ctx.node_id] = {
+    70	        **existing,
+    71	        "state": ctx.node.state.value,
+    72	        "priority": ctx.node.priority,
+    73	        "last_seen": now,
+    74	        "state_since": getattr(ctx.node, "state_since", None),
+    75	        "prev_state": getattr(ctx.node, "prev_state", None),
+    76	        "state_reason": getattr(ctx.node, "state_reason", None),
+    77	    }
+    78	
+    79	
+    80	def last_presence_ts(data: dict) -> float:
+    81	    """
+    82	    Obtiene el último timestamp de presencia de un nodo.
+    83	
+    84	    Busca el máximo entre last_seen y last_watchdog para determinar
+    85	    cuándo fue la última vez que el nodo mostró actividad.
+    86	
+    87	    Args:
+    88	        data: Dict con info del nodo (debe tener last_seen y/o last_watchdog).
+    89	
+    90	    Returns:
+    91	        float: Último timestamp de presencia, o 0.0 si no hay ninguno.
+    92	
+    93	    Example:
+    94	        >>> last_presence_ts({"last_seen": 1779956226.0, "last_watchdog": 1779956220.0})
+    95	        1779956226.0
+    96	
+    97	        >>> last_presence_ts({"last_seen": None})
+    98	        0.0
+    99	
+   100	    Note:
+   101	        - Ignora valores None o que no se puedan convertir a float
+   102	        - Se usa en is_alive() para determinar si el nodo está vivo
+   103	    """
+   104	    candidates = []
+   105	    for key in ("last_seen", "last_watchdog"):
+   106	        value = data.get(key, 0)
+   107	        if value is None:
+   108	            continue
+   109	        try:
+   110	            candidates.append(float(value))
+   111	        except Exception:
+   112	            continue
+   113	    return max(candidates) if candidates else 0.0
+   114	
+   115	
+   116	def is_alive(data, timeout=LEADER_ALIVE_TIMEOUT, now=None):
+   117	    """
+   118	    Comprueba si un nodo está vivo (heartbeat reciente).
+   119	
+   120	    Args:
+   121	        data: Dict con info del nodo (last_seen o last_watchdog).
+   122	        timeout: Timeout en segundos para considerar vivo al nodo.
+   123	        now: Timestamp opcional. Si no se proporciona, usa time.time().
+   124	
+   125	    Returns:
+   126	        bool: True si el nodo ha tenido actividad en los últimos `timeout` segundos.
+   127	
+   128	    Example:
+   129	        >>> is_alive({"last_seen": 1779956226.0}, timeout=1.5, now=1779956227.0)
+   130	        True
+   131	
+   132	        >>> is_alive({"last_seen": 1779956220.0}, timeout=1.5, now=1779956227.0)
+   133	        False
+   134	
+   135	    Note:
+   136	        - Usa last_presence_ts() para obtener el último timestamp
+   137	        - Retorna True si (now - last_presence) < timeout
+   138	    """
+   139	    now = now or time.time()
+   140	    last_presence = last_presence_ts(data)
+   141	    return (now - last_presence) < timeout
+   142	
+   143	
+   144	def compute_alive(timeout=LEADER_ALIVE_TIMEOUT, include_self=True):
+   145	    """
+   146	    Calcula qué nodos están vivos y activos en el cluster.
+   147	
+   148	    Filtra cluster_state para devolver solo nodos que:
+   149	        1. Son "vivos" (heartbeat en los últimos `timeout` segundos)
+   150	        2. Están en estado ACTIVE, STANDBY, STAND-BY, o DRAINING
+   151	
+   152	    Args:
+   153	        timeout: Timeout para considerar vivo al nodo.
+   154	        include_self: Si True, actualiza la entrada del nodo local antes de calcular.
+   155	
+   156	    Returns:
+   157	        dict[str, dict]: Nodos vivos mapeados por node_id con su info completa.
+   158	
+   159	    Example:
+   160	        >>> compute_alive(timeout=1.5)
+   161	        {
+   162	            "lnx203hp": {"state": "ACTIVE", "priority": 10, "last_seen": 1779956226.0, ...},
+   163	            "lnx200nas": {"state": "STANDBY", "priority": 100, "last_seen": 1779956225.5, ...}
+   164	        }
+   165	
+   166	    Note:
+   167	        - Llama a refresh_self_alive_entry() si include_self=True para asegurarse
+   168	          de que el nodo local está visible
+   169	        - Excluye nodos en BOOT, DISCOVERING, SEGMENTATION, ISOLATED, OFFLINE
+   170	    """
+   171	    now = time.time()
+   172	    if include_self:
+   173	        refresh_self_alive_entry(now)
+   174	
+   175	    active_nodes = {}
+   176	    for node_id, data in cluster_state.items():
+   177	        if not is_alive(data, timeout=timeout, now=now):
+   178	            continue
+   179	        if data.get("state") not in ("ACTIVE", "STANDBY", "STAND-BY", "DRAINING"):
+   180	            continue
+   181	        active_nodes[node_id] = data
+   182	    return active_nodes
+   183	
+   184	
+   185	def compute_leader(debug_node_id=None, timeout=LEADER_ALIVE_TIMEOUT):
+   186	    """
+   187	    Calcula cuál es el líder del cluster.
+   188	
+   189	    El líder es el nodo vivo con menor priority (tie-breaker: node_id alfabético).
+   190	
+   191	    Args:
+   192	        debug_node_id: (Testing) Fuerza este node_id como líder.
+   193	        timeout: Timeout para considerar vivo al nodo.
+   194	
+   195	    Returns:
+   196	        str | None: node_id del líder, o None si no hay nodos vivos.
+   197	
+   198	    Example:
+   199	        >>> compute_leader()
+   200	        'lnx203hp'
+   201	
+   202	        >>> compute_leader()  # Si todos los nodos están muertos
+   203	        None
+   204	
+   205	    Note:
+   206	        - Algoritmo: min(priority, node_id) en nodos vivos
+   207	        - priority menor = más prioritario (el que gana)
+   208	        - Tie-breaker: node_id alfabético (lexicográfico)
+   209	        - Se llama en cada tick del worker (~1s) para detectar cambios de líder
+   210	        - Si no hay líder (todos muertos), dispatch_tick() no procesa eventos
+   211	    """
+   212	    active_nodes = compute_alive(timeout=timeout, include_self=True)
+   213	    if not active_nodes:
+   214	        return None
+   215	    return min(
+   216	        active_nodes.items(),
+   217	        key=lambda x: (x[1].get("priority", 9999), x[0]),
+   218	    )[0]
+
+
+===== ./cluster/runtime/log_replication.py =====
+     1	# File: ./cluster/runtime/log_replication.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:10:30+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/log_replication.py 0.0.0 2026-05-28T17:10:30+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Replicación de logs del cluster entre nodos.
+    12	#   Replica el event log local a todos los peers vivos para mantener una copia
+    13	#   redundante de los eventos. Se ejecuta en cada tick del worker y solo replica
+    14	#   si el log está marcado como "dirty" (modificado). Cada peer recibe el log
+    15	#   y lo guarda como replica para poder recover en caso de fallo.
+    16	# Notes:
+    17	#   - Dos tipos de replicación: event log (eventos activos) y completed log (eventos procesados)
+    18	#   - Solo se replica si el nodo está en ACTIVE, STANDBY, o DRAINING
+    19	#   - Dirty flag se pone al appendar un evento, se limpia al replicar exitosamente
+    20	#   - PEERALIVETTLSEC=3.0s: peer se considera muerto si no hay last_seen en 3s
+    21	#   - Se llama en cada tick del worker (~1s) vía replicate_eventlog() y replicate_events()
+    22	#   - Falla silenciosamente si un peer no responde (no bloquea el tick)
+    23	#
+    24	# FRV-ID: 4e48ada454ba3669
+    25	# Header_End
+    26	
+    27	import logging
+    28	import time
+    29	import requests
+    30	
+    31	from cluster.runtime import context as ctx
+    32	from cluster.runtime.cluster_store import cluster_state
+    33	from cluster.runtime.registry import CLUSTER_REGISTRY
+    34	from cluster.runtime.event_log import (
+    35	    read_local_log_text,
+    36	    read_completed_log_text,
+    37	    write_replica_log,
+    38	    write_replica_events,
+    39	    write_completed_log,
+    40	    read_state,
+    41	    clear_eventlog_dirty_state,
+    42	    clear_events_dirty_state,
+    43	
+    44	)
+    45	from cluster.runtime.state import NodeState
+    46	from cluster.utils.log_print import log_state
+    47	
+    48	logging.getLogger("urllib3").setLevel(logging.ERROR)
+    49	logging.getLogger("requests").setLevel(logging.ERROR)
+    50	
+    51	# =============================================================================
+    52	# Configuración de replicación
+    53	# =============================================================================
+    54	
+    55	#: TTL en segundos para considerar un peer como vivo
+    56	#: Si no hay last_seen en este tiempo, el peer se excluye de replicación
+    57	PEERALIVETTLSEC = 3.0
+    58	
+    59	#: Estados del nodo que permiten replicación
+    60	#: Solo ACTIVE, STANDBY, y DRAINING replican (no BOOT, ISOLATED, SEGMENTATION, OFFLINE)
+    61	REPLICATION_ALLOWED_STATES = {
+    62	    NodeState.ACTIVE.value,
+    63	    NodeState.STANDBY.value,
+    64	    NodeState.DRAINING.value,
+    65	}
+    66	
+    67	
+    68	def canonical_replica_node_id() -> str:
+    69	    """
+    70	    Devuelve el node_id canonical del nodo local para usar como nombre de replica.
+    71	
+    72	    Returns:
+    73	        str: node_id del nodo local.
+    74	
+    75	    Example:
+    76	        >>> canonical_replica_node_id()
+    77	        'lnx203hp'
+    78	    """
+    79	    return ctx.node_id
+    80	
+    81	
+    82	def alive_peer_ids():
+    83	    """
+    84	    Devuelve la lista de peers que están vivos (heartbeat reciente).
+    85	
+    86	    Filtra cluster_state para incluir solo nodos que:
+    87	        1. No son el nodo local
+    88	        2. Han tenido actividad en los últimos PEERALIVETTLSEC segundos
+    89	
+    90	    Returns:
+    91	        list[str]: node_ids de peers vivos, ordenados alfabéticamente.
+    92	
+    93	    Example:
+    94	        >>> alive_peer_ids()
+    95	        ['lnx200nas', 'lnx204hp']
+    96	
+    97	    Note:
+    98	        - Usa last_seen de cluster_state para determinar si está vivo
+    99	        - Si un peer no ha hecho heartbeat en 3s, se excluye
+   100	    """
+   101	    out = []
+   102	    now = time.time()
+   103	    for node_id, data in cluster_state.items():
+   104	        if node_id == ctx.node_id:
+   105	            continue
+   106	        if now - data.get("last_seen", 0) > PEERALIVETTLSEC:
+   107	            continue
+   108	        out.append(node_id)
+   109	    return sorted(set(out))
+   110	
+   111	
+   112	def configured_peer_ids():
+   113	    """
+   114	    Devuelve la lista de peers configurados (de ctx.peers y CLUSTER_REGISTRY).
+   115	
+   116	    Combina:
+   117	        1. Peers de ctx.peers (configuración de bootstrap)
+   118	        2. Nodos de CLUSTER_REGISTRY (registros estáticos)
+   119	
+   120	    Returns:
+   121	        list[str]: node_ids de peers configurados, ordenados alfabéticamente.
+   122	
+   123	    Example:
+   124	        >>> configured_peer_ids()
+   125	        ['lnx200nas', 'lnx204hp']
+   126	
+   127	    Note:
+   128	        - Excluye el nodo local
+   129	        - Deduplica con set()
+   130	    """
+   131	    out = []
+   132	
+   133	    for peer in getattr(ctx, "peers", []) or []:
+   134	        peer_id = peer.get("node_id")
+   135	        if peer_id and peer_id != ctx.node_id:
+   136	            out.append(peer_id)
+   137	
+   138	    for node_id in CLUSTER_REGISTRY.keys():
+   139	        if node_id != ctx.node_id:
+   140	            out.append(node_id)
+   141	
+   142	    return sorted(set(out))
+   143	
+   144	
+   145	def target_peer_ids():
+   146	    """
+   147	    Devuelve la lista de peers objetivo para replicación (vivos OR configurados).
+   148	
+   149	    Combina alive_peer_ids() y configured_peer_ids() con Unión.
+   150	    Esto asegura que se intenta replicar incluso a peers que están down
+   151	    (pueden recoverar más tarde).
+   152	
+   153	    Returns:
+   154	        list[str]: node_ids de peers objetivo, ordenados alfabéticamente.
+   155	
+   156	    Example:
+   157	        >>> target_peer_ids()
+   158	        ['lnx200nas', 'lnx204hp']
+   159	
+   160	    Note:
+   161	        - Unión de peers vivos + configurados
+   162	        - Si un peer está configurado pero no está vivo, se iguala intentar replicar
+   163	          (fallará pero se intenta)
+   164	    """
+   165	    alive = alive_peer_ids()
+   166	    configured = configured_peer_ids()
+   167	    return sorted(set(alive) | set(configured))
+   168	
+   169	
+   170	def replicate_eventlog():
+   171	    """
+   172	    Replica el event log local a todos los peers.
+   173	
+   174	    Secuencia:
+   175	        1. comprueba si el nodo está en un estado permitido (ACTIVE, STANDBY, DRAINING)
+   176	        2. comprueba si el log está dirty (modificado)
+   177	        3. lee el contenido del log local
+   178	        4. escribe el log como replica local
+   179	        5. envía POST /debug/log/replica/{node_id} a cada peer
+   180	        6. si todos los peers responden OK, limpia el dirty flag
+   181	
+   182	    Note:
+   183	        - Se llama en cada tick del worker (~1s)
+   184	        - Falla silenciosamente si un peer no responde
+   185	        - El dirty flag se mantiene hasta que TODOS los peers confirmen
+   186	        - Solo replica si hay contenido (no replica logs vacíos)
+   187	    """
+   188	
+   189	    node_id = canonical_replica_node_id()
+   190	    node_state = getattr(getattr(ctx, "node", None), "state", None)
+   191	    node_state_value = getattr(node_state, "value", None)
+   192	
+   193	    state = read_state()
+   194	    dirty = bool(state.get("dirty", False))
+   195	
+   196	    #log_state("cyan", "REPL TICK", f"node={node_id} dirty={dirty} ", 3)
+   197	
+   198	    if node_state_value not in REPLICATION_ALLOWED_STATES:
+   199	        return
+   200	
+   201	    #log_state("cyan", "REPL FLAG", f"dirty={dirty} state_exists={bool(state)}", 3)
+   202	    if not dirty:
+   203	        return
+   204	
+   205	    content = read_local_log_text()
+   206	    completed_content = read_completed_log_text()
+   207	
+   208	    if not content.strip():
+   209	        return
+   210	
+   211	    write_replica_log(node_id, content)
+   212	    if completed_content.strip():
+   213	        write_completed_log(completed_content)
+   214	
+   215	    peers = target_peer_ids()
+   216	
+   217	    success = True
+   218	
+   219	    for peer_id in peers:
+   220	        node = CLUSTER_REGISTRY.get(peer_id)
+   221	        if not node:
+   222	            success = False
+   223	            continue
+   224	
+   225	        url = f"http://{node['host']}:{node['port']}/debug/log/replica/{node_id}"
+   226	
+   227	        try:
+   228	            resp = requests.post(
+   229	                url,
+   230	                data=content.encode("utf-8"),
+   231	                headers={"Content-Type": "text/plain; charset=utf-8"},
+   232	                timeout=2,
+   233	            )
+   234	
+   235	            if resp.ok:
+   236	                success = True
+   237	            else:
+   238	                success = False
+   239	
+   240	        except Exception as e:
+   241	            success = False
+   242	
+   243	    if success:
+   244	        clear_eventlog_dirty_state()
+   245	
+   246	
+   247	def replicate_events():
+   248	    """
+   249	    Replica los eventos completed (procesados) a todos los peers.
+   250	
+   251	    Similar a replicate_eventlog() pero solo replica el completed log.
+   252	    Se usa para mantener una copia de eventos ya procesados en todos los nodos.
+   253	
+   254	    Secuencia:
+   255	        1. comprueba si el nodo está en un estado permitido
+   256	        2. comprueba si el events log está dirty
+   257	        3. lee el completed log local
+   258	        4. escribe el events como replica local
+   259	        5. envía POST /debug/events/replica/{node_id} a cada peer
+   260	        6. si todos los peers responden OK, limpia el dirty flag
+   261	
+   262	    Note:
+   263	        - Se llama en cada tick del worker (~1s)
+   264	        - Solo replica completed_content (eventos procesados)
+   265	        - Falla silenciosamente si un peer no responde
+   266	    """
+   267	
+   268	    node_id = canonical_replica_node_id()
+   269	    node_state = getattr(getattr(ctx, "node", None), "state", None)
+   270	    node_state_value = getattr(node_state, "value", None)
+   271	
+   272	    if node_state_value not in REPLICATION_ALLOWED_STATES:
+   273	        return
+   274	
+   275	    state = read_state()
+   276	    dirty = bool(state.get("events_dirty", False))
+   277	    if not dirty:
+   278	        return
+   279	
+   280	    completed_content = read_completed_log_text()
+   281	
+   282	    write_replica_events(node_id, completed_content)
+   283	    if completed_content.strip():
+   284	        write_completed_log(completed_content)
+   285	
+   286	    peers = target_peer_ids()
+   287	
+   288	    success = True
+   289	
+   290	    for peer_id in peers:
+   291	        node = CLUSTER_REGISTRY.get(peer_id)
+   292	        if not node:
+   293	            success = False
+   294	            continue
+   295	
+   296	        url = f"http://{node['host']}:{node['port']}/debug/events/replica/{node_id}"
+   297	
+   298	        try:
+   299	            resp = requests.post(
+   300	                url,
+   301	                data=completed_content.encode("utf-8"),
+   302	                headers={"Content-Type": "text/plain; charset=utf-8"},
+   303	                timeout=2,
+   304	            )
+   305	
+   306	            if resp.ok:
+   307	                success = True
+   308	            else:
+   309	                success = False
+   310	
+   311	        except Exception as e:
+   312	            success = False
+   313	
+   314	    if success:
+   315	        clear_events_dirty_state()
+
+
+===== ./cluster/runtime/node_boot.py =====
+     1	# File: ./cluster/runtime/node_boot.py
+     2	# Previous: none
+     3	# Author: alftorres
+     4	# Date: 2026-05-28T17:10:49+0200
+     5	# Version: 0.0.0
+     6	# Genealogy:
+     7	#   ./cluster/runtime/node_boot.py 0.0.0 2026-05-28T17:10:49+0200
+     8	#   God
+     9	#
+    10	# Purpose:
+    11	#   Entry point del nodo del cluster.
+    12	#   Arranca el nodo: carga configuración, inicializa contexto global, crea NodeRuntime,
+    13	#   registra el nodo y peers en el registry, arranca el worker en background,
+    14	#   y sirve la API HTTP con uvicorn.
+    15	# Notes:
+    16	#   - Este es el archivo que se ejecuta con `python -m cluster.runtime.node_boot`
+    17	#   - La configuración viene de bootstrap.py (config.json o env vars)
+    18	#   - El worker se ejecuta en un hilo separado (daemon thread)
+    19	#   - uvicorn es el servidor HTTP que sirve api_app.py (FastAPI)
+    20	#   - El bloque __main__ permite ejecutar el script directamente o como módulo
+    21	#
+    22	# FRV-ID: 05bb09170fc30a8f
+    23	# Header_End
+    24	
+    25	import uvicorn
+    26	
+    27	from cluster.runtime.node_worker import NodeWorker
+    28	from cluster.runtime.node_runtime import NodeRuntime
+    29	from cluster.runtime.bootstrap import load_or_bootstrap_config
+    30	from cluster.runtime.registry import register_node
+    31	from cluster.runtime.event_log import ensure_initial_files
+    32	from cluster.runtime import context as ctx
+    33	from cluster.runtime.api_app import app
+    34	from cluster.utils.log_print import log_state
+    35	
+    36	
+    37	def run_node(config):
+    38	    """
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_core
+# REASSEMBLY_ORDER : 004/006
+#
+########################################################################

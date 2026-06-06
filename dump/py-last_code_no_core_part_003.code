@@ -1,0 +1,810 @@
+########################################################################
+# MAYHEM FILE FRAGMENT
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_no_core
+# SOURCE_FILE      : py-last_code_no_core.code
+# GENERATED_AT     : 20260606_180411
+# ENTRY_FILE       : runtime/node_boot.py
+#
+# REASSEMBLY_ORDER : 003/009
+# PART_NUMBER      : 003
+# TOTAL_PARTS      : 009
+#
+# PREVIOUS_PART    : 002
+# NEXT_PART        : 004
+#
+# CONTENT_LINES    : 775
+#
+# IMPORTANT:
+# This fragment is part of a larger file.
+# Preserve exact order during reconstruction.
+#
+########################################################################
+# FILE_FRAGMENT_BEGIN
+########################################################################
+
+    15	        return json.load(f)
+    16	
+    17	
+    18	def build_peers(config, self_id):
+    19	
+    20	    return [
+    21	        n for n in config["nodes"]
+    22	        if n["node_id"] != self_id
+    23	    ]
+    24	
+    25	
+    26	def main(node_id, priority):
+    27	
+    28	    config = load_config()
+    29	    peers = build_peers(config, node_id)
+    30	
+    31	    node = NodeRuntime(
+    32	        node_id=node_id,
+    33	        priority=priority,
+    34	    )
+    35	
+    36	    node.state = NodeState.ACTIVE
+    37	
+    38	    worker = ClusterWorker(node, peers)
+    39	
+    40	    worker.start()
+    41	
+    42	
+    43	if __name__ == "__main__":
+    44	
+    45	    import sys
+    46	
+    47	    main(
+    48	        node_id=sys.argv[1],
+    49	        priority=int(sys.argv[2]),
+    50	    )
+
+
+===== ./cluster/runtime/cluster_view.py =====
+     1	class ClusterView:
+     2	
+     3	    def __init__(self):
+     4	        self.peers = {}
+     5	        self.active_node = None
+     6	        self.leases = {}
+
+
+===== ./cluster/runtime/dispatcher.py =====
+     1	
+     2	import time
+     3	
+     4	from cluster.runtime.event_log import (
+     5	    get_created_events,
+     6	    get_completed_event_ids,
+     7	    append_event,
+     8	)
+     9	
+    10	from cluster.runtime.cluster_store import cluster_state
+    11	from cluster.runtime.event_router import forward_event
+    12	
+    13	from cluster.utils.log_print import log_state
+    14	from cluster.runtime.leader import compute_leader
+    15	#from cluster.runtime.node_boot import node_id
+    16	from cluster.runtime import context as ctx
+    17	
+    18	from cluster.runtime.events.event_state import EventStatus
+    19	
+    20	
+    21	# =========================
+    22	# DISPATCH LOOP (LEADER ONLY)
+    23	# =========================
+    24	
+    25	def dispatch_tick():
+    26	
+    27	    # ONLY LEADER EXECUTES DISPATCH
+    28	    if compute_leader() != ctx.node_id:
+    29	        return
+    30	
+    31	    events = get_created_events()
+    32	
+    33	    if not events:
+    34	        return
+    35	
+    36	    log_state(
+    37	        "magenta",
+    38	        "[DISPATCH]",
+    39	        f"{len(events):3}",
+    40	        3
+    41	    )
+    42	
+    43	    for event in events:
+    44	        dispatch_created_event(event)
+    45	
+    46	
+    47	# =========================
+    48	# DISPATCH SINGLE EVENT
+    49	# =========================
+    50	
+    51	def dispatch_created_event(event):
+    52	
+    53	#    log_state("yellow", "[DISPATCH]", f"event={event.event_id} start", 3)
+    54	
+    55	    # -------------------------
+    56	    # avoid duplicate completion
+    57	    # -------------------------
+    58	    completed = get_completed_event_ids()
+    59	    if event.event_id in completed:
+    60	        log_state("red", "[SKIP COMPLETED]", event.event_id, 3)
+    61	        return
+    62	
+    63	    # -------------------------
+    64	    # select target
+    65	    # -------------------------
+    66	    alive = {
+    67	        node_id_: data
+    68	        for node_id_, data in cluster_state.items()
+    69	        if (time.time() - data["last_seen"]) < 3.0
+    70	    }
+    71	
+    72	 #   log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
+    73	
+    74	    if not alive:
+    75	        log_state("red", "[NO ALIVE NODES]", event.event_id, 3)
+    76	        return
+    77	
+    78	  #  log_state("yellow", "[DISPATCH]", f"event={event.event_id}", 3)
+    79	  #  log_state("cyan", "[ALIVE]", str(list(alive.keys())), 3)
+    80	
+    81	
+    82	    # calculo identico de worker que de leader
+    83	    target = min(
+    84	        alive.items(),
+    85	        key=lambda x: (x[1]["priority"], x[0])
+    86	    )[0]
+    87	
+    88	   # log_state("magenta", "[WORKER SELECTED]", target, 3)
+    89	
+    90	   # log_state("magenta", "[WORKER SELECTED]", f"{event.event_id} -> {target}", 3)
+    91	
+    92	    # -------------------------
+    93	    # ROUTING METADATA
+    94	    # -------------------------
+    95	    event.target_node = target
+    96	    event.route_hops.append(f"dispatcher->{target}")
+    97	
+    98	    #log_state("magenta", "[ROUTE]", f"{event.event_id} hop added", 3)
+    99	
+   100	    # -------------------------
+   101	    # STATE CHANGE
+   102	    # -------------------------
+   103	
+   104	    event.attempt = (event.attempt or 0) + 1   # 👈 AQUI
+   105	    event.attempt = 0
+   106	
+   107	    event.mark_status(EventStatus.EXECUTING)
+   108	
+   109	
+   110	    msg = event.payload.get("msg", "<no-msg>")
+   111	
+   112	    log_state("yellow", "(EVENT)", f"{msg:12} -> EXECUTING", 3)
+   113	
+   114	    # -------------------------
+   115	    # PERSIST
+   116	    # -------------------------
+   117	    event.updated_at = time.time()
+   118	    append_event(event)
+   119	
+   120	    #log_state("green", "[PERSIST]", event.event_id, 3)
+   121	
+   122	#    log_state("magenta", "[DISPATCH SEND]", f"{event.event_id} -> {target}", 3)
+   123	
+   124	    # -------------------------
+   125	    # SEND
+   126	    # -------------------------
+   127	#    log_state("magenta", "[SEND]", f"{event.event_id} -> {target}", 3)
+   128	
+   129	    forward_event(target, event)
+
+
+===== ./cluster/runtime/event_router.py =====
+     1	import time
+     2	import requests
+     3	
+     4	from cluster.runtime.cluster_store import cluster_state
+     5	from cluster.runtime.registry import CLUSTER_REGISTRY
+     6	from cluster.runtime.leader import compute_leader
+     7	from cluster.utils.log_print import log_state
+     8	
+     9	from cluster.runtime.events.cluster_event import ClusterEvent
+    10	from cluster.runtime.event_log import (
+    11	    append_event,
+    12	    get_completed_event_ids,
+    13	)
+    14	
+    15	from cluster.runtime.events.event_state import EventStatus
+    16	
+    17	
+    18	
+    19	# =========================
+    20	# FORWARD TO LEADER
+    21	# =========================
+    22	def forward_to_leader(event: ClusterEvent):
+    23	
+    24	    leader = compute_leader()
+    25	
+    26	    if not leader:
+    27	        log_state("red", "(NO LEADER)", event.event_id, 3)
+    28	        return {"error": "no leader"}
+    29	
+    30	    node = CLUSTER_REGISTRY[leader]
+    31	    url = f"http://{node['host']}:{node['port']}/route"
+    32	
+    33	    event.add_hop("leader_routed")
+    34	
+    35	    resp = requests.post(
+    36	        url,
+    37	        json=event.model_dump(),
+    38	        timeout=2
+    39	    )
+    40	
+    41	    try:
+    42	        return resp.json()
+    43	    except:
+    44	        return {"status": "forwarded", "raw": resp.text}
+    45	
+    46	# =========================
+    47	# FORWARD TO WORKER (TRANSPORT ONLY)
+    48	# =========================
+    49	
+    50	import requests
+    51	
+    52	from cluster.runtime.registry import CLUSTER_REGISTRY
+    53	from cluster.runtime.leader import compute_leader
+    54	from cluster.utils.log_print import log_state
+    55	from cluster.runtime.events.cluster_event import ClusterEvent
+    56	
+    57	
+    58	def forward_event(node_id: str, event: ClusterEvent):
+    59	
+    60	    node = CLUSTER_REGISTRY[node_id]
+    61	    url = f"http://{node['host']}:{node['port']}/execute"
+    62	
+    63	    event.add_hop(f"worker:{node_id}")
+    64	
+    65	    msg = event.payload.get("msg", "<no-msg>")
+    66	
+    67	    log_state(
+    68	        "magenta",
+    69	        "[WORKER SEND]",
+    70	        f"{msg:12} -> {node_id}",
+    71	        3
+    72	    )
+    73	
+    74	    # -------------------------
+    75	    # SEND TO WORKER
+    76	    # -------------------------
+    77	    try:
+    78	
+    79	        #log_state("red", "[BEFORE POST]", url, 3)
+    80	        resp = requests.post(
+    81	            url,
+    82	            json=event.model_dump(),
+    83	            timeout=2
+    84	        )
+    85	        #log_state("red", "[AFTER POST]", str(resp.status_code), 3)
+    86	
+    87	
+    88	        worker_result = resp.json()
+    89	
+    90	    except Exception as e:
+    91	        log_state(
+    92	            "red",
+    93	            "[WORKER SEND FAIL]",
+    94	            f"{msg:12} -> {node_id} | {e}",
+    95	            3
+    96	        )
+    97	        return {"error": "worker_send_failed"}
+    98	
+    99	    # -------------------------
+   100	    # LEADER DECIDES FINAL STATE (Opción B real)
+   101	    # -------------------------
+   102	    if worker_result.get("status") == "completed":
+   103	
+   104	        from cluster.runtime.state_machine import transition_event
+   105	        from cluster.runtime.events.event_state import EventStatus
+   106	
+   107	        transition_event(
+   108	            event.event_id,
+   109	            EventStatus.COMPLETED
+   110	        )
+   111	
+   112	
+   113	        log_state(
+   114	            "yellow",
+   115	            "(EVENT)",
+   116	            f"{msg:12} -> COMPLETED",
+   117	            3
+   118	        )
+   119	
+   120	    return {
+   121	        "status": "forwarded",
+   122	        "event_id": event.event_id,
+   123	        "target": node_id
+   124	    }
+
+
+===== ./cluster/runtime/ingest.py =====
+     1	from cluster.runtime.event_log import append_event
+     2	from cluster.runtime.leader import compute_leader
+     3	from cluster.runtime.registry import CLUSTER_REGISTRY
+     4	from cluster.utils.log_print import log_state
+     5	from cluster.runtime.events.event_state import EventStatus
+     6	
+     7	
+     8	import requests
+     9	
+    10	def ingest_event(event, node_id):
+    11	
+    12	    # SOLO el leader ejecuta esto
+    13	    event.mark_status(EventStatus.CREATED)
+    14	
+    15	    append_event(event)
+    16	
+    17	    msg = event.payload.get("msg", "<no-msg>")
+    18	
+    19	    log_state("yellow", "(EVENT)", f"{msg:12} -> CREATED", 3)
+    20	
+    21	    log_state(
+    22	        "cyan",
+    23	        "[EVENT OK]",
+    24	        f"{msg:12}",
+    25	        3
+    26	    )
+    27	
+    28	    return {
+    29	        "event_id": event.event_id,
+    30	        "status": "accepted",
+    31	        "leader": node_id,
+    32	        "trace_id": event.trace_id
+    33	    }
+
+
+===== ./cluster/runtime/locks.py =====
+
+
+===== ./cluster/runtime/models.py =====
+     1	from __future__ import annotations
+     2	
+     3	from dataclasses import dataclass, field
+     4	from enum import Enum
+     5	from typing import Any, Optional
+     6	from uuid import uuid4
+     7	import time
+     8	
+     9	
+    10	class EventStatus(str, Enum):
+    11	    CREATED = "created"
+    12	    EXECUTING = "executing"
+    13	    COMPLETED = "completed"
+    14	    FAILED = "failed"
+    15	
+    16	
+    17	class NodeState(str, Enum):
+    18	    BOOT = "BOOT"
+    19	    DISCOVERING = "DISCOVERING"
+    20	    STANDBY = "STAND-BY"
+    21	    ACTIVE = "ACTIVE"
+    22	    DRAINING = "DRAINING"
+    23	    SEGMENTATION = "SEGMENTATION"
+    24	    ISOLATED = "ISOLATED"
+    25	    OFFLINE = "OFFLINE"
+    26	
+    27	
+    28	@dataclass(frozen=True, slots=True)
+    29	class StreamKey:
+    30	    tenant_id: str
+    31	    app_id: str
+    32	    data_type: str
+    33	    schema_version: str = "v1"
+    34	
+    35	    def stream_id(self) -> str:
+    36	        return f"{self.tenant_id}.{self.app_id}.{self.data_type}.{self.schema_version}"
+    37	
+    38	    def path_parts(self) -> list[str]:
+    39	        return [self.tenant_id, self.app_id, self.data_type, self.schema_version]
+    40	
+    41	
+    42	@dataclass(slots=True)
+    43	class EventEnvelope:
+    44	    stream: StreamKey
+    45	    event_type: str
+    46	    payload: dict[str, Any] = field(default_factory=dict)
+    47	    event_id: str = field(default_factory=lambda: str(uuid4()))
+    48	    trace_id: str = field(default_factory=lambda: str(uuid4()))
+    49	    status: EventStatus = EventStatus.CREATED
+    50	    route_hops: list[str] = field(default_factory=list)
+    51	    source_node: Optional[str] = None
+    52	    target_node: Optional[str] = None
+    53	    execution_key: Optional[str] = None
+    54	    created_at: float = field(default_factory=time.time)
+    55	    updated_at: float = field(default_factory=time.time)
+    56	    received_at: Optional[float] = None
+    57	    attempt: int = 0
+    58	
+    59	    def add_hop(self, hop: str) -> None:
+    60	        self.route_hops.append(hop)
+    61	        self.updated_at = time.time()
+    62	
+    63	    def mark_status(self, status: EventStatus) -> None:
+    64	        self.status = status
+    65	        self.updated_at = time.time()
+    66	
+    67	    def mark_received(self) -> None:
+    68	        self.received_at = time.time()
+    69	        self.updated_at = self.received_at
+    70	
+    71	
+    72	@dataclass(slots=True)
+    73	class SegmentMeta:
+    74	    stream: StreamKey
+    75	    segment_id: str
+    76	    created_at: float = field(default_factory=time.time)
+    77	    sealed_at: Optional[float] = None
+    78	    first_event_id: Optional[str] = None
+    79	    last_event_id: Optional[str] = None
+    80	    min_seq: Optional[int] = None
+    81	    max_seq: Optional[int] = None
+    82	    event_count: int = 0
+    83	    size_bytes: int = 0
+    84	    sha256: Optional[str] = None
+    85	    sealed: bool = False
+    86	    dirty: bool = True
+    87	    node_id: Optional[str] = None
+    88	    file_name: Optional[str] = None
+    89	
+    90	    def seal(self, sha256: str, size_bytes: int) -> None:
+    91	        self.sealed = True
+    92	        self.dirty = False
+    93	        self.sealed_at = time.time()
+    94	        self.sha256 = sha256
+    95	        self.size_bytes = size_bytes
+    96	
+    97	
+    98	@dataclass(slots=True)
+    99	class NodeRuntimeState:
+   100	    node_id: str
+   101	    state: NodeState
+   102	    priority: int
+   103	    last_seen: float = field(default_factory=time.time)
+   104	    log_meta: dict[str, Any] = field(default_factory=dict)
+   105	    cluster_integrity: dict[str, Any] = field(default_factory=dict)
+   106	    active_streams: dict[str, dict[str, Any]] = field(default_factory=dict)
+   107	
+   108	    def touch(self) -> None:
+   109	        self.last_seen = time.time()
+   110	
+   111	
+   112	@dataclass(slots=True)
+   113	class HeartbeatState:
+   114	    node_id: str
+   115	    state: str
+   116	    priority: int
+   117	    ts: float = field(default_factory=time.time)
+   118	    log_meta: dict[str, Any] = field(default_factory=dict)
+   119	    cluster_integrity: dict[str, Any] = field(default_factory=dict)
+   120	    streams: dict[str, dict[str, Any]] = field(default_factory=dict)
+   121	
+   122	    def to_record(self) -> dict[str, Any]:
+   123	        return {
+   124	            "node_id": self.node_id,
+   125	            "state": self.state,
+   126	            "priority": self.priority,
+   127	            "ts": self.ts,
+   128	            "log_meta": self.log_meta,
+   129	            "cluster_integrity": self.cluster_integrity,
+   130	            "streams": self.streams,
+   131	        }
+
+
+===== ./cluster/runtime/reconciler/reconciler_loop.py =====
+     1	import time
+     2	from collections import defaultdict
+     3	
+     4	from cluster.runtime.event_log import load_events, append_event
+     5	from cluster.runtime.events.cluster_event import ClusterEvent
+     6	from cluster.runtime.events.event_state import EventStatus
+     7	
+     8	
+     9	EXECUTION_TIMEOUT = 10.0
+    10	
+    11	
+    12	def reconcile_tick(node_runtime):
+    13	
+    14	    if node_runtime.state != node_runtime.state.__class__.ACTIVE:
+    15	        return
+    16	
+    17	    events = load_events()
+    18	    now = time.time()
+    19	
+    20	    by_id = defaultdict(list)
+    21	
+    22	    for e in events:
+    23	        eid = e.get("event_id")
+    24	        if not eid:
+    25	            continue
+    26	        by_id[eid].append(e)
+    27	
+    28	    # -----------------------------------------
+    29	    # SOLO DEBUG SI HAY INCOMPLETOS
+    30	    # -----------------------------------------
+    31	    incomplete = False
+    32	
+    33	    for history in by_id.values():
+    34	        latest_status = history[-1].get("status")
+    35	        if latest_status not in (
+    36	            EventStatus.COMPLETED.value,
+    37	            EventStatus.FAILED.value
+    38	        ):
+    39	            incomplete = True
+    40	            break
+    41	
+    42	    if not incomplete:
+    43	        return  # 🔥 SILENCIO TOTAL
+    44	
+    45	    print("\n\n================ RECONCILER DEBUG ================\n")
+    46	
+    47	    for eid, history in by_id.items():
+    48	
+    49	        history.sort(key=lambda x: (
+    50	            x.get("updated_at") or x.get("created_at") or 0
+    51	        ))
+    52	
+    53	        latest = history[-1]
+    54	        latest_status = latest.get("status")
+    55	
+    56	        # -----------------------------------------
+    57	        # FILTRO FINAL: SOLO INCOMPLETOS
+    58	        # -----------------------------------------
+    59	        if latest_status in (
+    60	            EventStatus.COMPLETED.value,
+    61	            EventStatus.FAILED.value
+    62	        ):
+    63	            continue
+    64	
+    65	        print(f"\nEVENT_ID: {eid}")
+    66	        print("-" * 60)
+    67	
+    68	        for i, h in enumerate(history):
+    69	
+    70	            ts = h.get("updated_at") or h.get("created_at") or 0
+    71	            status = h.get("status")
+    72	            node = h.get("target_node")
+    73	            attempt = h.get("attempt")
+    74	
+    75	            print(
+    76	                f"[{i}] "
+    77	                f"ts={ts:.3f} "
+    78	                f"status={status:<10} "
+    79	                f"node={node} "
+    80	                f"attempt={attempt}"
+    81	            )
+    82	
+    83	        print("\n→ LATEST:", latest_status)
+    84	
+    85	        # -----------------------------------------
+    86	        # RECOVERY LOGIC
+    87	        # -----------------------------------------
+    88	        if latest_status == EventStatus.EXECUTING.value:
+    89	
+    90	            last_update = latest.get("updated_at") or latest.get("created_at", 0)
+    91	
+    92	            if now - last_update > EXECUTION_TIMEOUT:
+    93	
+    94	                print(f"⚠ RECOVERY: EXECUTING STUCK -> CREATED ({eid})")
+    95	
+    96	                recovered = dict(latest)
+    97	                recovered["status"] = EventStatus.CREATED.value
+    98	                recovered["updated_at"] = now
+    99	
+   100	                recovered["target_node"] = None
+   101	                recovered["execution_key"] = None
+   102	                recovered["attempt"] = 0
+   103	                recovered["route_hops"] = []
+   104	
+   105	                recovered.pop("owner", None)
+   106	
+   107	                append_event(ClusterEvent(**recovered))
+   108	
+   109	        print("-" * 60)
+   110	
+   111	    print("\n==================================================\n")
+
+
+===== ./cluster/runtime/state_machine.py =====
+     1	# runtime/state_machine.py
+     2	
+     3	from cluster.runtime.events.event_state import EventStatus, validate_transition
+     4	from cluster.runtime.event_log import load_events, append_event
+     5	
+     6	from cluster.runtime.events.cluster_event import ClusterEvent
+     7	
+     8	def transition_event(event_id: str, new_status):
+     9	
+    10	    events = load_events()
+    11	
+    12	    latest_raw = None
+    13	
+    14	    for e in reversed(events):
+    15	        if e["event_id"] == event_id:
+    16	            latest_raw = e
+    17	            break
+    18	
+    19	    if not latest_raw:
+    20	        return
+    21	
+    22	    latest = ClusterEvent(**latest_raw)  # 🔥 NORMALIZACIÓN AQUÍ
+    23	
+    24	    old_status = latest.status
+    25	
+    26	    validate_transition(old_status, new_status)
+    27	
+    28	    latest.status = new_status
+    29	
+    30	    append_event(latest)  # ✔ ahora sí correcto
+
+
+===== ./cluster/runtime/worker/event_worker.py =====
+     1	# =========================
+     2	# WORKER - IDEMPOTENT EXECUTOR
+     3	# =========================
+     4	
+     5	import time
+     6	from cluster.runtime.event_log import append_event
+     7	from cluster.runtime.events.event_state import EventStatus
+     8	from cluster.utils.log_print import log_state
+     9	
+    10	
+    11	# -------------------------
+    12	# SIMPLE IDEMPOTENCY STORE (MVP)
+    13	# reemplazable por Redis / DB
+    14	# -------------------------
+    15	executed_keys = set()
+    16	
+    17	
+    18	# -------------------------
+    19	# BUSINESS EXECUTION PLACEHOLDER
+    20	# -------------------------
+    21	def run_business_logic(payload: dict):
+    22	    # Aquí va tu lógica real
+    23	    return {"ok": True, "payload": payload}
+    24	
+    25	
+    26	# -------------------------
+    27	# EXECUTE EVENT (IDEMPOTENT)
+    28	# -------------------------
+    29	def execute_event(event):
+    30	
+    31	    #log_state("red", "[EXECUTE entry ...]", event.event_id, 3)
+    32	
+    33	
+    34	    # -------------------------
+    35	    # BUILD EXECUTION KEY
+    36	    # -------------------------
+    37	    event.execution_key = f"{event.event_id}:{event.attempt}"
+    38	
+    39	    #log_state("red", "[EXECUTION KEY]", event.execution_key, 3)
+    40	    #log_state("red", "[EXECUTED KEYS SIZE]", str(len(executed_keys)), 3)
+    41	
+    42	    # -------------------------
+    43	    # IDEMPOTENCY CHECK NO FUNCIONA
+    44	    # -------------------------
+    45	
+    46	    if event.execution_key in executed_keys:
+    47	        log_state("red", "[CACHE HIT]", event.execution_key, 3)
+    48	        return {
+    49	            "status": "completed",
+    50	            "cached": True,
+    51	            "event_id": event.event_id,
+    52	            "execution_key": event.execution_key
+    53	        }
+    54	
+    55	    # -------------------------
+    56	    # EXECUTE BUSINESS LOGIC
+    57	    # -------------------------
+    58	    result = run_business_logic(event.payload)
+    59	
+    60	    # -------------------------
+    61	    # MARK EXECUTION AS DONE
+    62	    # -------------------------
+    63	    executed_keys.add(event.execution_key)
+    64	
+    65	    msg = event.payload.get("msg", "<no-msg>")
+    66	
+    67	    log_state("green", "[EXECUTE]", f"{msg:12}", 3)
+    68	
+    69	#    event.mark_status(EventStatus.COMPLETED)
+    70	
+    71	#    log_state("yellow", "[STATE]", f"{event.event_id} -> EVENT COMPLETED", 3)
+    72	
+    73	#    append_event(event)
+    74	
+    75	    # -------------------------
+    76	    # RETURN RESULT
+    77	    # -------------------------
+    78	    return {
+    79	        "status": "completed",
+    80	        "event_id": event.event_id,
+    81	        "execution_key": event.execution_key,
+    82	        "result": result
+    83	    }
+
+
+===== ./cluster/storage/__init__.py =====
+
+
+===== ./cluster/storage/backend.py =====
+
+
+===== ./cluster/storage/json_backend.py =====
+
+
+===== ./cluster/transport/client.py =====
+     1	import requests
+     2	
+     3	
+     4	def send_heartbeat(peer_host, peer_port, payload, timeout=1.0):
+     5	
+     6	    url = f"http://{peer_host}:{peer_port}/heartbeat"
+     7	
+     8	    try:
+     9	        r = requests.post(
+    10	            url,
+    11	            json=payload,
+    12	            timeout=timeout,
+    13	        )
+    14	
+    15	        return r.json()
+    16	
+    17	    except Exception as e:
+    18	
+    19	        print(f"[CLIENT ERROR] {url} -> {e}")
+    20	
+    21	        return None
+    22	
+    23	def broadcast_heartbeat(peers, payload):
+    24	
+    25	    for peer in peers:
+    26	
+    27	        send_heartbeat(
+    28	            peer["host"],
+    29	            peer["port"],
+    30	            payload,
+    31	        )
+
+
+===== ./cluster/utils/__init__.py =====
+
+
+===== ./cluster/utils/chaos_runner_final.py =====
+     1	import time
+     2	import json
+     3	import random
+     4	import requests
+     5	import threading
+     6	import uuid
+     7	import argparse
+     8	import queue
+     9	import csv
+    10	from dataclasses import dataclass, field
+    11	from datetime import datetime
+    12	from collections import defaultdict
+    13	from pathlib import Path
+    14	
+    15	from cluster.runtime.models import StreamKey
+    16	
+
+########################################################################
+# FILE_FRAGMENT_END
+########################################################################
+#
+# REASSEMBLY_ID    : py-last_code_no_core
+# REASSEMBLY_ORDER : 003/009
+#
+########################################################################
