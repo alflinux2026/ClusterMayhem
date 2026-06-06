@@ -53,3 +53,12 @@ log*.jsonl
 
 
 cluster_data_remote_*.*
+
+*.code
+dump/html-dump/*.*
+dump/py-dump/*.*
+dump/py_lite-dump/*.*
+py-no_core_files_*.*
+py-core_files_*.*
+py-core_summary_*.*
+*dump_part_*.*
