@@ -6,50 +6,49 @@
       "status": "ok",
       "node": "lnx200nas",
       "state": "ACTIVE",
-      "state_since": 1780506808.3573372,
-      "state_age_s": 14802.883,
-      "last_seen": 1780521611.2318482,
-      "seen_age_s": 0.008,
-      "last_watchdog": 1780521611.1868608,
-      "watchdog_age_s": 0.053,
+      "state_since": 1780839757.1432912,
+      "state_age_s": 105.429,
+      "last_seen": 1780839862.5604162,
+      "seen_age_s": 0.012,
+      "last_watchdog": 1780839861.3082526,
+      "watchdog_age_s": 1.264,
       "watchdog_busy": true,
-      "presence_age_s": 0.008,
+      "presence_age_s": 0.012,
       "sleeping": false
     },
     "dashboard": {
       "cluster": {
         "node_id": "lnx200nas",
         "leader": "lnx200nas",
-        "generated_at": 1780521611.218737,
+        "generated_at": 1780839862.5482447,
         "integrity_ok": true,
         "local_state": "ACTIVE",
-        "local_state_since": 1780506808.3573372,
-        "local_state_age_s": 14802.9
+        "local_state_since": 1780839757.1432912,
+        "local_state_age_s": 105.4
       },
       "local": {
         "events_summary": {
           "node_id": "lnx200nas",
           "scope": "local",
           "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
-          "total_events": 496,
+          "total_events": 448,
           "counts": {
-            "created": 496,
+            "created": 448,
             "executing": 0,
             "completed": 0,
             "unknown": 0
           },
-          "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea"
+          "last_event_id": "f03badb7-105e-4f95-aa60-511b6749e2e4"
         },
         "integrity": {
           "node_id": "lnx200nas",
           "alive_nodes": [
             "lnx200nas",
-            "lnx202pc",
-            "lnx203hp"
+            "lnx202pc"
           ],
           "self_view": {
             "state": "ACTIVE",
-            "state_since": 1780506808.3573372,
+            "state_since": 1780839757.1432912,
             "prev_state": "STAND-BY",
             "state_reason": "leader_selected",
             "priority": 1,
@@ -58,22 +57,22 @@
               "events_summary_completed": {
                 "counts": {
                   "completed": 0,
-                  "created": 438,
+                  "created": 331,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                "total_events": 438
+                "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                "total_events": 331
               },
               "events_summary_created": {
                 "counts": {
                   "completed": 0,
-                  "created": 496,
+                  "created": 390,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                "total_events": 496
+                "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                "total_events": 390
               },
               "events_summary_executing": {
                 "counts": {
@@ -88,12 +87,12 @@
               "events_summary_local": {
                 "counts": {
                   "completed": 0,
-                  "created": 496,
+                  "created": 390,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                "total_events": 496
+                "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                "total_events": 390
               }
             }
           },
@@ -101,7 +100,7 @@
             "lnx200nas": {
               "view": {
                 "state": "ACTIVE",
-                "state_since": 1780506808.3573372,
+                "state_since": 1780839757.1432912,
                 "prev_state": "STAND-BY",
                 "state_reason": "leader_selected",
                 "priority": 1,
@@ -110,22 +109,22 @@
                   "events_summary_completed": {
                     "counts": {
                       "completed": 0,
-                      "created": 438,
+                      "created": 331,
                       "executing": 0,
                       "unknown": 0
                     },
-                    "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                    "total_events": 438
+                    "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                    "total_events": 331
                   },
                   "events_summary_created": {
                     "counts": {
                       "completed": 0,
-                      "created": 496,
+                      "created": 390,
                       "executing": 0,
                       "unknown": 0
                     },
-                    "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                    "total_events": 496
+                    "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                    "total_events": 390
                   },
                   "events_summary_executing": {
                     "counts": {
@@ -140,33 +139,21 @@
                   "events_summary_local": {
                     "counts": {
                       "completed": 0,
-                      "created": 496,
+                      "created": 390,
                       "executing": 0,
                       "unknown": 0
                     },
-                    "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                    "total_events": 496
+                    "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                    "total_events": 390
                   }
                 }
-              },
-              "view_ok": true
-            },
-            "lnx203hp": {
-              "view": {
-                "state": "STAND-BY",
-                "state_since": 1780507009.2773142,
-                "prev_state": "ACTIVE",
-                "state_reason": "leader_lost",
-                "priority": 3,
-                "log_meta": {},
-                "streams": {}
               },
               "view_ok": true
             },
             "lnx202pc": {
               "view": {
                 "state": "STAND-BY",
-                "state_since": 1780516827.1841674,
+                "state_since": 1780839759.150166,
                 "prev_state": "ACTIVE",
                 "state_reason": "leader_lost",
                 "priority": 2,
@@ -177,12 +164,12 @@
             }
           },
           "integrity_canonical": {
-            "log_size": 389078,
-            "file_size": 389078,
-            "last_append_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-            "last_append_created_at": 1780507005.5230196
+            "log_size": 354155,
+            "file_size": 354155,
+            "last_append_event_id": "f03badb7-105e-4f95-aa60-511b6749e2e4",
+            "last_append_created_at": 1780839862.3335254
           },
-          "integrity_hash": "dc41acfceecf712d6ec21cf2540737c649700bf2358879e1f4ee206ec8cfae87",
+          "integrity_hash": "90b02623fe292e7ca65cf98b543d075732d521326dae63fcb83a7bdbdb95a4cb",
           "integrity_ok": true
         },
         "progress": {
@@ -203,21 +190,21 @@
         {
           "node_id": "lnx200nas",
           "state": "ACTIVE",
-          "state_since": 1780506808.3573372,
-          "state_age_s": 14802.9,
+          "state_since": 1780839757.1432912,
+          "state_age_s": 105.4,
           "prev_state": "STAND-BY",
           "state_reason": "leader_selected",
           "priority": 1,
-          "last_seen": 1780521611.2318482,
+          "last_seen": 1780839862.5604162,
           "seen_age_s": 0.0,
-          "last_watchdog": 1780521611.1868608,
-          "watchdog_age_s": 0.0,
+          "last_watchdog": 1780839861.3082526,
+          "watchdog_age_s": 1.2,
           "watchdog_busy": true,
           "presence_age_s": 0.0,
           "health": "ok",
           "local_size": 0,
-          "local_events": 496,
-          "created": 496,
+          "local_events": 390,
+          "created": 390,
           "executing": 0,
           "completed": 0,
           "dirty": null,
@@ -236,17 +223,17 @@
         {
           "node_id": "lnx202pc",
           "state": "STAND-BY",
-          "state_since": 1780516827.1841674,
-          "state_age_s": 4784.0,
+          "state_since": 1780839759.150166,
+          "state_age_s": 103.4,
           "prev_state": "ACTIVE",
           "state_reason": "leader_lost",
           "priority": 2,
-          "last_seen": 1780521610.594012,
-          "seen_age_s": 0.6,
-          "last_watchdog": 1780521610.60504,
-          "watchdog_age_s": 0.6,
+          "last_seen": 1780839862.199913,
+          "seen_age_s": 0.3,
+          "last_watchdog": 1780839862.1662118,
+          "watchdog_age_s": 0.4,
           "watchdog_busy": true,
-          "presence_age_s": 0.6,
+          "presence_age_s": 0.3,
           "health": "ok",
           "local_size": 0,
           "local_events": 0,
@@ -269,18 +256,18 @@
         {
           "node_id": "lnx203hp",
           "state": "STAND-BY",
-          "state_since": 1780507009.2773142,
-          "state_age_s": 14601.9,
+          "state_since": 1780839213.7883353,
+          "state_age_s": 648.8,
           "prev_state": "ACTIVE",
           "state_reason": "leader_lost",
           "priority": 3,
-          "last_seen": 1780521611.13725,
-          "seen_age_s": 0.1,
-          "last_watchdog": 1780521611.1457732,
-          "watchdog_age_s": 0.1,
+          "last_seen": 1780839662.285908,
+          "seen_age_s": 200.3,
+          "last_watchdog": 1780839662.2630727,
+          "watchdog_age_s": 200.3,
           "watchdog_busy": true,
-          "presence_age_s": 0.1,
-          "health": "ok",
+          "presence_age_s": 200.3,
+          "health": "stale",
           "local_size": 0,
           "local_events": 0,
           "created": 0,
@@ -305,12 +292,11 @@
       "node_id": "lnx200nas",
       "alive_nodes": [
         "lnx200nas",
-        "lnx202pc",
-        "lnx203hp"
+        "lnx202pc"
       ],
       "self_view": {
         "state": "ACTIVE",
-        "state_since": 1780506808.3573372,
+        "state_since": 1780839757.1432912,
         "prev_state": "STAND-BY",
         "state_reason": "leader_selected",
         "priority": 1,
@@ -319,22 +305,22 @@
           "events_summary_completed": {
             "counts": {
               "completed": 0,
-              "created": 438,
+              "created": 331,
               "executing": 0,
               "unknown": 0
             },
-            "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-            "total_events": 438
+            "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+            "total_events": 331
           },
           "events_summary_created": {
             "counts": {
               "completed": 0,
-              "created": 496,
+              "created": 390,
               "executing": 0,
               "unknown": 0
             },
-            "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-            "total_events": 496
+            "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+            "total_events": 390
           },
           "events_summary_executing": {
             "counts": {
@@ -349,12 +335,12 @@
           "events_summary_local": {
             "counts": {
               "completed": 0,
-              "created": 496,
+              "created": 390,
               "executing": 0,
               "unknown": 0
             },
-            "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-            "total_events": 496
+            "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+            "total_events": 390
           }
         }
       },
@@ -362,7 +348,7 @@
         "lnx200nas": {
           "view": {
             "state": "ACTIVE",
-            "state_since": 1780506808.3573372,
+            "state_since": 1780839757.1432912,
             "prev_state": "STAND-BY",
             "state_reason": "leader_selected",
             "priority": 1,
@@ -371,22 +357,22 @@
               "events_summary_completed": {
                 "counts": {
                   "completed": 0,
-                  "created": 438,
+                  "created": 331,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                "total_events": 438
+                "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                "total_events": 331
               },
               "events_summary_created": {
                 "counts": {
                   "completed": 0,
-                  "created": 496,
+                  "created": 390,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                "total_events": 496
+                "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                "total_events": 390
               },
               "events_summary_executing": {
                 "counts": {
@@ -401,33 +387,21 @@
               "events_summary_local": {
                 "counts": {
                   "completed": 0,
-                  "created": 496,
+                  "created": 390,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-                "total_events": 496
+                "last_event_id": "5e7eb1e3-1d67-4c1c-85d4-eb29e02f1309",
+                "total_events": 390
               }
             }
-          },
-          "view_ok": true
-        },
-        "lnx203hp": {
-          "view": {
-            "state": "STAND-BY",
-            "state_since": 1780507009.2773142,
-            "prev_state": "ACTIVE",
-            "state_reason": "leader_lost",
-            "priority": 3,
-            "log_meta": {},
-            "streams": {}
           },
           "view_ok": true
         },
         "lnx202pc": {
           "view": {
             "state": "STAND-BY",
-            "state_since": 1780516827.1841674,
+            "state_since": 1780839759.150166,
             "prev_state": "ACTIVE",
             "state_reason": "leader_lost",
             "priority": 2,
@@ -438,26 +412,26 @@
         }
       },
       "integrity_canonical": {
-        "log_size": 389078,
-        "file_size": 389078,
-        "last_append_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea",
-        "last_append_created_at": 1780507005.5230196
+        "log_size": 354155,
+        "file_size": 354155,
+        "last_append_event_id": "f03badb7-105e-4f95-aa60-511b6749e2e4",
+        "last_append_created_at": 1780839862.3335254
       },
-      "integrity_hash": "dc41acfceecf712d6ec21cf2540737c649700bf2358879e1f4ee206ec8cfae87",
+      "integrity_hash": "90b02623fe292e7ca65cf98b543d075732d521326dae63fcb83a7bdbdb95a4cb",
       "integrity_ok": true
     },
     "events_summary_local": {
       "node_id": "lnx200nas",
       "scope": "local",
       "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
-      "total_events": 496,
+      "total_events": 448,
       "counts": {
-        "created": 496,
+        "created": 448,
         "executing": 0,
         "completed": 0,
         "unknown": 0
       },
-      "last_event_id": "2742ebfa-8e6c-4f4d-b5d1-816f204b9fea"
+      "last_event_id": "f03badb7-105e-4f95-aa60-511b6749e2e4"
     }
   },
   "lnx202pc": {
@@ -467,50 +441,49 @@
       "status": "ok",
       "node": "lnx202pc",
       "state": "STAND-BY",
-      "state_since": 1780516827.1841674,
-      "state_age_s": 4784.525,
-      "last_seen": 1780521611.7013917,
-      "seen_age_s": 0.008,
-      "last_watchdog": 1780521611.6491368,
-      "watchdog_age_s": 0.06,
+      "state_since": 1780839759.150166,
+      "state_age_s": 103.855,
+      "last_seen": 1780839862.9951422,
+      "seen_age_s": 0.01,
+      "last_watchdog": 1780839862.1662118,
+      "watchdog_age_s": 0.839,
       "watchdog_busy": true,
-      "presence_age_s": 0.008,
+      "presence_age_s": 0.01,
       "sleeping": false
     },
     "dashboard": {
       "cluster": {
         "node_id": "lnx202pc",
         "leader": "lnx200nas",
-        "generated_at": 1780521611.570453,
+        "generated_at": 1780839862.919983,
         "integrity_ok": true,
         "local_state": "STAND-BY",
-        "local_state_since": 1780516827.1841674,
-        "local_state_age_s": 4784.4
+        "local_state_since": 1780839759.150166,
+        "local_state_age_s": 103.8
       },
       "local": {
         "events_summary": {
           "node_id": "lnx202pc",
           "scope": "local",
           "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
-          "total_events": 2216,
+          "total_events": 2464,
           "counts": {
-            "created": 2216,
+            "created": 2464,
             "executing": 0,
             "completed": 0,
             "unknown": 0
           },
-          "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574"
+          "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb"
         },
         "integrity": {
           "node_id": "lnx202pc",
           "alive_nodes": [
             "lnx200nas",
-            "lnx202pc",
-            "lnx203hp"
+            "lnx202pc"
           ],
           "self_view": {
             "state": "STAND-BY",
-            "state_since": 1780516827.1841674,
+            "state_since": 1780839759.150166,
             "prev_state": "ACTIVE",
             "state_reason": "leader_lost",
             "priority": 2,
@@ -519,22 +492,22 @@
               "events_summary_completed": {
                 "counts": {
                   "completed": 0,
-                  "created": 2153,
+                  "created": 2440,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                "total_events": 2153
+                "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                "total_events": 2440
               },
               "events_summary_created": {
                 "counts": {
                   "completed": 0,
-                  "created": 2216,
+                  "created": 2464,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                "total_events": 2216
+                "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                "total_events": 2464
               },
               "events_summary_executing": {
                 "counts": {
@@ -549,12 +522,12 @@
               "events_summary_local": {
                 "counts": {
                   "completed": 0,
-                  "created": 2216,
+                  "created": 2464,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                "total_events": 2216
+                "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                "total_events": 2464
               }
             }
           },
@@ -562,7 +535,7 @@
             "lnx202pc": {
               "view": {
                 "state": "STAND-BY",
-                "state_since": 1780516827.1841674,
+                "state_since": 1780839759.150166,
                 "prev_state": "ACTIVE",
                 "state_reason": "leader_lost",
                 "priority": 2,
@@ -571,22 +544,22 @@
                   "events_summary_completed": {
                     "counts": {
                       "completed": 0,
-                      "created": 2153,
+                      "created": 2440,
                       "executing": 0,
                       "unknown": 0
                     },
-                    "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                    "total_events": 2153
+                    "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                    "total_events": 2440
                   },
                   "events_summary_created": {
                     "counts": {
                       "completed": 0,
-                      "created": 2216,
+                      "created": 2464,
                       "executing": 0,
                       "unknown": 0
                     },
-                    "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                    "total_events": 2216
+                    "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                    "total_events": 2464
                   },
                   "events_summary_executing": {
                     "counts": {
@@ -601,12 +574,12 @@
                   "events_summary_local": {
                     "counts": {
                       "completed": 0,
-                      "created": 2216,
+                      "created": 2464,
                       "executing": 0,
                       "unknown": 0
                     },
-                    "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                    "total_events": 2216
+                    "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                    "total_events": 2464
                   }
                 }
               },
@@ -615,7 +588,7 @@
             "lnx200nas": {
               "view": {
                 "state": "ACTIVE",
-                "state_since": 1780506808.3573372,
+                "state_since": 1780839757.1432912,
                 "prev_state": "STAND-BY",
                 "state_reason": "leader_selected",
                 "priority": 1,
@@ -623,27 +596,15 @@
                 "streams": {}
               },
               "view_ok": true
-            },
-            "lnx203hp": {
-              "view": {
-                "state": "STAND-BY",
-                "state_since": 1780507009.2773142,
-                "prev_state": "ACTIVE",
-                "state_reason": "leader_lost",
-                "priority": 3,
-                "log_meta": {},
-                "streams": {}
-              },
-              "view_ok": true
             }
           },
           "integrity_canonical": {
-            "log_size": 1752866,
-            "file_size": 1752866,
-            "last_append_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-            "last_append_created_at": 1780507006.1237574
+            "log_size": 1976504,
+            "file_size": 1976504,
+            "last_append_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+            "last_append_created_at": 1780830552.0009058
           },
-          "integrity_hash": "4fec34cc379754ce8c6ff7ad64948c874c243b7911117189253cf4d64d2d3530",
+          "integrity_hash": "dca111962d00372ef047ab64367bf41b2e6a0ca6e7f2956a44051ee93f94cb8b",
           "integrity_ok": true
         },
         "progress": {
@@ -664,17 +625,17 @@
         {
           "node_id": "lnx200nas",
           "state": "ACTIVE",
-          "state_since": 1780506808.3573372,
-          "state_age_s": 14803.2,
+          "state_since": 1780839757.1432912,
+          "state_age_s": 105.8,
           "prev_state": "STAND-BY",
           "state_reason": "leader_selected",
           "priority": 1,
-          "last_seen": 1780521611.1703763,
-          "seen_age_s": 0.4,
-          "last_watchdog": 1780521611.1868608,
-          "watchdog_age_s": 0.4,
+          "last_seen": 1780839862.6133893,
+          "seen_age_s": 0.3,
+          "last_watchdog": 1780839862.6575246,
+          "watchdog_age_s": 0.3,
           "watchdog_busy": true,
-          "presence_age_s": 0.4,
+          "presence_age_s": 0.3,
           "health": "ok",
           "local_size": 0,
           "local_events": 0,
@@ -697,21 +658,21 @@
         {
           "node_id": "lnx202pc",
           "state": "STAND-BY",
-          "state_since": 1780516827.1841674,
-          "state_age_s": 4784.4,
+          "state_since": 1780839759.150166,
+          "state_age_s": 103.8,
           "prev_state": "ACTIVE",
           "state_reason": "leader_lost",
           "priority": 2,
-          "last_seen": 1780521611.7013917,
+          "last_seen": 1780839862.9951422,
           "seen_age_s": 0.0,
-          "last_watchdog": 1780521611.6491368,
-          "watchdog_age_s": 0.0,
+          "last_watchdog": 1780839862.1662118,
+          "watchdog_age_s": 0.8,
           "watchdog_busy": true,
           "presence_age_s": 0.0,
           "health": "ok",
           "local_size": 0,
-          "local_events": 2216,
-          "created": 2216,
+          "local_events": 2464,
+          "created": 2464,
           "executing": 0,
           "completed": 0,
           "dirty": null,
@@ -730,18 +691,18 @@
         {
           "node_id": "lnx203hp",
           "state": "STAND-BY",
-          "state_since": 1780507009.2773142,
-          "state_age_s": 14602.3,
+          "state_since": 1780839213.7883353,
+          "state_age_s": 649.1,
           "prev_state": "ACTIVE",
           "state_reason": "leader_lost",
           "priority": 3,
-          "last_seen": 1780521611.1462796,
-          "seen_age_s": 0.4,
-          "last_watchdog": 1780521611.1457732,
-          "watchdog_age_s": 0.4,
+          "last_seen": 1780839662.256702,
+          "seen_age_s": 200.7,
+          "last_watchdog": 1780839662.2630727,
+          "watchdog_age_s": 200.7,
           "watchdog_busy": true,
-          "presence_age_s": 0.4,
-          "health": "ok",
+          "presence_age_s": 200.7,
+          "health": "stale",
           "local_size": 0,
           "local_events": 0,
           "created": 0,
@@ -766,12 +727,11 @@
       "node_id": "lnx202pc",
       "alive_nodes": [
         "lnx200nas",
-        "lnx202pc",
-        "lnx203hp"
+        "lnx202pc"
       ],
       "self_view": {
         "state": "STAND-BY",
-        "state_since": 1780516827.1841674,
+        "state_since": 1780839759.150166,
         "prev_state": "ACTIVE",
         "state_reason": "leader_lost",
         "priority": 2,
@@ -780,22 +740,22 @@
           "events_summary_completed": {
             "counts": {
               "completed": 0,
-              "created": 2153,
+              "created": 2440,
               "executing": 0,
               "unknown": 0
             },
-            "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-            "total_events": 2153
+            "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+            "total_events": 2440
           },
           "events_summary_created": {
             "counts": {
               "completed": 0,
-              "created": 2216,
+              "created": 2464,
               "executing": 0,
               "unknown": 0
             },
-            "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-            "total_events": 2216
+            "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+            "total_events": 2464
           },
           "events_summary_executing": {
             "counts": {
@@ -810,12 +770,12 @@
           "events_summary_local": {
             "counts": {
               "completed": 0,
-              "created": 2216,
+              "created": 2464,
               "executing": 0,
               "unknown": 0
             },
-            "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-            "total_events": 2216
+            "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+            "total_events": 2464
           }
         }
       },
@@ -823,7 +783,7 @@
         "lnx202pc": {
           "view": {
             "state": "STAND-BY",
-            "state_since": 1780516827.1841674,
+            "state_since": 1780839759.150166,
             "prev_state": "ACTIVE",
             "state_reason": "leader_lost",
             "priority": 2,
@@ -832,22 +792,22 @@
               "events_summary_completed": {
                 "counts": {
                   "completed": 0,
-                  "created": 2153,
+                  "created": 2440,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                "total_events": 2153
+                "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                "total_events": 2440
               },
               "events_summary_created": {
                 "counts": {
                   "completed": 0,
-                  "created": 2216,
+                  "created": 2464,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                "total_events": 2216
+                "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                "total_events": 2464
               },
               "events_summary_executing": {
                 "counts": {
@@ -862,12 +822,12 @@
               "events_summary_local": {
                 "counts": {
                   "completed": 0,
-                  "created": 2216,
+                  "created": 2464,
                   "executing": 0,
                   "unknown": 0
                 },
-                "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-                "total_events": 2216
+                "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+                "total_events": 2464
               }
             }
           },
@@ -876,7 +836,7 @@
         "lnx200nas": {
           "view": {
             "state": "ACTIVE",
-            "state_since": 1780506808.3573372,
+            "state_since": 1780839757.1432912,
             "prev_state": "STAND-BY",
             "state_reason": "leader_selected",
             "priority": 1,
@@ -884,502 +844,49 @@
             "streams": {}
           },
           "view_ok": true
-        },
-        "lnx203hp": {
-          "view": {
-            "state": "STAND-BY",
-            "state_since": 1780507009.2773142,
-            "prev_state": "ACTIVE",
-            "state_reason": "leader_lost",
-            "priority": 3,
-            "log_meta": {},
-            "streams": {}
-          },
-          "view_ok": true
         }
       },
       "integrity_canonical": {
-        "log_size": 1752866,
-        "file_size": 1752866,
-        "last_append_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574",
-        "last_append_created_at": 1780507006.1237574
+        "log_size": 1976504,
+        "file_size": 1976504,
+        "last_append_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb",
+        "last_append_created_at": 1780830552.0009058
       },
-      "integrity_hash": "4fec34cc379754ce8c6ff7ad64948c874c243b7911117189253cf4d64d2d3530",
+      "integrity_hash": "dca111962d00372ef047ab64367bf41b2e6a0ca6e7f2956a44051ee93f94cb8b",
       "integrity_ok": true
     },
     "events_summary_local": {
       "node_id": "lnx202pc",
       "scope": "local",
       "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
-      "total_events": 2216,
+      "total_events": 2464,
       "counts": {
-        "created": 2216,
+        "created": 2464,
         "executing": 0,
         "completed": 0,
         "unknown": 0
       },
-      "last_event_id": "8a6e11b8-0384-49f3-b30e-e0b611280574"
+      "last_event_id": "2a69ef54-6188-43ed-8c9e-402a8c1e16fb"
     }
   },
   "lnx203hp": {
     "node": "lnx203hp",
     "host": "100.100.1.203",
     "health": {
-      "status": "ok",
-      "node": "lnx203hp",
-      "state": "STAND-BY",
-      "state_since": 1780507009.2773142,
-      "state_age_s": 14602.9,
-      "last_seen": 1780521612.1743605,
-      "seen_age_s": 0.003,
-      "last_watchdog": 1780521611.1457732,
-      "watchdog_age_s": 1.031,
-      "watchdog_busy": true,
-      "presence_age_s": 0.003,
-      "sleeping": false
+      "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Max retries exceeded with url: /health (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.203', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.203:7000/health"
     },
     "dashboard": {
-      "cluster": {
-        "node_id": "lnx203hp",
-        "leader": "lnx200nas",
-        "generated_at": 1780521612.141352,
-        "integrity_ok": true,
-        "local_state": "STAND-BY",
-        "local_state_since": 1780507009.2773142,
-        "local_state_age_s": 14602.9
-      },
-      "local": {
-        "events_summary": {
-          "node_id": "lnx203hp",
-          "scope": "local",
-          "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
-          "total_events": 1014,
-          "counts": {
-            "created": 1014,
-            "executing": 0,
-            "completed": 0,
-            "unknown": 0
-          },
-          "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861"
-        },
-        "integrity": {
-          "node_id": "lnx203hp",
-          "alive_nodes": [
-            "lnx200nas",
-            "lnx202pc",
-            "lnx203hp"
-          ],
-          "self_view": {
-            "state": "STAND-BY",
-            "state_since": 1780507009.2773142,
-            "prev_state": "ACTIVE",
-            "state_reason": "leader_lost",
-            "priority": 3,
-            "log_meta": {},
-            "streams": {
-              "events_summary_completed": {
-                "counts": {
-                  "completed": 0,
-                  "created": 1007,
-                  "executing": 0,
-                  "unknown": 0
-                },
-                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                "total_events": 1007
-              },
-              "events_summary_created": {
-                "counts": {
-                  "completed": 0,
-                  "created": 1014,
-                  "executing": 0,
-                  "unknown": 0
-                },
-                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                "total_events": 1014
-              },
-              "events_summary_executing": {
-                "counts": {
-                  "completed": 0,
-                  "created": 0,
-                  "executing": 0,
-                  "unknown": 0
-                },
-                "last_event_id": null,
-                "total_events": 0
-              },
-              "events_summary_local": {
-                "counts": {
-                  "completed": 0,
-                  "created": 1014,
-                  "executing": 0,
-                  "unknown": 0
-                },
-                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                "total_events": 1014
-              }
-            }
-          },
-          "peer_status": {
-            "lnx203hp": {
-              "view": {
-                "state": "STAND-BY",
-                "state_since": 1780507009.2773142,
-                "prev_state": "ACTIVE",
-                "state_reason": "leader_lost",
-                "priority": 3,
-                "log_meta": {},
-                "streams": {
-                  "events_summary_completed": {
-                    "counts": {
-                      "completed": 0,
-                      "created": 1007,
-                      "executing": 0,
-                      "unknown": 0
-                    },
-                    "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                    "total_events": 1007
-                  },
-                  "events_summary_created": {
-                    "counts": {
-                      "completed": 0,
-                      "created": 1014,
-                      "executing": 0,
-                      "unknown": 0
-                    },
-                    "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                    "total_events": 1014
-                  },
-                  "events_summary_executing": {
-                    "counts": {
-                      "completed": 0,
-                      "created": 0,
-                      "executing": 0,
-                      "unknown": 0
-                    },
-                    "last_event_id": null,
-                    "total_events": 0
-                  },
-                  "events_summary_local": {
-                    "counts": {
-                      "completed": 0,
-                      "created": 1014,
-                      "executing": 0,
-                      "unknown": 0
-                    },
-                    "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                    "total_events": 1014
-                  }
-                }
-              },
-              "view_ok": true
-            },
-            "lnx200nas": {
-              "view": {
-                "state": "ACTIVE",
-                "state_since": 1780506808.3573372,
-                "prev_state": "STAND-BY",
-                "state_reason": "leader_selected",
-                "priority": 1,
-                "log_meta": {},
-                "streams": {}
-              },
-              "view_ok": true
-            },
-            "lnx202pc": {
-              "view": {
-                "state": "STAND-BY",
-                "state_since": 1780516827.1841674,
-                "prev_state": "ACTIVE",
-                "state_reason": "leader_lost",
-                "priority": 2,
-                "log_meta": {},
-                "streams": {}
-              },
-              "view_ok": true
-            }
-          },
-          "integrity_canonical": {
-            "log_size": 800418,
-            "file_size": 800418,
-            "last_append_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-            "last_append_created_at": 1780507003.6719484
-          },
-          "integrity_hash": "71aded5cfb34c3cc2d538476b2b9527a97cc221cde6e9390f23aff43f3037e7d",
-          "integrity_ok": true
-        },
-        "progress": {
-          "progress_active": false,
-          "progress_stage": null,
-          "progress_started_at": null,
-          "progress_touched_at": null,
-          "progress_age_s": null,
-          "progress_duration_s": null,
-          "progress_current": null,
-          "progress_total": null,
-          "progress_pct": null,
-          "progress_stalled": false,
-          "progress_meta": {}
-        }
-      },
-      "nodes": [
-        {
-          "node_id": "lnx200nas",
-          "state": "ACTIVE",
-          "state_since": 1780506808.3573372,
-          "state_age_s": 14803.8,
-          "prev_state": "STAND-BY",
-          "state_reason": "leader_selected",
-          "priority": 1,
-          "last_seen": 1780521611.1830726,
-          "seen_age_s": 1.0,
-          "last_watchdog": 1780521611.1868608,
-          "watchdog_age_s": 1.0,
-          "watchdog_busy": true,
-          "presence_age_s": 1.0,
-          "health": "ok",
-          "local_size": 0,
-          "local_events": 0,
-          "created": 0,
-          "executing": 0,
-          "completed": 0,
-          "dirty": null,
-          "progress_active": false,
-          "progress_stage": null,
-          "progress_started_at": null,
-          "progress_touched_at": null,
-          "progress_age_s": null,
-          "progress_duration_s": null,
-          "progress_current": null,
-          "progress_total": null,
-          "progress_pct": null,
-          "progress_stalled": false,
-          "progress_meta": {}
-        },
-        {
-          "node_id": "lnx202pc",
-          "state": "STAND-BY",
-          "state_since": 1780516827.1841674,
-          "state_age_s": 4785.0,
-          "prev_state": "ACTIVE",
-          "state_reason": "leader_lost",
-          "priority": 2,
-          "last_seen": 1780521611.6431417,
-          "seen_age_s": 0.5,
-          "last_watchdog": 1780521611.6491368,
-          "watchdog_age_s": 0.5,
-          "watchdog_busy": true,
-          "presence_age_s": 0.5,
-          "health": "ok",
-          "local_size": 0,
-          "local_events": 0,
-          "created": 0,
-          "executing": 0,
-          "completed": 0,
-          "dirty": null,
-          "progress_active": false,
-          "progress_stage": null,
-          "progress_started_at": null,
-          "progress_touched_at": null,
-          "progress_age_s": null,
-          "progress_duration_s": null,
-          "progress_current": null,
-          "progress_total": null,
-          "progress_pct": null,
-          "progress_stalled": false,
-          "progress_meta": {}
-        },
-        {
-          "node_id": "lnx203hp",
-          "state": "STAND-BY",
-          "state_since": 1780507009.2773142,
-          "state_age_s": 14602.9,
-          "prev_state": "ACTIVE",
-          "state_reason": "leader_lost",
-          "priority": 3,
-          "last_seen": 1780521612.1713562,
-          "seen_age_s": 0.0,
-          "last_watchdog": 1780521611.1457732,
-          "watchdog_age_s": 1.0,
-          "watchdog_busy": true,
-          "presence_age_s": 0.0,
-          "health": "ok",
-          "local_size": 0,
-          "local_events": 1014,
-          "created": 1014,
-          "executing": 0,
-          "completed": 0,
-          "dirty": null,
-          "progress_active": false,
-          "progress_stage": null,
-          "progress_started_at": null,
-          "progress_touched_at": null,
-          "progress_age_s": null,
-          "progress_duration_s": null,
-          "progress_current": null,
-          "progress_total": null,
-          "progress_pct": null,
-          "progress_stalled": false,
-          "progress_meta": {}
-        }
-      ]
+      "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Max retries exceeded with url: /dashboard/compact (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.203', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.203:7000/dashboard/compact"
     },
     "integrity": {
-      "node_id": "lnx203hp",
-      "alive_nodes": [
-        "lnx200nas",
-        "lnx202pc",
-        "lnx203hp"
-      ],
-      "self_view": {
-        "state": "STAND-BY",
-        "state_since": 1780507009.2773142,
-        "prev_state": "ACTIVE",
-        "state_reason": "leader_lost",
-        "priority": 3,
-        "log_meta": {},
-        "streams": {
-          "events_summary_completed": {
-            "counts": {
-              "completed": 0,
-              "created": 1007,
-              "executing": 0,
-              "unknown": 0
-            },
-            "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-            "total_events": 1007
-          },
-          "events_summary_created": {
-            "counts": {
-              "completed": 0,
-              "created": 1014,
-              "executing": 0,
-              "unknown": 0
-            },
-            "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-            "total_events": 1014
-          },
-          "events_summary_executing": {
-            "counts": {
-              "completed": 0,
-              "created": 0,
-              "executing": 0,
-              "unknown": 0
-            },
-            "last_event_id": null,
-            "total_events": 0
-          },
-          "events_summary_local": {
-            "counts": {
-              "completed": 0,
-              "created": 1014,
-              "executing": 0,
-              "unknown": 0
-            },
-            "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-            "total_events": 1014
-          }
-        }
-      },
-      "peer_status": {
-        "lnx203hp": {
-          "view": {
-            "state": "STAND-BY",
-            "state_since": 1780507009.2773142,
-            "prev_state": "ACTIVE",
-            "state_reason": "leader_lost",
-            "priority": 3,
-            "log_meta": {},
-            "streams": {
-              "events_summary_completed": {
-                "counts": {
-                  "completed": 0,
-                  "created": 1007,
-                  "executing": 0,
-                  "unknown": 0
-                },
-                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                "total_events": 1007
-              },
-              "events_summary_created": {
-                "counts": {
-                  "completed": 0,
-                  "created": 1014,
-                  "executing": 0,
-                  "unknown": 0
-                },
-                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                "total_events": 1014
-              },
-              "events_summary_executing": {
-                "counts": {
-                  "completed": 0,
-                  "created": 0,
-                  "executing": 0,
-                  "unknown": 0
-                },
-                "last_event_id": null,
-                "total_events": 0
-              },
-              "events_summary_local": {
-                "counts": {
-                  "completed": 0,
-                  "created": 1014,
-                  "executing": 0,
-                  "unknown": 0
-                },
-                "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-                "total_events": 1014
-              }
-            }
-          },
-          "view_ok": true
-        },
-        "lnx200nas": {
-          "view": {
-            "state": "ACTIVE",
-            "state_since": 1780506808.3573372,
-            "prev_state": "STAND-BY",
-            "state_reason": "leader_selected",
-            "priority": 1,
-            "log_meta": {},
-            "streams": {}
-          },
-          "view_ok": true
-        },
-        "lnx202pc": {
-          "view": {
-            "state": "STAND-BY",
-            "state_since": 1780516827.1841674,
-            "prev_state": "ACTIVE",
-            "state_reason": "leader_lost",
-            "priority": 2,
-            "log_meta": {},
-            "streams": {}
-          },
-          "view_ok": true
-        }
-      },
-      "integrity_canonical": {
-        "log_size": 800418,
-        "file_size": 800418,
-        "last_append_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861",
-        "last_append_created_at": 1780507003.6719484
-      },
-      "integrity_hash": "71aded5cfb34c3cc2d538476b2b9527a97cc221cde6e9390f23aff43f3037e7d",
-      "integrity_ok": true
+      "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Max retries exceeded with url: /integrity (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.203', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.203:7000/integrity"
     },
     "events_summary_local": {
-      "node_id": "lnx203hp",
-      "scope": "local",
-      "path": "/home/alftorres/projects/ClusterMayhem/cluster/data/event_log.local.000.jsonl",
-      "total_events": 1014,
-      "counts": {
-        "created": 1014,
-        "executing": 0,
-        "completed": 0,
-        "unknown": 0
-      },
-      "last_event_id": "bc5c9562-85b0-4a27-a7b7-ca6d37401861"
+      "error": "HTTPConnectionPool(host='100.100.1.203', port=7000): Max retries exceeded with url: /debug/events/summary (Caused by NewConnectionError(\"HTTPConnection(host='100.100.1.203', port=7000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+      "url": "http://100.100.1.203:7000/debug/events/summary"
     }
   }
 }
