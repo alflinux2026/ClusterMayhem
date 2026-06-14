@@ -1,10 +1,27 @@
 {
-  "node_id": "lnx203hp",
-  "priority": 100,
-  "port": 8000,
+  "cluster_name": "mayhem-cluster",
+  "node_id": "lnx202pc",
+  "priority": 2,
+  "port": 7000,
+  "host": "100.100.1.202",
+  "bind_host": "100.100.1.202",
+  "bind_port": 7000,
   "tenant_id": "default",
   "app_id": "mayhem",
   "data_type": "event",
   "schema_version": "0.1",
-  "peers": []
+  "peers": [
+    {
+      "node_id": "lnx200nas",
+      "host": "100.100.1.200",
+      "port": 7000,
+      "priority": 1
+    },
+    {
+      "node_id": "lnx203hp",
+      "host": "100.100.1.203",
+      "port": 7000,
+      "priority": 3
+    }
+  ]
 }
