@@ -232,12 +232,9 @@ def replicate_eventlog():
                 timeout=2,
             )
 
-            if resp.ok:
-                success = True
-            else:
+            if not resp.ok:
                 success = False
-
-        except Exception as e:
+        except:
             success = False
 
     if success:
@@ -303,12 +300,9 @@ def replicate_events():
                 timeout=2,
             )
 
-            if resp.ok:
-                success = True
-            else:
+            if not resp.ok:
                 success = False
-
-        except Exception as e:
+        except:
             success = False
 
     if success:

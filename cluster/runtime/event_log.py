@@ -587,29 +587,22 @@ def replay_events(handler, stream: str | None = None):
 
 def ingest_event(event, node_id):
     """
-    Ingerta un evento (marca como CREATED y lo appendea).
-
-    Args:
-        event: Evento a ingerir.
-        node_id: ID del nodo que ingiere (líder).
-
-    Returns:
-        dict: Resultado con event_id, status="accepted", leader, trace_id.
-
-    Note:
-        - Se llama desde POST /event en api_app.py
-        - Marca el evento como CREATED (si no lo está ya)
-        - Marca received_at (si no lo tiene ya)
-        - Logeia el evento con log_state
+    Ingerta un evento.
+    Para GeoMayhem, auto-completamos los eventos para que se repliquen inmediatamente.
     """
-    event.mark_status(EventStatus.CREATED)
+    # Auto-completar eventos de GeoMayhem
+    if event.event_type.startswith("geo.mayhem.") or event.event_type.startswith("route."):
+        event.mark_status(EventStatus.COMPLETED)
+    else:
+        event.mark_status(EventStatus.CREATED)
+
     event.mark_received()
     append_event(event)
 
-    msg = event.payload.get("msg", "<no-msg>")
+    msg = event.payload.get("message") or event.payload.get("msg") or "<no-msg>"
 
-    log_state("yellow", "(EVENT)", f"{msg:12} -> CREATED", 3)
-    log_state("cyan", "[EVENT OK]", f"{msg:12}", 3)
+    log_state("yellow", "(EVENT)", f"{msg[:12]} -> {event.status}", 3)
+    log_state("cyan", "[EVENT OK]", f"{msg[:12]}", 3)
 
     return {
         "event_id": event.event_id,
