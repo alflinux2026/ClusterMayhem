@@ -547,7 +547,9 @@ def append_event(event: ClusterEvent):
     state["last_append_created_at"] = event.created_at
     state["last_append_updated_at"] = getattr(event, "updated_at", None)
 
-    if record["status"] == EventStatus.CREATED.value:
+    # Guardar en el log de eventos finalizados (el que lee el distribuidor/chat)
+    # Aceptamos tanto CREATED como COMPLETED (para GeoMayhem auto-complete)
+    if record["status"] in [EventStatus.CREATED.value, EventStatus.COMPLETED.value]:
         with open(COMPLETED_LOG_PATH, "a", encoding="utf-8") as f:
             f.write(line)
             f.flush()
