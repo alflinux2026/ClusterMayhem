@@ -8,7 +8,7 @@
 #   God
 #
 # Purpose:
-#   Entry point del nodo del cluster.
+#   Entry point del nodo del cluster. STABLE VERSION
 #   Arranca el nodo: carga configuración, inicializa contexto global, crea NodeRuntime,
 #   registra el nodo y peers en el registry, arranca el worker en background,
 #   y sirve la API HTTP con uvicorn.
